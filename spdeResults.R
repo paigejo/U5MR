@@ -56,6 +56,20 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
   truth = getTruthByCounty(eaDat, counties)
   trueMort = truth$mortRate
   
+  # get prediction locations from population grid
+  popGrid = makeInterpPopGrid()
+  predCoords = cbind(popGrid$east, popGrid$north)
+  predUrban = popGrid$urban
+  if(genEALevel) {
+    # Must predict at enumeration areas as well. Include enumeration areas as 
+    # first rows of prediction coordinates an prediction urban/rural
+    predCoords = rbind(cbind(eaDat$east, eaDat$north), predCoords)
+    predUrban = c(eaDat$urban, predUrban)
+  }
+  # we only care about the probability, not counts, so not used except for the purposes 
+  # of calling inla:
+  predNs = rep(25, nrow(predCoords))
+  
   # compute Bias & MSE & mean(Var) & 80\% coverage for each simulation
   countyResults = list()
   regionResults = list()
@@ -72,20 +86,6 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
     obsNs = rep(25, nrow(obsCoords))
     obsCounts = clustDat$died
     obsUrban = clustDat$urban
-    
-    # get prediction locations from population grid
-    popGrid = makeInterpPopGrid()
-    predCoords = cbind(popGrid$east, popGrid$north)
-    predUrban = popGrid$urban
-    if(genEALevel) {
-      # Must predict at enumeration areas as well. Include enumeration areas as 
-      # first rows of prediction coordinates an prediction urban/rural
-      predCoords = rbind(cbind(eaDat$east, eaDat$north), predCoords)
-      predUrban = c(eaDat$urban, predUrban)
-    }
-    # we only care about the probability, not counts, so not used except for the purposes 
-    # of calling inla:
-    predNs = rep(25, nrow(predCoords))
     
     # fit model, get all predictions for each areal level and each posterior sample
     fit = fitSPDEModel(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
