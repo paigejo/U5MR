@@ -243,7 +243,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       
       if(genEALevel) {
         # make sure to separate enumeration area and pixel level predictions
-        eaMat = predMat[eaIndices, ]
+        eaMat = expit(predMat[eaIndices, ])
         predMat = predMat[pixelIndices, ]
       }
     }
@@ -276,7 +276,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
   # generate pixel level predictions if necessary
   pixelPreds = NULL
   if(keepPixelPreds) {
-    pixelPreds = predMat
+    pixelPreds = expit(predMat)
   }
   
   list(mod=mod, preds=preds, SDs=predSDs, obsInds=obsInds, predInds=index, mesh=mesh, 
