@@ -14,8 +14,10 @@ getSPDEMeshGrid = function(locs=NULL, max.n=100, doPlot=TRUE,
   # base mesh off of actual DHS dataset unless user specifies otherwise
   if(is.null(locs)) {
     locs = cbind(mort$lon, mort$lat)
-    if(!doGlobe)
-      locs = projKenya(locs)
+    if(!doGlobe) {
+      # locs = projKenya(locs)
+      locs = cbind(mort$east, mort$north)
+    }
   }
   
   if(doGlobe) {
