@@ -2,24 +2,24 @@
 
 library(zoo)
 library(latex2exp)
-library(haven)
+# library(haven)
 library(fields)
 library(ggplot2)
-library(rgdal)
+# library(rgdal)
 library(sp)
-library(raster)
+# library(raster)
 
-source('~/git/UM5R/utilityFuns.R')
-source('~/git/UM5R/simStudy.R')
-source('~/git/UM5R/mercer.R')
-source('~/git/UM5R/scores.R')
-source('~/git/UM5R/spdeMod.R')
-source('~/git/UM5R/spdeResults.R')
-source("~/git/UM5R/neonatalSimStudyWeighted.R")
-source('~/git/LK-INLA/code/LKinla_rgeneric.R')
-source('~/git/LK-INLA/code/LKinla.R')
+source('~/Google Drive/UW/Wakefield/WakefieldShared/UM5R/utilityFuns.R')
+source('~/Google Drive/UW/Wakefield/WakefieldShared/UM5R/simStudy.R')
+source('~/Google Drive/UW/Wakefield/WakefieldShared/UM5R/mercer.R')
+source('~/Google Drive/UW/Wakefield/WakefieldShared/UM5R/scores.R')
+source('~/Google Drive/UW/Wakefield/WakefieldShared/UM5R/spdeMod.R')
+source('~/Google Drive/UW/Wakefield/WakefieldShared/UM5R/spdeResults.R')
+source("~/Google Drive/UW/Wakefield/WakefieldShared/UM5R/neonatalSimStudyWeighted.R")
+source('~/Google Drive/UW/Wakefield/WakefieldShared/LK-INLA/code/LKinla_rgeneric.R')
+source('~/Google Drive/UW/Wakefield/WakefieldShared/LK-INLA/code/LKinla.R')
 
-setwd("~/git/UM5R/")
+setwd("~/Google Drive/UW/Wakefield/WakefieldShared/UM5R/")
 
 # load Kenya data
 out = load("kenyaData.RData")
@@ -74,8 +74,10 @@ tmp = projKenya(mort$lon, mort$lat)
 mort$east = tmp[,1]
 mort$north = tmp[,2]
 
-# generate 10km population density grid over Kenya
-popGrid = makeInterpPopGrid(kmRes=10)
+# generate 5km population density grid over Kenya
+# popGrid = makeInterpPopGrid(kmRes=5)
+# save(popGrid, file="popGrid.RData")
+load("popGrid.RData")
 
 # Bernoulli datasets
 out = load("data4direct.RData")

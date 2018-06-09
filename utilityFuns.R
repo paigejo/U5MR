@@ -197,9 +197,10 @@ getKenyaGrid = function(res=.25, nc=NULL, nx=NULL, ny=NULL) {
 }
 
 ##### put Kenya population density on a grid of the chosen resolution
-makeInterpPopGrid = function(kmRes=10) {
+makeInterpPopGrid = function(kmRes=5) {
   # load population density data
-  pop = raster("Kenya2014Pop/worldpop_total_1y_2014_00_00.tif", values= TRUE)
+  # pop = raster("Kenya2014Pop/worldpop_total_1y_2014_00_00.tif", values= TRUE)
+  load("Kenya2014Pop/pop.RData")
   
   # get a rectangular grid
   eastGrid = seq(eastLim[1], eastLim[2], by=kmRes)

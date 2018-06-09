@@ -95,15 +95,15 @@ plotMapDat(project=TRUE)
 dev.off()
 
 save(overSampDat, SRSDat, file=paste0("simDataMultiBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
-                           round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar", HHoldVar, "urbanOver", 
-                           round(urbanOverSample, 4), ".RData"))
+                                      round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar", HHoldVar, "urbanOver", 
+                                      round(urbanOverSample, 4), ".RData"))
 
 # Now simulate the data without a cluster effect but with the same underlying probability surface otherwise
 tausq = 0
 overSampDat$eaDat$trueProbDeath = overSampDat$eaDat$trueProbDeathNoNug
 SRSDat$eaDat$trueProbDeath = SRSDat$eaDat$trueProbDeathNoNug
 overSampDat$eaDat$died = rbinom(nrow(overSampDat$eaDat), overSampDat$eaDat$numChildren, overSampDat$eaDat$trueProbDeathNoNug)
-SRSDat$eaDat$died = rbinom(nrow(SRSDat$eaDat), SRSDat$eaDat$numChildren, SRSDat$eaDat$trueProbDeathNoNug)
+SRSDat$eaDat$died = overSampDat$eaDat$died
 for(i in 1:100) {
   overSampDat$clustDat[[i]]$trueProbDeath = overSampDat$clustDat[[i]]$trueProbDeathNoNug
   SRSDat$clustDat[[i]]$trueProbDeath = SRSDat$clustDat[[i]]$trueProbDeathNoNug

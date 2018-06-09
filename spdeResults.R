@@ -57,7 +57,8 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
   trueMort = truth$mortRate
   
   # get prediction locations from population grid
-  popGrid = makeInterpPopGrid()
+  # popGrid = makeInterpPopGrid()
+  load("popGrid.RData")
   predCoords = cbind(popGrid$east, popGrid$north)
   predUrban = popGrid$urban
   if(genEALevel) {
