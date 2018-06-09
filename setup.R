@@ -31,8 +31,10 @@ out = load("kenyaData.RData")
 load("kenyaPopProj.RData")
 
 # map data
-adm1 = readRDS("mapData/KEN_adm1.rds")
-adm0 = readRDS("mapData/KEN_adm0.rds")
+# adm1 = readRDS("mapData/KEN_adm1.rds")
+# adm0 = readRDS("mapData/KEN_adm0.rds")
+# save(adm1, adm0, file="adminMapData.RData")
+load("adminMapData.RData")
 
 # county to region mapping
 ctp = read.csv("mapData/kenya-prov-county-map.csv")
