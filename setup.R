@@ -15,7 +15,7 @@ source('~/git/UM5R/mercer.R')
 source('~/git/UM5R/scores.R')
 source('~/git/UM5R/spdeMod.R')
 source('~/git/UM5R/spdeResults.R')
-source("~/git/UM5R/neonatalSimStudyWeighted.R")
+# source("~/git/UM5R/neonatalSimStudyWeighted.R")
 source('~/git/LK-INLA/code/LKinla_rgeneric.R')
 source('~/git/LK-INLA/code/LKinla.R')
 
