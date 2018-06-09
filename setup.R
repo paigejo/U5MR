@@ -27,7 +27,7 @@ out = load("kenyaData.RData")
 # tmp = projKenya(kenyaPop$lon, kenyaPop$lat)
 # kenyaPop$east = tmp[,1]
 # kenyaPop$north = tmp[,2]
-save(kenyaPop, file="kenyaPopProj.RData")
+# save(kenyaPop, file="kenyaPopProj.RData")
 load("kenyaPopProj.RData")
 
 # map data
