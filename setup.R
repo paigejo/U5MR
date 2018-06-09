@@ -73,7 +73,9 @@ latRes = latsInterp[2] - latsInterp[1]
 load("lims.RData")
 
 # set enumeration areas
-kenyaEAs = simEAs2(kenyaPop, numEAs, totalKenyaPop)
+# kenyaEAs = simEAs2(kenyaPop, numEAs, totalKenyaPop)
+# save(kenyaEAs, file="kenyaEAs.RData")
+load("kenyaEAs.RData")
 
 # project mort dataset lon/lat coords to easting/westing in km
 # tmp = projKenya(mort$lon, mort$lat)
