@@ -23,10 +23,12 @@ setwd("~/git/UM5R/")
 
 # load Kenya data
 out = load("kenyaData.RData")
-out = load("kenyaPop.RData")
-tmp = projKenya(kenyaPop$lon, kenyaPop$lat)
-kenyaPop$east = tmp[,1]
-kenyaPop$north = tmp[,2]
+# out = load("kenyaPop.RData")
+# tmp = projKenya(kenyaPop$lon, kenyaPop$lat)
+# kenyaPop$east = tmp[,1]
+# kenyaPop$north = tmp[,2]
+save(kenyaPop, file="kenyaPopProj.RData")
+load("kenyaPopProj.RData")
 
 # map data
 adm1 = readRDS("mapData/KEN_adm1.rds")
@@ -62,17 +64,21 @@ lonRes = lonsInterp[2] - lonsInterp[1]
 latRes = latsInterp[2] - latsInterp[1]
 
 # get limits of easting/northing for plotting
-tmp = projKenya(kenyaLonRange, kenyaLatRange)
-eastLim = tmp[,1]
-northLim = tmp[,2]
+# tmp = projKenya(kenyaLonRange, kenyaLatRange)
+# eastLim = tmp[,1]
+# northLim = tmp[,2]
+# save(eastLim, northLim, file="lims.RData")
+load("lims.RData")
 
 # set enumeration areas
 kenyaEAs = simEAs2(kenyaPop, numEAs, totalKenyaPop)
 
 # project mort dataset lon/lat coords to easting/westing in km
-tmp = projKenya(mort$lon, mort$lat)
-mort$east = tmp[,1]
-mort$north = tmp[,2]
+# tmp = projKenya(mort$lon, mort$lat)
+# mort$east = tmp[,1]
+# mort$north = tmp[,2]
+# save(mort, file="mortProj.RData")
+load("mortProj.RData")
 
 # generate 5km population density grid over Kenya
 # popGrid = makeInterpPopGrid(kmRes=5)
