@@ -38,7 +38,7 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=5, verbose=TRUE,
   # save(spdeSRS, spdeOverSamp, file="resultsSPDETausq0.RData")
   # save(spdeSRS, spdeOverSamp, file="resultsSPDETausq0.01.RData")
   save(spdeSRS, spdeOverSamp, file=paste0("resultsSPDETausq", round(tausq, 4), 
-                                          "urbanEffect", as.character(unbranEffect), ".RData"))
+                                          "urbanEffect", as.character(urbanEffect), ".RData"))
   
   list(spdeSRS=spdeSRS, spdeOverSamp=spdeOverSamp)
 }
