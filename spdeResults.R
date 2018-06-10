@@ -8,13 +8,15 @@
 resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=5, verbose=TRUE, 
                        includeClustEffect=FALSE, int.strategy="eb", 
                        genRegionLevel=TRUE, keepPixelPreds=TRUE, 
-                       genEALevel=TRUE, urbanEffect=TRUE) {
+                       genEALevel=TRUE, urbanEffect=TRUE, tausq=0) {
   # Load data
   # load("simDataMulti.RData") # overSampDat, SRSDat
   # load a different 1 of these depending on whether a cluster effect should be included 
   # in the simulation of the data or not (tausq is the cluster effect variance)
-  load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOver2.RData")
+  # load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOver2.RData")
   # load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOver2.RData")
+  load(paste0("simDataMultiBeta-1.75margVar0.0225tausq", round(tausq, 3), 
+              "gamma-1HHoldVar0urbanOver2.RData"))
   eaDat = overSampDat$eaDat
   clustSRS = SRSDat$clustDat
   clustOverSamp = overSampDat$clustDat
@@ -35,6 +37,8 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=5, verbose=TRUE,
   
   # save(spdeSRS, spdeOverSamp, file="resultsSPDETausq0.RData")
   # save(spdeSRS, spdeOverSamp, file="resultsSPDETausq0.01.RData")
+  save(spdeSRS, spdeOverSamp, file=paste0("resultsSPDETausq", round(tausq, 4), 
+                                          "urbanEffect", as.character(unbranEffect), ".RData"))
   
   list(spdeSRS=spdeSRS, spdeOverSamp=spdeOverSamp)
 }
