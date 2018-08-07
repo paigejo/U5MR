@@ -146,9 +146,8 @@ defineSurvey <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE){
   return(results)
 }
 
-
+# Set childBirths_obj$admin1 to be something else for different kinds of aggregations
 run_naive <- function(childBirths_obj){
-  
   regions <- sort(unique(childBirths_obj$admin1))
   regions_num  <- 1:length(regions)
   

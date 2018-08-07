@@ -387,6 +387,7 @@ simClusters3 = function(eaDat, numClusters=423, urbanOverSample=1, nsim=1, seed=
 genClustDatFromEAIs = function(eaDat, eaIs, sampleWeights, i) {
   clustDat = eaDat[eaIs[,i],]
   clustDat$samplingWeight = sampleWeights[,i]
+  clustDat$eaIs = eaIs[,i]
   clustDat
 }
 
