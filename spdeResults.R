@@ -27,12 +27,12 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=5, verbose=TRUE,
   }
   
   # SRS results are correct, so load those and recompute overSamp results
-  load(paste0("resultsSPDETausq", round(tausq, 4), 
-              "urbanEffect", as.character(urbanEffect), ".RData"))
-  # spdeSRS = resultsSPDEHelper(clustSRS, eaDat, nPostSamples = nPostSamples, verbose=verbose, 
-  #                             includeClustEffect=includeClustEffect, int.strategy=int.strategy, 
-  #                             genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds, 
-  #                             genEALevel=genEALevel, urbanEffect=urbanEffect)
+  # load(paste0("resultsSPDETausq", round(tausq, 4), 
+  #             "urbanEffect", as.character(urbanEffect), ".RData"))
+  spdeSRS = resultsSPDEHelper(clustSRS, eaDat, nPostSamples = nPostSamples, verbose=verbose,
+                              includeClustEffect=includeClustEffect, int.strategy=int.strategy,
+                              genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds,
+                              genEALevel=genEALevel, urbanEffect=urbanEffect)
   spdeOverSamp = resultsSPDEHelper(clustOverSamp, eaDat, nPostSamples = nPostSamples, verbose=verbose, 
                                    includeClustEffect=includeClustEffect, int.strategy=int.strategy, 
                                    genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds, 
