@@ -10,6 +10,7 @@ library(sp)
 # library(raster)
 
 source('~/git/UM5R/utilityFuns.R')
+source('~/git/UM5R/matchPoints.R')
 source('~/git/UM5R/simStudy.R')
 source('~/git/UM5R/mercer.R')
 source('~/git/UM5R/scores.R')
@@ -91,3 +92,10 @@ load("popGrid.RData")
 
 # Bernoulli datasets
 out = load("data4direct.RData")
+
+# parallelization
+if(!exists("doParallel")) {
+  assign("doParallel", FALSE, envir=.GlobalEnv)
+  assign("cores", NULL, envir=.GlobalEnv)
+  assign("cl", NULL, envir=.GlobalEnv)
+}

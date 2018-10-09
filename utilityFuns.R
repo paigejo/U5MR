@@ -322,7 +322,21 @@ rLogisticNormBin = function(nsim, n=1, logitProb, logitProbVar=0) {
   tapply(bernVals, binIDs, sum)
 }
 
-
+# parallel matrix multiply
+# leftMat %*% rightMat
+# cl: the cluster, as initialized via:
+# cores=detectCores()
+# cl <- makeCluster(cores[1]-1) #not to overload your computer
+# registerDoParallel(cl)
+parMatMult = function(leftMat, rightMat, cl) {
+  if (ncol(leftMat) != nrow(rightMat)) stop("Matrices do not conforme")
+  idx   <- splitIndices(nrow(leftMat), length(cl))
+  leftMatlist <- lapply(idx, function(ii) leftMat[ii,,drop=FALSE])
+  ## ans   <- clusterApply(cl, leftMatlist, function(aa, rightMat) aa %*% rightMat, rightMat)
+  ## Same as above, but faster:
+  ans   <- clusterApply(cl, leftMatlist, get("%*%"), rightMat)
+  do.call(rbind, ans)
+}
 
 
 
