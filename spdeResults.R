@@ -306,6 +306,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
                          urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
                          exactAggregation=exactAggregation, genCountLevel=genCountLevel, 
                          eaDat=eaDat)
+      print(paste0("Fit completed: iteration ", i, "/", nsim))
       countyPredMat = fit$countyPredMat
       regionPredMat = fit$regionPredMat
       pixelPredMat = fit$pixelPredMat
@@ -365,6 +366,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
         thisRightRejectEA = NA
         thisLeftRejectEA = NA
       }
+      print(paste0("EA results generated: iteration ", i, "/", nsim))
       
       # pixel level
       if(keepPixelPreds) {
@@ -395,6 +397,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
         thisRightRejectPixel = NA
         thisLeftRejectPixel = NA
       }
+      print(paste0("Pixel results generated: iteration ", i, "/", nsim))
       
       # County level (county level results are always included)
       if(!genCountLevel) {
@@ -415,6 +418,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
         thisRightRejectCounty = countyPredMat$leftRejectProb
         thisLeftRejectCounty = countyPredMat$rightRejectProb
       }
+      print(paste0("County results generated: iteration ", i, "/", nsim))
       
       # region level
       if(genRegionLevel) {
@@ -445,6 +449,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
         thisRightRejectRegion = NA
         thisLeftRejectRegion = NA
       }
+      print(paste0("Region results generated: iteration ", i, "/", nsim))
       
       # collect results in a list, one element for each simulation
       thisCountyResults = data.frame(list(admin1=counties, 
