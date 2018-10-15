@@ -4,11 +4,11 @@
 # lower: lower CI limit
 # upper: upper CI limit
 library(PearsonDS)
-logit <- function(x){
+logit <- function(x) {
   log(x/(1-x))
 }
 
-expit <- function(x){
+expit <- function(x) {
   exp(x)/(1+exp(x))
 }
 
@@ -176,6 +176,41 @@ logitNormMean = function(muSigmaMat, parClust=NULL, ...) {
     fExp <- function(x) plogis(x) * dnorm(x, mean = mu, sd = sigma)
     integrate(fExp, -Inf, Inf, abs.tol = 0, ...)$value
   }
+}
+
+# calculates the E[UV] for U and V bernoulli random variables with the given distribution
+# of p on the logit scale
+logitNormCrossExpectation = function(muSigmaMat=matrix(c(0, 1), ncol=2), ...) {
+  
+  # now calculate the expectation of the product of two of the random variables
+  if(length(muSigmaMat) > 2) {
+    if(is.null(parClust))
+      apply(muSigmaMat, 1, logitNormMean, ...)
+    else
+      parApply(parClust, muSigmaMat, 1, logitNormMean, ...)
+  }
+  else {
+    mu = muSigmaMat[1]
+    sigma = muSigmaMat[2]
+    f11 <- function(x) plogis(x)^2 * dnorm(x, mean = mu, sd = sigma)
+    p11 = integrate(f11, -Inf, Inf, abs.tol = 0, ...)$value
+    p11
+  }
+}
+
+# calculates the cor(U, V) for U and V bernoulli random variables with the given distribution
+# of p on the logit scale
+logitNormCor = function(muSigmaMat=matrix(c(0, 1), ncol=2)) {
+  # first calculate marginal expectations
+  expectedProbs = logitNormMean(muSigmaMat)
+  
+  # calculate the cross expectations
+  crossExpectations = logitNormCrossExpectation(muSigmaMat)
+  
+  # now calculate the correlations
+  numerator = crossExpectations - expectedProbs^2
+  denominator = expectedProbs * (1 - expectedProbs)
+  numerator / denominator
 }
 
 # generate a binomial confidence interval with at least the significance requested. The

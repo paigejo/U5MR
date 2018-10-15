@@ -94,7 +94,7 @@ load("popGrid.RData")
 out = load("data4direct.RData")
 
 # parallelization
-if(!exists("doParallel")) {
+if(!exists("doParallel") || (exists("doParallel") && doParallel == FALSE)) {
   assign("doParallel", FALSE, envir=.GlobalEnv)
   assign("cores", NULL, envir=.GlobalEnv)
   assign("cl", NULL, envir=.GlobalEnv)
