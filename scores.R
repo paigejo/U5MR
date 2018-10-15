@@ -3,7 +3,8 @@
 # my.var: variance
 # lower: lower CI limit
 # upper: upper CI limit
-library(PearsonDS)
+# library(PearsonDS)
+library(PearsonDS, lib.loc="/homes/paigejo/Rlibs/")
 logit <- function(x) {
   log(x/(1-x))
 }
