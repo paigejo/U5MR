@@ -1,1 +1,1 @@
-install.packages("PearsonDS", repos=1)
+install.packages("PearsonDS", repos=1, method="curl")
