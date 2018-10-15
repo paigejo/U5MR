@@ -285,7 +285,19 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
     ##### 
     ##### 
     # parallel version
-    results = foreach(i = 1:nsim, .combine=rbind, .verbose=TRUE, .multicombine=TRUE) %dopar% {
+    
+    # first make a function for combining the results
+    combineResults = function(...) {
+      results = as.list(...)
+      countyResults = do.call("rbind", lapply(results, function(x) {x$countyResults}))
+      regionResults = do.call("rbind", lapply(results, function(x) {x$regionResults}))
+      pixelResults = do.call("rbind", lapply(results, function(x) {x$pixelResults}))
+      eaResults = do.call("rbind", lapply(results, function(x) {x$eaResults}))
+      list(countyResults=countyResults, regionResults=regionResults, 
+           pixelResults=pixelResults, eaResults=eaResults)
+    }
+    
+    results = foreach(i = 1:nsim, .combine=combineResults, .verbose=TRUE, .multicombine=TRUE) %dopar% {
       print(paste0("iteration ", i, "/", nsim))
       
       # get the simulated sample
@@ -474,14 +486,15 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
                                       var.est.spde=thisvar.estEA, 
                                       leftReject.spde=thisLeftRejectEA, 
                                       rightReject.spde=thisRightRejectEA))
-      cbind(thisCountyResults, thisRegionResults, thisPixelResults, thisEaResults)
+      list(countyResults=thisCountyResults, regionResults=thisRegionResults, 
+           pixelResults=thisPixelResults, eaResults=thisEaResults)
     }
     
     # separate results into the different aggregation levels
-    countyResults = results[,1:8]
-    regionResults = results[,9:16]
-    pixelResults = results[,17:23]
-    eaResults = results[,24:30]
+    countyResults = results$countyResults
+    regionResults = results$regionResults
+    pixelResults = results$pixelResults
+    eaResults = results$eaResults
   }
   list(countyResults=countyResults, regionResults=regionResults, pixelResults=pixelResults, 
        eaResults=eaResults)

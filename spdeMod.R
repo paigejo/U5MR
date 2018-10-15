@@ -294,7 +294,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       intervals = sapply(distributions, generateBinomialInterval)
       countyPredMat <- data.frame(preds=countyPredMat, vars=countyVarMat, 
                                   lower=intervals[1,], upper=intervals[2,], 
-                                  leftProjectProb=intervals[3,], 
+                                  leftRejectProb=intervals[3,], 
                                   rightRejectProb=intervals[4,])
     }
   }
