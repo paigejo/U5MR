@@ -3,8 +3,7 @@
 # my.var: variance
 # lower: lower CI limit
 # upper: upper CI limit
-# library(PearsonDS)
-library(PearsonDS, lib.loc="/homes/paigejo/Rlibs/")
+library(PearsonDS)
 logit <- function(x) {
   log(x/(1-x))
 }
@@ -73,7 +72,7 @@ crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="c
     # first draw different values of p from the predictive distribution
     quantiles = matrix(rep(seq(0, 1, l=nsim + 2)[c(-1, -(nsim + 2))], length(my.est)), ncol=nsim, byrow=TRUE)
     logitP = matrix(qnorm(quantiles, my.est, sd=sqrt(my.var)), ncol=nsim)
-    p = exp(logitP)
+    p = expit(logitP)
     
     # for each value of p, calculate the crps and return the mean
     crpsVals = crpsBinomial(truth, p)

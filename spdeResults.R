@@ -55,10 +55,53 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
                              includeClustEffect=FALSE, int.strategy="eb", 
                              genRegionLevel=TRUE, keepPixelPreds=TRUE, genEALevel=TRUE, 
                              urbanEffect=TRUE, genCountLevel=FALSE, exactAggregation=genCountLevel, 
-                             predictionType=c("mean", "median"), parClust=cl) {
+                             predictionType=c("mean", "median"), parClust=cl, calcCrps=genCountLevel) {
   
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
+  
+  if(calcCrps) {
+    # compute truth based on superpopulation
+    
+    # region
+    regions = sort(unique(eaDat$region))
+    truthbyregion <- rep(NA, 8)
+    
+    for(i in 1:8){
+      super = eaDat[eaDat$region == regions[i],]
+      truthbyregion[i] <- sum(super$died)/sum(super$numChildren)
+    }
+    truthByRegion = data.frame(admin1=regions, truth=truthbyregion)
+    
+    # county
+    regions = sort(unique(eaDat$admin1))
+    truthbycounty <- rep(NA, 47)
+    
+    for(i in 1:47){
+      super = eaDat[eaDat$admin1 == regions[i],]
+      truthbycounty[i] <- sum(super$died)/sum(super$numChildren)
+    }
+    truthByCounty = data.frame(admin1=regions, truth=truthbycounty)
+    
+    # pixel
+    counties = sort(unique(eaDat$admin1))
+    eaToPixel = eaDat$pixelI
+    childrenPerPixel = tapply(eaDat$numChildren, list(pixel=eaDat$pixelI), sum)
+    urbanPixel = tapply(eaDat$urban, list(pixel=eaDat$pixelI), function(x) {mean(x[1])})
+    deathsPerPixel = tapply(eaDat$died, list(pixel=eaDat$pixelI), sum)
+    regions = names(childrenPerPixel) # these are the pixels with enumeration areas in them
+    pixelToAdmin = match(popGrid$admin1[as.numeric(regions)], counties)
+    
+    truthByPixel = data.frame(pixel=regions, truth=deathsPerPixel / childrenPerPixel, countyI=pixelToAdmin, urban=urbanPixel)
+    
+    # EA
+    truthByEa = data.frame(EA = 1:nrow(eaDat), truth = eaDat$died/25, urban=eaDat$urban)
+  } else {
+    truthByRegion = NULL
+    truthByCounty = NULL
+    truthByPixel = NULL
+    truthByEa = NULL
+  }
   
   # get the true population mortality rate for each county
   out = getTruthByCounty(eaDat)
@@ -113,7 +156,8 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
                          keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
                          urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
                          exactAggregation=exactAggregation, genCountLevel=genCountLevel, 
-                         eaDat=eaDat)
+                         eaDat=eaDat, truthByRegion=truthByRegion, truthByCounty=truthByCounty, 
+                         truthByPixel=truthByPixel, truthByEa=truthByEa)
       countyPredMat = fit$countyPredMat
       regionPredMat = fit$regionPredMat
       pixelPredMat = fit$pixelPredMat
@@ -163,6 +207,14 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
           thisupperEA = sapply(intervals, function(x) {x$upper})
           thisRightRejectEA = sapply(intervals, function(x) {x$rightRejectProb})
           thisLeftRejectEA = sapply(intervals, function(x) {x$leftRejectProb})
+          if(calcCrps) {
+            calcCrpsByI = function(i) {
+              crpsCounts(truthByEa$truth[i] * 25, probs[i,])
+            }
+            thisCrpsEA = sapply(1:nrow(truthByEa), calcCrpsByI)
+          } else {
+            thisCrpsEA = NA
+          }
         }
       }
       else {
@@ -172,6 +224,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
         thisvar.estEA = NA
         thisRightRejectEA = NA
         thisLeftRejectEA = NA
+        thisCrpsEA = NA
       }
       
       # pixel level
@@ -193,6 +246,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
           thislowerPixel = pixelPredMat$lower
           thisRightRejectPixel = pixelPredMat$leftRejectProb
           thisLeftRejectPixel = pixelPredMat$rightRejectProb
+          thisCrpsPixel = pixelPredMat$crps
         }
       }
       else {
@@ -202,6 +256,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
         thisvar.estPixel = NA
         thisRightRejectPixel = NA
         thisLeftRejectPixel = NA
+        thisCrpsPixel = NA
       }
       
       # County level (county level results are always included)
@@ -215,6 +270,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
         thisvar.estCounty = apply(logit(countyPredMat), 1, var)
         thisRightRejectCounty = NA
         thisLeftRejectCounty = NA
+        thisCrpsCounty = NA
       } else {
         thisu1mCounty = countyPredMat$preds
         thisvar.estCounty = countyPredMat$vars
@@ -222,6 +278,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
         thislowerCounty = countyPredMat$lower
         thisRightRejectCounty = countyPredMat$leftRejectProb
         thisLeftRejectCounty = countyPredMat$rightRejectProb
+        thisCrpsCounty = countyPredMat$crps
       }
       
       # region level
@@ -236,6 +293,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
           thisvar.estRegion = apply(logit(regionPredMat), 1, var)
           thisRightRejectRegion = NA
           thisLeftRejectRegion = NA
+          thisCrpsRegion = NA
         } else {
           thisu1mRegion = regionPredMat$preds
           thisvar.estRegion = regionPredMat$vars
@@ -243,6 +301,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
           thislowerRegion = regionPredMat$lower
           thisRightRejectRegion = regionPredMat$leftRejectProb
           thisLeftRejectRegion = regionPredMat$rightRejectProb
+          thisCrpsRegion = regionPredMat$crps
         }
       }
       else {
@@ -252,6 +311,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
         thisvar.estRegion = NA
         thisRightRejectRegion = NA
         thisLeftRejectRegion = NA
+        thisCrpsRegion = NA
       }
       
       # collect results in a list, one element for each simulation
@@ -260,23 +320,27 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
                                            upper.spde=thisupperCounty, logit.est.spde=logit(thisu1mCounty), 
                                            var.est.spde=thisvar.estCounty, 
                                            leftReject.spde=thisLeftRejectCounty, 
-                                           rightReject.spde=thisRightRejectCounty))
+                                           rightReject.spde=thisRightRejectCounty, 
+                                           crps.spde=thisCrpsCounty))
       regionResults[[i]] = data.frame(list(region=regions, 
                                            u1m.spde=thisu1mRegion, lower.spde=thislowerRegion, 
                                            upper.spde=thisupperRegion, logit.est.spde=logit(thisu1mRegion), 
                                            var.est.spde=thisvar.estRegion, 
                                            leftReject.spde=thisLeftRejectRegion, 
-                                           rightReject.spde=thisRightRejectRegion))
+                                           rightReject.spde=thisRightRejectRegion, 
+                                           crps.spde=thisCrpsRegion))
       pixelResults[[i]] = data.frame(list(u1m.spde=thisu1mPixel, lower.spde=thislowerPixel, 
                                           upper.spde=thisupperPixel, logit.est.spde=logit(thisu1mPixel), 
                                           var.est.spde=thisvar.estPixel, 
                                           leftReject.spde=thisLeftRejectPixel, 
-                                          rightReject.spde=thisRightRejectPixel))
+                                          rightReject.spde=thisRightRejectPixel, 
+                                          crps.spde=thisCrpsPixel))
       eaResults[[i]] = data.frame(list(u1m.spde=thisu1mEA, lower.spde=thislowerEA, 
                                        upper.spde=thisupperEA, logit.est.spde=logit(thisu1mEA), 
                                        var.est.spde=thisvar.estEA, 
                                        leftReject.spde=thisLeftRejectEA, 
-                                       rightReject.spde=thisRightRejectEA))
+                                       rightReject.spde=thisRightRejectEA, 
+                                       crps.spde=thisCrpsEA))
     }
   } else {
     ##### 
@@ -298,6 +362,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
     }
     
     results = foreach(i = 1:nsim, .combine=combineResults, .verbose=TRUE, .multicombine=TRUE) %dopar% {
+      sink("log.txt", append=TRUE)
       print(paste0("iteration ", i, "/", nsim))
       
       # get the simulated sample
@@ -342,18 +407,17 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
         }
         else {
           # get the marginal "binomial" densities at each location
-          allMarginals = fit$mod$marginals.linear.predictor[fit$predInds]
           n = 25
           binomProb = function(k, i) {
-            inla.emarginal(function(logitP) {dbinom(k, n, expit(logitP))}, allMarginals[[i]])
+            inla.emarginal(function(logitP) {dbinom(k, n, expit(logitP))}, eaMarginals[[i]])
           }
           
           ## make highest density coverage interval on count scale
           # generate the "binomial" pmfs for each marginal
           probs = matrix(mapply(binomProb, 
-                                k = matrix(0:n, nrow=length(allMarginals), ncol=n + 1, byrow = TRUE), 
-                                i = matrix(1:length(allMarginals), nrow=length(allMarginals), ncol=n + 1)), 
-                         nrow=length(allMarginals), ncol=n + 1)
+                                k = matrix(0:n, nrow=length(eaMarginals), ncol=n + 1, byrow = TRUE), 
+                                i = matrix(1:length(eaMarginals), nrow=length(eaMarginals), ncol=n + 1)), 
+                         nrow=length(eaMarginals), ncol=n + 1)
           
           # now generate the summary statistics about the marginals
           if(predictionType == "mean")
