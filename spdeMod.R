@@ -296,7 +296,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       
       # calculate crps
       calcCrpsByI = function(i) {
-        crpsCounts(truthByCounty$truth[i] * (length(distributions[[i]]) - 1), distributions[i,])
+        crpsCounts(truthByCounty$truth[i] * (length(distributions[[i]]) - 1), distributions[[i]])
       }
       countyCrps = sapply(1:nrow(truthByCounty), calcCrpsByI)
       
@@ -387,7 +387,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       
       # calculate crps
       calcCrpsByI = function(i) {
-        crpsCounts(truthByRegion$truth[i] * (length(distributions[[i]]) - 1), distributions[i,])
+        crpsCounts(truthByRegion$truth[i] * (length(distributions[[i]]) - 1), distributions[[i]])
       }
       regionCrps = sapply(1:nrow(truthByRegion), calcCrpsByI)
       
@@ -454,7 +454,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       
       # calculate crps
       calcCrpsByI = function(i) {
-        crpsCounts(truthByPixel$truth[i] * (length(distributions[[i]]) - 1), distributions[i,])
+        crpsCounts(truthByPixel$truth[i] * (length(distributions[[i]]) - 1), distributions[[i]])
       }
       pixelCrps = sapply(1:nrow(truthByPixel), calcCrpsByI)
       

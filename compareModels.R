@@ -350,14 +350,16 @@ for(i in c(1:100)) { # for problem fitting mercerSRS for SRS sampling, tausq=0
     my.biasSRSspdeNoUrb = bias(thisTruth, allresSRS$logit.est.spdeNoUrb, logit=useLogit, my.var=allresSRS$var.est.spdeNoUrb)
     my.mseSRSspdeNoUrb = mse(thisTruth, allresSRS$logit.est.spdeNoUrb, logit=useLogit, my.var=allresSRS$var.est.spdeNoUrb)
     my.dssSRSspdeNoUrb = dss(thisTruth, allresSRS$logit.est.spdeNoUrb, allresSRS$var.est.spdeNoUrb)
-    my.crpsSRSspdeNoUrb = crpsNormal(thisTruth, allresSRS$logit.est.spdeNoUrb, allresSRS$var.est.spdeNoUrb, resultType=resultType)
+    # my.crpsSRSspdeNoUrb = crpsNormal(thisTruth, allresSRS$logit.est.spdeNoUrb, allresSRS$var.est.spdeNoUrb, resultType=resultType)
+    my.crpsSRSspdeNoUrb = allresSRS$crps.spdeNoUrb
     my.coverageSRSspdeNoUrb = coverage(thisTruth, allresSRS$lower.spdeNoUrb, allresSRS$upper.spdeNoUrb, logit=useLogit)
     my.lengthSRSspdeNoUrb = intervalWidth(allresSRS$lower.spdeNoUrb, allresSRS$upper.spdeNoUrb, logit=useLogit)
     
     my.biasSRSspde = bias(thisTruth, allresSRS$logit.est.spde, logit=useLogit, my.var=allresSRS$var.est.spde)
     my.mseSRSspde = mse(thisTruth, allresSRS$logit.est.spde, logit=useLogit, my.var=allresSRS$var.est.spde)
     my.dssSRSspde = dss(thisTruth, allresSRS$logit.est.spde, allresSRS$var.est.spde)
-    my.crpsSRSspde = crpsNormal(thisTruth, allresSRS$logit.est.spde, allresSRS$var.est.spde, resultType=resultType)
+    # my.crpsSRSspde = crpsNormal(thisTruth, allresSRS$logit.est.spde, allresSRS$var.est.spde, resultType=resultType)
+    my.crpsSRSspde = allresSRS$crps.spde
     my.coverageSRSspde = coverage(thisTruth, allresSRS$lower.spde, allresSRS$upper.spde, logit=useLogit)
     my.lengthSRSspde = intervalWidth(allresSRS$lower.spde, allresSRS$upper.spde, logit=useLogit)
     

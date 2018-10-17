@@ -382,7 +382,8 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
                          keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
                          urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
                          exactAggregation=exactAggregation, genCountLevel=genCountLevel, 
-                         eaDat=eaDat)
+                         eaDat=eaDat, truthByCounty=truthByCounty, truthByRegion=truthByRegion, 
+                         truthByPixel=truthByPixel)
       print(paste0("Fit completed: iteration ", i, "/", nsim))
       countyPredMat = fit$countyPredMat
       regionPredMat = fit$regionPredMat
