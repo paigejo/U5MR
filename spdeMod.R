@@ -458,10 +458,10 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       }
       pixelCrps = sapply(1:nrow(truthByPixel), calcCrpsByI)
       
-      pixelPredMat <- data.frame(preds=pixelPredMat, vars=pixelVarMat, 
-                                  lower=intervals[1,], upper=intervals[2,], 
-                                  leftProjectProb=intervals[3,], 
-                                  rightRejectProb=intervals[4,], 
+      pixelPredMat <- data.frame(preds=pixelPredMat[pixelsWithData], vars=pixelVarMat[pixelsWithData], 
+                                  lower=intervals[1,pixelsWithData], upper=intervals[2,pixelsWithData], 
+                                  leftProjectProb=intervals[3,pixelsWithData], 
+                                  rightRejectProb=intervals[4,pixelsWithData], 
                                  crps=pixelCrps)
     }
   }
