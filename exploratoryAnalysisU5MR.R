@@ -1,6 +1,6 @@
-# Kenya UM5R
+# Kenya U5MR
 
-setwd("~/Google Drive/UW/Wakefield/WakefieldShared/UM5R/")
+setwd("~/Google Drive/UW/Wakefield/WakefieldShared/U5MR/")
 
 
 # read in the STATA data:
@@ -14,7 +14,7 @@ library(fields)
 
 pdf(file="figures/mortDat.pdf", width=5, height=5)
 par(mfrow=c(1,1))
-quilt.plot(mort$lon, mort$lat, mort$y/mort$n, main=TeX("Survey Empirical UM5R (2003-2007)"), 
+quilt.plot(mort$lon, mort$lat, mort$y/mort$n, main=TeX("Survey Empirical U5MR (2003-2007)"), 
            xlab="Longitude", ylab="Latitude", xlim=kenyaLonRange, ylim=kenyaLatRange, nx=120, ny=120)
 world(add=TRUE)
 plotMapDat(adm1)
@@ -656,3 +656,78 @@ for(i in 1:9) {
   plotMapDat(adm1)
 }
 dev.off()
+
+# examine census and surveys to try and find empirical distribution of households per cluster
+library(haven)
+library(fields)
+library(zoo)
+library(latex2exp)
+library(maptools)
+setwd("~/Google Drive/UW/Wakefield/WakefieldShared/U5MR/")
+
+
+data <- data.frame(read_dta("popSurvey2009/Housing_2009KPHC_10PCT_STATA.dta"))
+names(data)
+test = data.frame(RecreatedEANO=data$RecreatedEANO, HHNO=data$HHNO)
+test = test[!is.na(data$HHNO), ]
+head(test)
+getNumHHolds = function(x) {length(unique(x))}
+nHHolds = aggregate(data$HHNO, data.frame(list(x=data$RecreatedEANO)), getNumHHolds)
+head(nHHolds) # these seem way too large
+hist(nHHolds[,2])
+mean(nHHolds[,2] >= 150) # 0.152. Too large
+
+getNumHHolds = function(x) {max(x)}
+nHHolds = aggregate(test$HHNO, data.frame(list(x=test$RecreatedEANO)), getNumHHolds)
+head(nHHolds)
+hist(nHHolds[,2]) # this is wayyy too large
+mean(nHHolds[,2] >= 150) # 0.459. Way too large
+
+library(foreign)
+owners = read.spss("housingSurvey2012/Owners_Household data.sav", to.data.frame=TRUE)
+renters = read.spss("housingSurvey2012/Renters_Household data.sav", to.data.frame=TRUE)
+ownersi = read.spss("housingSurvey2012/Owners_Individual data.sav", to.data.frame=TRUE)
+rentersi = read.spss("housingSurvey2012/Renters_Individual data.sav", to.data.frame=TRUE)
+names(owners)
+length(unique(owners$CLUSTER))
+length(unique(renters$CLUSTER))
+length(unique(ownersi$CLUSTER))
+length(unique(rentersi$CLUSTER))
+
+length(unique(owners$CLUSTER)) + length(unique(renters$CLUSTER))
+test = c(owners$CLUSTER, renters$CLUSTER, ownersi$CLUSTER, rentersi$CLUSTER)
+
+length(unique(test)) # 1263 (due to three counties not being included yet? Or nonresponse?)
+5360 / 4 # 1340
+
+test = data.frame(CLUSTER=c(owners$CLUSTER, renters$CLUSTER), 
+                  HOUSEHOLD_NUMBER=c(owners$HOUSEHOLD_NUMBER, renters$HOUSEHOLD_NUMBER))
+naHouseholds = is.na(test$HOUSEHOLD_NUMBER)
+test = test[!naHouseholds, ]
+getNumHHolds = function(x) {length(unique(x))}
+nHHolds = aggregate(test$HOUSEHOLD_NUMBER, data.frame(list(x=test$CLUSTER)), getNumHHolds)
+head(nHHolds)
+hist(nHHolds[,2])
+sum(nHHolds[,2]) # 18423 (goal was to complete 19,140 according to page 12)
+15 *nrow(nHHolds) # 18945 (this seems to indicate there were some clusters missing)
+(19140 - 15 *nrow(nHHolds)) / 15 # 13 clusters missing apparently
+
+getNumHHolds = function(x) {max(x)}
+nHHolds = aggregate(test$HOUSEHOLD_NUMBER, data.frame(list(x=test$CLUSTER)), getNumHHolds)
+head(nHHolds)
+hist(nHHolds[,2], breaks=30, col="skyblue", main="2012/13 Kenya Household Survey\nMax Household ID Per Cluster", 
+     xlab="Max Household ID")
+# the following proportions should be 0... (could this be due to people moving in and out of EAs 
+# and the extra houses being renumbered?)
+mean(nHHolds[,2] >= 150)
+mean(nHHolds[,2] <= 49)
+nHHolds[nHHolds[,2] >= 150,]
+
+# now to find empirical distribution of mothers per household
+data <- data.frame(read_dta("Kenya2014BirthRecode/KEBR70FL.DTA"))
+
+getNumMothers = function(x) {max(x)}
+nHHolds = aggregate(data$v002, data.frame(list(v001=data$v001)), getNumHHolds)
+head(nHHolds)
+hist(nHHolds[,2], xlab="Max Household ID", main="2014 Kenya DHS\nMax Household ID Per Cluster", 
+     breaks=100, col="skyblue")

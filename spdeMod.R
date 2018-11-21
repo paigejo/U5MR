@@ -292,7 +292,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       distributions <- lapply(counties, integratePredsByCounty)
       countyPredMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1)))}), ncol=1)
       countyVarMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1))^2) - sum(masses * (0:(length(masses) - 1)))^2}), ncol=1)
-      intervals = sapply(distributions, generateBinomialInterval)
+      intervals = matrix(as.numeric(sapply(distributions, generateBinomialInterval)), nrow=4)
       
       # calculate crps
       calcCrpsByI = function(i) {
@@ -383,7 +383,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       distributions <- lapply(regions, integratePredsByRegion)
       regionPredMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1)))}), ncol=1)
       regionVarMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1))^2) - sum(masses * (0:(length(masses) - 1)))^2}), ncol=1)
-      intervals = sapply(distributions, generateBinomialInterval)
+      intervals = matrix(as.numeric(sapply(distributions, generateBinomialInterval)), nrow=4)
       
       # calculate crps
       calcCrpsByI = function(i) {
@@ -393,7 +393,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       
       regionPredMat <- data.frame(preds=regionPredMat, vars=regionVarMat, 
                                   lower=intervals[1,], upper=intervals[2,], 
-                                  leftProjectProb=intervals[3,], 
+                                  leftRejectProb=intervals[3,], 
                                   rightRejectProb=intervals[4,], 
                                   crps=regionCrps)
     }
@@ -450,7 +450,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       distributions <- lapply(1:nrow(predMat), integratePredsByRegion)
       pixelPredMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1)))}), ncol=1)
       pixelVarMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1))^2) - sum(masses * (0:(length(masses) - 1)))^2}), ncol=1)
-      intervals = sapply(distributions, generateBinomialInterval)
+      intervals = matrix(as.numeric(sapply(distributions, generateBinomialInterval)), nrow=4)
       
       # calculate crps
       calcCrpsByI = function(i) {
@@ -459,9 +459,9 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       pixelCrps = sapply(1:nrow(truthByPixel), calcCrpsByI)
       
       pixelPredMat <- data.frame(preds=pixelPredMat[pixelsWithData], vars=pixelVarMat[pixelsWithData], 
-                                  lower=intervals[1,pixelsWithData], upper=intervals[2,pixelsWithData], 
-                                  leftProjectProb=intervals[3,pixelsWithData], 
-                                  rightRejectProb=intervals[4,pixelsWithData], 
+                                 lower=intervals[1,pixelsWithData], upper=intervals[2,pixelsWithData], 
+                                 leftRejectProb=intervals[3,pixelsWithData], 
+                                 rightRejectProb=intervals[4,pixelsWithData], 
                                  crps=pixelCrps)
     }
   }

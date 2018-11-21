@@ -1,5 +1,5 @@
-# Kenya UM5R
-setwd("~/Google Drive/UW/Wakefield/WakefieldShared/UM5R/")
+# Kenya U5MR
+setwd("~/Google Drive/UW/Wakefield/WakefieldShared/U5MR/")
 # library(foreign)
 
 # read in the STATA data:
@@ -31,6 +31,9 @@ data <- data.frame(read_dta("Kenya2014BirthRecode/KEBR70FL.DTA"))
 # v005 - sample weight out of 1000000. normalized weights sum to number of households
 # v006 - month of interview
 # V007 - year of interview
+# V136 - total number of household members
+# V138 - number of women in the household aged 15 to 49
+# V137 - number of children in the household aged 5 or under
 subdata <- data.frame(data[,c('b2', 'b1', 'b5', 'b7', 'v024', 'v025', 'v001', 'v002', 'v005', 'v006', 'v007')])
 
 # extract births in the range 2005 to 2010 (instead extract from the range 2003 to 2007)
@@ -182,12 +185,24 @@ test = data.frame(data[,c('b2', 'b5', 'b7', 'v024', 'v025', 'v001', 'v002')])
 getNumHHolds = function(v002s) {length(unique(v002s))}
 nHHolds = aggregate(test$v002, data.frame(list(v001=test$v001)), getNumHHolds)
 head(nHHolds)
-hist(nHHolds[,2], xlab="Households per cluster", freq=F, main="Households per cluster")
+hist(nHHolds[,2], xlab="Households sampled per cluster", freq=F, main="Households sampled per cluster")
 
+getNumHHolds = function(v002s) {max(v002s)}
+nHHolds = aggregate(test$v002, data.frame(list(v001=test$v001)), getNumHHolds)
+head(nHHolds)
+hist(nHHolds[,2], xlab="Approximate households", freq=F, main="Approximate households per cluster", 
+     breaks=100, col="skyblue")
+
+
+getNumHHolds = function(v002s) {max(v002s)}
+nHHolds = aggregate(data$v002, data.frame(list(v001=data$v001)), getNumHHolds)
+head(nHHolds)
+hist(nHHolds[,2], xlab="Max Household ID", main="2014 Kenya DHS\nMax Household ID Per Cluster", 
+     breaks=100, col="skyblue")
 
 # plot data spatially
 quilt.plot(my.data$lon, my.data$lat, my.data$y/my.data$n, xlim=c(33.75, 42.1), 
-           ylim=c(-4.9, 5.5), main="Kenya 2003-2008 UM5R")
+           ylim=c(-4.9, 5.5), main="Kenya 2003-2008 U5MR")
 world(add=TRUE)
 
 

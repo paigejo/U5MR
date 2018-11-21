@@ -130,429 +130,235 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
   # of calling inla:
   predNs = rep(25, nrow(predCoords))
   
+  # first make a function for combining the results
+  combineResults = function(...) {
+    results = as.list(...)
+    countyResults = do.call("rbind", lapply(results, function(x) {x$countyResults}))
+    regionResults = do.call("rbind", lapply(results, function(x) {x$regionResults}))
+    pixelResults = do.call("rbind", lapply(results, function(x) {x$pixelResults}))
+    eaResults = do.call("rbind", lapply(results, function(x) {x$eaResults}))
+    list(countyResults=countyResults, regionResults=regionResults, 
+         pixelResults=pixelResults, eaResults=eaResults)
+  }
+  
+  # now make a function for generating the results
+  mainFunction = function(i, doSink=FALSE) {
+    if(doSink)
+      sink("log.txt", append=TRUE)
+    
+    print(paste0("iteration ", i, "/", nsim))
+    
+    # get the simulated sample
+    clustDat = clustDatMulti[[i]]
+    
+    # get observations from dataset
+    obsCoords = cbind(clustDat$east, clustDat$north)
+    obsNs = rep(25, nrow(obsCoords))
+    obsCounts = clustDat$died
+    obsUrban = clustDat$urban
+    
+    # fit model, get all predictions for each areal level and each posterior sample
+    fit = fitSPDEModel(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
+                       predUrban, genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
+                       verbose = verbose, includeClustEffect=includeClustEffect, 
+                       int.strategy=int.strategy, genRegionLevel=genRegionLevel, 
+                       keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
+                       urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
+                       exactAggregation=exactAggregation, genCountLevel=genCountLevel, 
+                       eaDat=eaDat, truthByCounty=truthByCounty, truthByRegion=truthByRegion, 
+                       truthByPixel=truthByPixel)
+    print(paste0("Fit completed: iteration ", i, "/", nsim))
+    countyPredMat = fit$countyPredMat
+    regionPredMat = fit$regionPredMat
+    pixelPredMat = fit$pixelPredMat
+    eaPredMat = fit$eaPredMat
+    eaMarginals = fit$eaMarginals
+    
+    ## calculate model fit properties for each level of predictions
+    
+    # enumeration area level
+    if(genEALevel) {
+      if(!genCountLevel) {
+        if(predictionType == "mean")
+          thisu1mEA = rowMeans(eaPredMat)
+        else
+          thisu1mEA = apply(eaPredMat, 1, median)
+        thislowerEA = logit(apply(eaPredMat, 1, function(x) {quantile(x, probs=.1)}))
+        thisupperEA = logit(apply(eaPredMat, 1, function(x) {quantile(x, probs=.9)}))
+        thisvar.estEA = apply(logit(eaPredMat), 1, var)
+        thisRightRejectEA = NA
+        thisLeftRejectEA = NA
+      }
+      else {
+        # get the marginal "binomial" densities at each location
+        n = 25
+        binomProb = function(k, i) {
+          inla.emarginal(function(logitP) {dbinom(k, n, expit(logitP))}, eaMarginals[[i]])
+        }
+        
+        ## make highest density coverage interval on count scale
+        # generate the "binomial" pmfs for each marginal
+        probs = matrix(mapply(binomProb, 
+                              k = matrix(0:n, nrow=length(eaMarginals), ncol=n + 1, byrow = TRUE), 
+                              i = matrix(1:length(eaMarginals), nrow=length(eaMarginals), ncol=n + 1)), 
+                       nrow=length(eaMarginals), ncol=n + 1)
+        
+        # now generate the summary statistics about the marginals
+        if(predictionType == "mean")
+          thisu1mEA = rowSums(sweep(probs, 2, STATS = 0:n, "*"))
+        else {
+          thisu1mEA = rowSums(sweep(probs, 2, STATS = 0:n, "*"))
+          warning("Using median predictions is not supported for discrete distributions. Used mean prediction instead")
+        }
+        thisvar.estEA = rowSums(sweep(probs, 2, STATS = (0:n)^2, "*")) - thisu1mEA^2
+        intervals = apply(probs, 1, generateBinomialInterval)
+        thislowerEA = intervals[1,]
+        thisupperEA = intervals[2,]
+        thisRightRejectEA = intervals[3,]
+        thisLeftRejectEA = intervals[4,]
+      }
+    }
+    else {
+      thisu1mEA = NA
+      thislowerEA = NA
+      thisupperEA = NA
+      thisvar.estEA = NA
+      thisRightRejectEA = NA
+      thisLeftRejectEA = NA
+    }
+    print(paste0("EA results generated: iteration ", i, "/", nsim))
+    
+    # pixel level
+    if(keepPixelPreds) {
+      if(!genCountLevel) {
+        if(predictionType == "mean")
+          thisu1mPixel = rowMeans(pixelPredMat)
+        else
+          thisu1mPixel = apply(pixelPredMat, 1, median)
+        thislowerPixel = logit(apply(pixelPredMat, 1, function(x) {quantile(x, probs=.1)}))
+        thisupperPixel = logit(apply(pixelPredMat, 1, function(x) {quantile(x, probs=.9)}))
+        thisvar.estPixel = apply(logit(pixelPredMat), 1, var)
+        thisRightRejectPixel = NA
+        thisLeftRejectPixel = NA
+      } else {
+        thisu1mPixel = pixelPredMat$preds
+        thisvar.estPixel = pixelPredMat$vars
+        thisupperPixel = pixelPredMat$upper
+        thislowerPixel = pixelPredMat$lower
+        thisRightRejectPixel = pixelPredMat$rightRejectProb
+        thisLeftRejectPixel = pixelPredMat$leftRejectProb
+      }
+    }
+    else {
+      thisu1mPixel = NA
+      thislowerPixel = NA
+      thisupperPixel = NA
+      thisvar.estPixel = NA
+      thisRightRejectPixel = NA
+      thisLeftRejectPixel = NA
+    }
+    print(paste0("Pixel results generated: iteration ", i, "/", nsim))
+    
+    # County level (county level results are always included)
+    if(!genCountLevel) {
+      if(predictionType == "mean")
+        thisu1mCounty = rowMeans(countyPredMat)
+      else
+        thisu1mCounty = apply(countyPredMat, 1, median)
+      thislowerCounty = logit(apply(countyPredMat, 1, function(x) {quantile(x, probs=.1)}))
+      thisupperCounty = logit(apply(countyPredMat, 1, function(x) {quantile(x, probs=.9)}))
+      thisvar.estCounty = apply(logit(countyPredMat), 1, var)
+      thisRightRejectCounty = NA
+      thisLeftRejectCounty = NA
+    } else {
+      thisu1mCounty = countyPredMat$preds
+      thisvar.estCounty = countyPredMat$vars
+      thisupperCounty = countyPredMat$upper
+      thislowerCounty = countyPredMat$lower
+      thisRightRejectCounty = countyPredMat$rightRejectProb
+      thisLeftRejectCounty = countyPredMat$leftRejectProb
+    }
+    print(paste0("County results generated: iteration ", i, "/", nsim))
+    
+    # region level
+    if(genRegionLevel) {
+      if(!genCountLevel) {
+        if(predictionType == "mean")
+          thisu1mRegion = rowMeans(regionPredMat)
+        else
+          thisu1mRegion = apply(regionPredMat, 1, median)
+        thislowerRegion = logit(apply(regionPredMat, 1, function(x) {quantile(x, probs=.1)}))
+        thisupperRegion = logit(apply(regionPredMat, 1, function(x) {quantile(x, probs=.9)}))
+        thisvar.estRegion = apply(logit(regionPredMat), 1, var)
+        thisRightRejectRegion = NA
+        thisLeftRejectRegion = NA
+      } else {
+        thisu1mRegion = regionPredMat$preds
+        thisvar.estRegion = regionPredMat$vars
+        thisupperRegion = regionPredMat$upper
+        thislowerRegion = regionPredMat$lower
+        thisRightRejectRegion = regionPredMat$rightRejectProb
+        thisLeftRejectRegion = regionPredMat$leftRejectProb
+      }
+    }
+    else {
+      thisu1mRegion = NA
+      thislowerRegion = NA
+      thisupperRegion = NA
+      thisvar.estRegion = NA
+      thisRightRejectRegion = NA
+      thisLeftRejectRegion = NA
+    }
+    print(paste0("Region results generated: iteration ", i, "/", nsim))
+    
+    # collect results in a list, one element for each simulation
+    thisCountyResults = data.frame(list(admin1=counties, 
+                                        u1m.spde=thisu1mCounty, lower.spde=thislowerCounty, 
+                                        upper.spde=thisupperCounty, logit.est.spde=logit(thisu1mCounty), 
+                                        var.est.spde=thisvar.estCounty, 
+                                        leftReject.spde=thisLeftRejectCounty, 
+                                        rightReject.spde=thisRightRejectCounty))
+    thisRegionResults = data.frame(list(region=regions, 
+                                        u1m.spde=thisu1mRegion, lower.spde=thislowerRegion, 
+                                        upper.spde=thisupperRegion, logit.est.spde=logit(thisu1mRegion), 
+                                        var.est.spde=thisvar.estRegion, 
+                                        leftReject.spde=thisLeftRejectRegion, 
+                                        rightReject.spde=thisRightRejectRegion))
+    thisPixelResults = data.frame(list(u1m.spde=thisu1mPixel, lower.spde=thislowerPixel, 
+                                       upper.spde=thisupperPixel, logit.est.spde=logit(thisu1mPixel), 
+                                       var.est.spde=thisvar.estPixel, 
+                                       leftReject.spde=thisLeftRejectPixel, 
+                                       rightReject.spde=thisRightRejectPixel))
+    thisEaResults = data.frame(list(u1m.spde=thisu1mEA, lower.spde=thislowerEA, 
+                                    upper.spde=thisupperEA, logit.est.spde=logit(thisu1mEA), 
+                                    var.est.spde=thisvar.estEA, 
+                                    leftReject.spde=thisLeftRejectEA, 
+                                    rightReject.spde=thisRightRejectEA))
+    list(countyResults=thisCountyResults, regionResults=thisRegionResults, 
+         pixelResults=thisPixelResults, eaResults=thisEaResults)
+  }
+  
   # compute Bias & MSE & mean(Var) & 80\% coverage for each simulation
   if(is.null(parClust)) {
+    # sequential version
     countyResults = as.list(1:nsim)
     regionResults = as.list(1:nsim)
     pixelResults = as.list(1:nsim)
     eaResults = as.list(1:nsim)
     for(i in 1:nsim) {
-      print(paste0("iteration ", i, "/", nsim))
-      
-      # get the simulated sample
-      clustDat = clustDatMulti[[i]]
-      
-      # get observations from dataset
-      obsCoords = cbind(clustDat$east, clustDat$north)
-      obsNs = rep(25, nrow(obsCoords))
-      obsCounts = clustDat$died
-      obsUrban = clustDat$urban
-      
-      # fit model, get all predictions for each areal level and each posterior sample
-      fit = fitSPDEModel(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
-                         predUrban, genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
-                         verbose = verbose, includeClustEffect=includeClustEffect, 
-                         int.strategy=int.strategy, genRegionLevel=genRegionLevel, 
-                         keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
-                         urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
-                         exactAggregation=exactAggregation, genCountLevel=genCountLevel, 
-                         eaDat=eaDat, truthByRegion=truthByRegion, truthByCounty=truthByCounty, 
-                         truthByPixel=truthByPixel, truthByEa=truthByEa)
-      countyPredMat = fit$countyPredMat
-      regionPredMat = fit$regionPredMat
-      pixelPredMat = fit$pixelPredMat
-      eaPredMat = fit$eaPredMat
-      eaMarginals = fit$eaMarginals
-      
-      ## calculate model fit properties for each level of predictions
-      
-      # enumeration area level
-      if(genEALevel) {
-        if(!genCountLevel) {
-          if(predictionType == "mean")
-            thisu1mEA = rowMeans(eaPredMat)
-          else
-            thisu1mEA = apply(eaPredMat, 1, median)
-          thislowerEA = logit(apply(eaPredMat, 1, function(x) {quantile(x, probs=.1)}))
-          thisupperEA = logit(apply(eaPredMat, 1, function(x) {quantile(x, probs=.9)}))
-          thisvar.estEA = apply(logit(eaPredMat), 1, var)
-          thisRightRejectEA = NA
-          thisLeftRejectEA = NA
-        }
-        else {
-          # get the marginal "binomial" densities at each location
-          allMarginals = fit$mod$marginals.linear.predictor[fit$predInds]
-          n = 25
-          binomProb = function(k, i) {
-            inla.emarginal(function(logitP) {dbinom(k, n, expit(logitP))}, allMarginals[[i]])
-          }
-          
-          ## make highest density coverage interval on count scale
-          # generate the "binomial" pmfs for each marginal
-          probs = matrix(mapply(binomProb, 
-                                k = matrix(0:n, nrow=length(allMarginals), ncol=n + 1, byrow = TRUE), 
-                                i = matrix(1:length(allMarginals), nrow=length(allMarginals), ncol=n + 1)), 
-                         nrow=length(allMarginals), ncol=n + 1)
-          
-          # now generate the summary statistics about the marginals
-          if(predictionType == "mean")
-            thisu1mEA = rowSums(sweep(probs, 2, STATS = 0:n, "*"))
-          else {
-            thisu1mEA = rowSums(sweep(probs, 2, STATS = 0:n, "*"))
-            warning("Using median predictions is not supported for discrete distributions. Used mean prediction instead")
-          }
-          thisvar.estEA = rowSums(sweep(probs, 2, STATS = (0:n)^2, "*")) - thisu1mEA^2
-          intervals = apply(probs, 1, generateBinomialInterval)
-          thislowerEA = sapply(intervals, function(x) {x$lower})
-          thisupperEA = sapply(intervals, function(x) {x$upper})
-          thisRightRejectEA = sapply(intervals, function(x) {x$rightRejectProb})
-          thisLeftRejectEA = sapply(intervals, function(x) {x$leftRejectProb})
-          if(calcCrps) {
-            calcCrpsByI = function(i) {
-              crpsCounts(truthByEa$truth[i] * 25, probs[i,])
-            }
-            thisCrpsEA = sapply(1:nrow(truthByEa), calcCrpsByI)
-          } else {
-            thisCrpsEA = NA
-          }
-        }
-      }
-      else {
-        thisu1mEA = NA
-        thislowerEA = NA
-        thisupperEA = NA
-        thisvar.estEA = NA
-        thisRightRejectEA = NA
-        thisLeftRejectEA = NA
-        thisCrpsEA = NA
-      }
-      
-      # pixel level
-      if(keepPixelPreds) {
-        if(!genCountLevel) {
-          if(predictionType == "mean")
-            thisu1mPixel = rowMeans(pixelPredMat)
-          else
-            thisu1mPixel = apply(pixelPredMat, 1, median)
-          thislowerPixel = logit(apply(pixelPredMat, 1, function(x) {quantile(x, probs=.1)}))
-          thisupperPixel = logit(apply(pixelPredMat, 1, function(x) {quantile(x, probs=.9)}))
-          thisvar.estPixel = apply(logit(pixelPredMat), 1, var)
-          thisRightRejectPixel = NA
-          thisLeftRejectPixel = NA
-        } else {
-          thisu1mPixel = pixelPredMat$preds
-          thisvar.estPixel = pixelPredMat$vars
-          thisupperPixel = pixelPredMat$upper
-          thislowerPixel = pixelPredMat$lower
-          thisRightRejectPixel = pixelPredMat$leftRejectProb
-          thisLeftRejectPixel = pixelPredMat$rightRejectProb
-          thisCrpsPixel = pixelPredMat$crps
-        }
-      }
-      else {
-        thisu1mPixel = NA
-        thislowerPixel = NA
-        thisupperPixel = NA
-        thisvar.estPixel = NA
-        thisRightRejectPixel = NA
-        thisLeftRejectPixel = NA
-        thisCrpsPixel = NA
-      }
-      
-      # County level (county level results are always included)
-      if(!genCountLevel) {
-        if(predictionType == "mean")
-          thisu1mCounty = rowMeans(countyPredMat)
-        else
-          thisu1mCounty = apply(countyPredMat, 1, median)
-        thislowerCounty = logit(apply(countyPredMat, 1, function(x) {quantile(x, probs=.1)}))
-        thisupperCounty = logit(apply(countyPredMat, 1, function(x) {quantile(x, probs=.9)}))
-        thisvar.estCounty = apply(logit(countyPredMat), 1, var)
-        thisRightRejectCounty = NA
-        thisLeftRejectCounty = NA
-        thisCrpsCounty = NA
-      } else {
-        thisu1mCounty = countyPredMat$preds
-        thisvar.estCounty = countyPredMat$vars
-        thisupperCounty = countyPredMat$upper
-        thislowerCounty = countyPredMat$lower
-        thisRightRejectCounty = countyPredMat$leftRejectProb
-        thisLeftRejectCounty = countyPredMat$rightRejectProb
-        thisCrpsCounty = countyPredMat$crps
-      }
-      
-      # region level
-      if(genRegionLevel) {
-        if(!genCountLevel) {
-          if(predictionType == "mean")
-            thisu1mRegion = rowMeans(regionPredMat)
-          else
-            thisu1mRegion = apply(regionPredMat, 1, median)
-          thislowerRegion = logit(apply(regionPredMat, 1, function(x) {quantile(x, probs=.1)}))
-          thisupperRegion = logit(apply(regionPredMat, 1, function(x) {quantile(x, probs=.9)}))
-          thisvar.estRegion = apply(logit(regionPredMat), 1, var)
-          thisRightRejectRegion = NA
-          thisLeftRejectRegion = NA
-          thisCrpsRegion = NA
-        } else {
-          thisu1mRegion = regionPredMat$preds
-          thisvar.estRegion = regionPredMat$vars
-          thisupperRegion = regionPredMat$upper
-          thislowerRegion = regionPredMat$lower
-          thisRightRejectRegion = regionPredMat$leftRejectProb
-          thisLeftRejectRegion = regionPredMat$rightRejectProb
-          thisCrpsRegion = regionPredMat$crps
-        }
-      }
-      else {
-        thisu1mRegion = NA
-        thislowerRegion = NA
-        thisupperRegion = NA
-        thisvar.estRegion = NA
-        thisRightRejectRegion = NA
-        thisLeftRejectRegion = NA
-        thisCrpsRegion = NA
-      }
+      results = mainFunction(i, FALSE)
       
       # collect results in a list, one element for each simulation
-      countyResults[[i]] = data.frame(list(admin1=counties, 
-                                           u1m.spde=thisu1mCounty, lower.spde=thislowerCounty, 
-                                           upper.spde=thisupperCounty, logit.est.spde=logit(thisu1mCounty), 
-                                           var.est.spde=thisvar.estCounty, 
-                                           leftReject.spde=thisLeftRejectCounty, 
-                                           rightReject.spde=thisRightRejectCounty, 
-                                           crps.spde=thisCrpsCounty))
-      regionResults[[i]] = data.frame(list(region=regions, 
-                                           u1m.spde=thisu1mRegion, lower.spde=thislowerRegion, 
-                                           upper.spde=thisupperRegion, logit.est.spde=logit(thisu1mRegion), 
-                                           var.est.spde=thisvar.estRegion, 
-                                           leftReject.spde=thisLeftRejectRegion, 
-                                           rightReject.spde=thisRightRejectRegion, 
-                                           crps.spde=thisCrpsRegion))
-      pixelResults[[i]] = data.frame(list(u1m.spde=thisu1mPixel, lower.spde=thislowerPixel, 
-                                          upper.spde=thisupperPixel, logit.est.spde=logit(thisu1mPixel), 
-                                          var.est.spde=thisvar.estPixel, 
-                                          leftReject.spde=thisLeftRejectPixel, 
-                                          rightReject.spde=thisRightRejectPixel, 
-                                          crps.spde=thisCrpsPixel))
-      eaResults[[i]] = data.frame(list(u1m.spde=thisu1mEA, lower.spde=thislowerEA, 
-                                       upper.spde=thisupperEA, logit.est.spde=logit(thisu1mEA), 
-                                       var.est.spde=thisvar.estEA, 
-                                       leftReject.spde=thisLeftRejectEA, 
-                                       rightReject.spde=thisRightRejectEA, 
-                                       crps.spde=thisCrpsEA))
+      countyResults[[i]] = results$CountyResults
+      regionResults[[i]] = results$regionResults
+      pixelResults[[i]] = results$pixelResults
+      eaResults[[i]] = results$eaResults
     }
   } else {
-    ##### 
-    ##### 
-    ##### 
-    ##### 
-    ##### 
     # parallel version
     
-    # first make a function for combining the results
-    combineResults = function(...) {
-      results = as.list(...)
-      countyResults = do.call("rbind", lapply(results, function(x) {x$countyResults}))
-      regionResults = do.call("rbind", lapply(results, function(x) {x$regionResults}))
-      pixelResults = do.call("rbind", lapply(results, function(x) {x$pixelResults}))
-      eaResults = do.call("rbind", lapply(results, function(x) {x$eaResults}))
-      list(countyResults=countyResults, regionResults=regionResults, 
-           pixelResults=pixelResults, eaResults=eaResults)
-    }
-    
     results = foreach(i = 1:nsim, .combine=combineResults, .verbose=TRUE, .multicombine=TRUE) %dopar% {
-      sink("log.txt", append=TRUE)
-      print(paste0("iteration ", i, "/", nsim))
-      
-      # get the simulated sample
-      clustDat = clustDatMulti[[i]]
-      
-      # get observations from dataset
-      obsCoords = cbind(clustDat$east, clustDat$north)
-      obsNs = rep(25, nrow(obsCoords))
-      obsCounts = clustDat$died
-      obsUrban = clustDat$urban
-      
-      # fit model, get all predictions for each areal level and each posterior sample
-      fit = fitSPDEModel(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
-                         predUrban, genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
-                         verbose = verbose, includeClustEffect=includeClustEffect, 
-                         int.strategy=int.strategy, genRegionLevel=genRegionLevel, 
-                         keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
-                         urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
-                         exactAggregation=exactAggregation, genCountLevel=genCountLevel, 
-                         eaDat=eaDat, truthByCounty=truthByCounty, truthByRegion=truthByRegion, 
-                         truthByPixel=truthByPixel)
-      print(paste0("Fit completed: iteration ", i, "/", nsim))
-      countyPredMat = fit$countyPredMat
-      regionPredMat = fit$regionPredMat
-      pixelPredMat = fit$pixelPredMat
-      eaPredMat = fit$eaPredMat
-      eaMarginals = fit$eaMarginals
-      
-      ## calculate model fit properties for each level of predictions
-      
-      # enumeration area level
-      if(genEALevel) {
-        if(!genCountLevel) {
-          if(predictionType == "mean")
-            thisu1mEA = rowMeans(eaPredMat)
-          else
-            thisu1mEA = apply(eaPredMat, 1, median)
-          thislowerEA = logit(apply(eaPredMat, 1, function(x) {quantile(x, probs=.1)}))
-          thisupperEA = logit(apply(eaPredMat, 1, function(x) {quantile(x, probs=.9)}))
-          thisvar.estEA = apply(logit(eaPredMat), 1, var)
-          thisRightRejectEA = NA
-          thisLeftRejectEA = NA
-        }
-        else {
-          # get the marginal "binomial" densities at each location
-          n = 25
-          binomProb = function(k, i) {
-            inla.emarginal(function(logitP) {dbinom(k, n, expit(logitP))}, eaMarginals[[i]])
-          }
-          
-          ## make highest density coverage interval on count scale
-          # generate the "binomial" pmfs for each marginal
-          probs = matrix(mapply(binomProb, 
-                                k = matrix(0:n, nrow=length(eaMarginals), ncol=n + 1, byrow = TRUE), 
-                                i = matrix(1:length(eaMarginals), nrow=length(eaMarginals), ncol=n + 1)), 
-                         nrow=length(eaMarginals), ncol=n + 1)
-          
-          # now generate the summary statistics about the marginals
-          if(predictionType == "mean")
-            thisu1mEA = rowSums(sweep(probs, 2, STATS = 0:n, "*"))
-          else {
-            thisu1mEA = rowSums(sweep(probs, 2, STATS = 0:n, "*"))
-            warning("Using median predictions is not supported for discrete distributions. Used mean prediction instead")
-          }
-          thisvar.estEA = rowSums(sweep(probs, 2, STATS = (0:n)^2, "*")) - thisu1mEA^2
-          intervals = apply(probs, 1, generateBinomialInterval)
-          thislowerEA = sapply(intervals, function(x) {x$lower})
-          thisupperEA = sapply(intervals, function(x) {x$upper})
-          thisRightRejectEA = sapply(intervals, function(x) {x$rightRejectProb})
-          thisLeftRejectEA = sapply(intervals, function(x) {x$leftRejectProb})
-        }
-      }
-      else {
-        thisu1mEA = NA
-        thislowerEA = NA
-        thisupperEA = NA
-        thisvar.estEA = NA
-        thisRightRejectEA = NA
-        thisLeftRejectEA = NA
-      }
-      print(paste0("EA results generated: iteration ", i, "/", nsim))
-      
-      # pixel level
-      if(keepPixelPreds) {
-        if(!genCountLevel) {
-          if(predictionType == "mean")
-            thisu1mPixel = rowMeans(pixelPredMat)
-          else
-            thisu1mPixel = apply(pixelPredMat, 1, median)
-          thislowerPixel = logit(apply(pixelPredMat, 1, function(x) {quantile(x, probs=.1)}))
-          thisupperPixel = logit(apply(pixelPredMat, 1, function(x) {quantile(x, probs=.9)}))
-          thisvar.estPixel = apply(logit(pixelPredMat), 1, var)
-          thisRightRejectPixel = NA
-          thisLeftRejectPixel = NA
-        } else {
-          thisu1mPixel = pixelPredMat$preds
-          thisvar.estPixel = pixelPredMat$vars
-          thisupperPixel = pixelPredMat$upper
-          thislowerPixel = pixelPredMat$lower
-          thisRightRejectPixel = pixelPredMat$leftRejectProb
-          thisLeftRejectPixel = pixelPredMat$rightRejectProb
-        }
-      }
-      else {
-        thisu1mPixel = NA
-        thislowerPixel = NA
-        thisupperPixel = NA
-        thisvar.estPixel = NA
-        thisRightRejectPixel = NA
-        thisLeftRejectPixel = NA
-      }
-      print(paste0("Pixel results generated: iteration ", i, "/", nsim))
-      
-      # County level (county level results are always included)
-      if(!genCountLevel) {
-        if(predictionType == "mean")
-          thisu1mCounty = rowMeans(countyPredMat)
-        else
-          thisu1mCounty = apply(countyPredMat, 1, median)
-        thislowerCounty = logit(apply(countyPredMat, 1, function(x) {quantile(x, probs=.1)}))
-        thisupperCounty = logit(apply(countyPredMat, 1, function(x) {quantile(x, probs=.9)}))
-        thisvar.estCounty = apply(logit(countyPredMat), 1, var)
-        thisRightRejectCounty = NA
-        thisLeftRejectCounty = NA
-      } else {
-        thisu1mCounty = countyPredMat$preds
-        thisvar.estCounty = countyPredMat$vars
-        thisupperCounty = countyPredMat$upper
-        thislowerCounty = countyPredMat$lower
-        thisRightRejectCounty = countyPredMat$leftRejectProb
-        thisLeftRejectCounty = countyPredMat$rightRejectProb
-      }
-      print(paste0("County results generated: iteration ", i, "/", nsim))
-      
-      # region level
-      if(genRegionLevel) {
-        if(!genCountLevel) {
-          if(predictionType == "mean")
-            thisu1mRegion = rowMeans(regionPredMat)
-          else
-            thisu1mRegion = apply(regionPredMat, 1, median)
-          thislowerRegion = logit(apply(regionPredMat, 1, function(x) {quantile(x, probs=.1)}))
-          thisupperRegion = logit(apply(regionPredMat, 1, function(x) {quantile(x, probs=.9)}))
-          thisvar.estRegion = apply(logit(regionPredMat), 1, var)
-          thisRightRejectRegion = NA
-          thisLeftRejectRegion = NA
-        } else {
-          thisu1mRegion = regionPredMat$preds
-          thisvar.estRegion = regionPredMat$vars
-          thisupperRegion = regionPredMat$upper
-          thislowerRegion = regionPredMat$lower
-          thisRightRejectRegion = regionPredMat$leftRejectProb
-          thisLeftRejectRegion = regionPredMat$rightRejectProb
-        }
-      }
-      else {
-        thisu1mRegion = NA
-        thislowerRegion = NA
-        thisupperRegion = NA
-        thisvar.estRegion = NA
-        thisRightRejectRegion = NA
-        thisLeftRejectRegion = NA
-      }
-      print(paste0("Region results generated: iteration ", i, "/", nsim))
-      
-      # collect results in a list, one element for each simulation
-      thisCountyResults = data.frame(list(admin1=counties, 
-                                          u1m.spde=thisu1mCounty, lower.spde=thislowerCounty, 
-                                          upper.spde=thisupperCounty, logit.est.spde=logit(thisu1mCounty), 
-                                          var.est.spde=thisvar.estCounty, 
-                                          leftReject.spde=thisLeftRejectCounty, 
-                                          rightReject.spde=thisRightRejectCounty))
-      thisRegionResults = data.frame(list(region=regions, 
-                                          u1m.spde=thisu1mRegion, lower.spde=thislowerRegion, 
-                                          upper.spde=thisupperRegion, logit.est.spde=logit(thisu1mRegion), 
-                                          var.est.spde=thisvar.estRegion, 
-                                          leftReject.spde=thisLeftRejectRegion, 
-                                          rightReject.spde=thisRightRejectRegion))
-      thisPixelResults = data.frame(list(u1m.spde=thisu1mPixel, lower.spde=thislowerPixel, 
-                                         upper.spde=thisupperPixel, logit.est.spde=logit(thisu1mPixel), 
-                                         var.est.spde=thisvar.estPixel, 
-                                         leftReject.spde=thisLeftRejectPixel, 
-                                         rightReject.spde=thisRightRejectPixel))
-      thisEaResults = data.frame(list(u1m.spde=thisu1mEA, lower.spde=thislowerEA, 
-                                      upper.spde=thisupperEA, logit.est.spde=logit(thisu1mEA), 
-                                      var.est.spde=thisvar.estEA, 
-                                      leftReject.spde=thisLeftRejectEA, 
-                                      rightReject.spde=thisRightRejectEA))
-      list(countyResults=thisCountyResults, regionResults=thisRegionResults, 
-           pixelResults=thisPixelResults, eaResults=thisEaResults)
+      mainFunction(i, TRUE)
     }
     
     # separate results into the different aggregation levels
