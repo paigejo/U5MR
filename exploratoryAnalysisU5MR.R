@@ -667,6 +667,7 @@ setwd("~/Google Drive/UW/Wakefield/WakefieldShared/U5MR/")
 
 
 data <- data.frame(read_dta("popSurvey2009/Housing_2009KPHC_10PCT_STATA.dta"))
+
 names(data)
 test = data.frame(RecreatedEANO=data$RecreatedEANO, HHNO=data$HHNO)
 test = test[!is.na(data$HHNO), ]
@@ -682,6 +683,27 @@ nHHolds = aggregate(test$HHNO, data.frame(list(x=test$RecreatedEANO)), getNumHHo
 head(nHHolds)
 hist(nHHolds[,2]) # this is wayyy too large
 mean(nHHolds[,2] >= 150) # 0.459. Way too large
+
+data <- data.frame(read_dta("popSurvey2009/Population_2009KPHC_10PCT_STATA.dta"))
+childrenBorn = data[!is.na(data$P24), c("P24", "P25")]
+totalChildrenBorn = rowSums(childrenBorn)
+hist(totalChildrenBorn, breaks=seq(-.5, max(totalChildrenBorn) + .5, by=1), col="skyblue", 
+     freq=FALSE, main="Histogram of Total Children Born", xlab="Total Children Born")
+
+pdf("figures/totalChildrenBorn.pdf", width=5, height=8)
+par(mfrow=c(2, 1))
+childrenBorn = data[(!is.na(data$P24)) & (data$EATYPE == 2), c("P24", "P25")]
+totalChildrenBorn = rowSums(childrenBorn)
+hist(totalChildrenBorn, breaks=seq(-.5, max(totalChildrenBorn) + .5, by=1), col="skyblue", 
+     freq=FALSE, main="Histogram of Total Children Born (Urban)", xlab="Total Children Born", 
+     ylim=c(0, .4))
+
+childrenBorn = data[(!is.na(data$P24)) & (data$EATYPE == 1), c("P24", "P25")]
+totalChildrenBorn = rowSums(childrenBorn)
+hist(totalChildrenBorn, breaks=seq(-.5, max(totalChildrenBorn) + .5, by=1), col="skyblue", 
+     freq=FALSE, main="Histogram of Total Children Born (Rural)", xlab="Total Children Born", 
+     ylim=c(0, .4))
+dev.off()
 
 library(foreign)
 owners = read.spss("housingSurvey2012/Owners_Household data.sav", to.data.frame=TRUE)
@@ -731,3 +753,145 @@ nHHolds = aggregate(data$v002, data.frame(list(v001=data$v001)), getNumHHolds)
 head(nHHolds)
 hist(nHHolds[,2], xlab="Max Household ID", main="2014 Kenya DHS\nMax Household ID Per Cluster", 
      breaks=100, col="skyblue")
+
+##### Plot calculated empirical distributions stratified by urban/rural
+load("empiricalDistributions.RData")
+pdf("figures/empiricalHouseholdDistributionsECDF.pdf", width=5, height=8)
+par(mfrow=c(3, 1))
+xRange = range(c(knots(empiricalDistributions$households), knots(empiricalDistributions$householdsUrban), 
+                 knots(empiricalDistributions$householdsRural)))
+plot(empiricalDistributions$households, main="Households Per Cluster", xlab="Households Per Cluster", 
+     ylab="Empirical CDF", xlim=xRange)
+plot(empiricalDistributions$householdsUrban, main="Households Per Cluster (Urban)", xlab="Households Per Cluster", 
+     ylab="Empirical CDF", xlim=xRange)
+plot(empiricalDistributions$householdsRural, main="Households Per Cluster (Rural)", xlab="Households Per Cluster", 
+     ylab="Empirical CDF", xlim=xRange)
+dev.off()
+
+pdf("figures/empiricalMothersDistributionsECDF.pdf", width=5, height=8)
+par(mfrow=c(3, 1))
+xRange = range(c(knots(empiricalDistributions$mothers), knots(empiricalDistributions$mothersUrban), 
+                 knots(empiricalDistributions$mothersRural)))
+plot(empiricalDistributions$mothers, main="Mothers Per Household", xlab="Mothers Per Household", 
+     ylab="Empirical CDF", xlim=xRange)
+plot(empiricalDistributions$mothersUrban, main="Mothers Per Household (Urban)", xlab="Mothers Per Household", 
+     ylab="Empirical CDF", xlim=xRange)
+plot(empiricalDistributions$mothersRural, main="Mothers Per Household (Rural)", xlab="Mothers Per Household", 
+     ylab="Empirical CDF", xlim=xRange)
+dev.off()
+
+pdf("figures/empiricalChildrenDistributionsECDF.pdf", width=5, height=8)
+par(mfrow=c(3, 1))
+xRange = range(c(knots(empiricalDistributions$children), knots(empiricalDistributions$childrenUrban), 
+                 knots(empiricalDistributions$childrenRural)))
+plot(empiricalDistributions$children, main="Children Per Mother", xlab="Children Per Mother", 
+     ylab="Empirical CDF", xlim=xRange)
+plot(empiricalDistributions$childrenUrban, main="Children Per Mother (Urban)", xlab="Children Per Mother", 
+     ylab="Empirical CDF", xlim=xRange)
+plot(empiricalDistributions$childrenRural, main="Children Per Mother (Rural)", xlab="Children Per Mother", 
+     ylab="Empirical CDF", xlim=xRange)
+dev.off()
+
+##### now plot the empirical pdfs
+# household per cluster
+by = 5
+householdKnots = knots(empiricalDistributions$households)
+householdKnotsUrban = knots(empiricalDistributions$householdsUrban)
+householdKnotsRural = knots(empiricalDistributions$householdsRural)
+xRange = range(c(knots(empiricalDistributions$households), knots(empiricalDistributions$householdsUrban), 
+                 knots(empiricalDistributions$householdsRural)))
+breaks = seq(-1, ceiling(xRange[2]/by)*by, by=by)
+householdVals = empiricalDistributions$households(breaks[2:length(breaks)]) - 
+  empiricalDistributions$households(breaks[1:(length(breaks) - 1)])
+householdValsUrban = empiricalDistributions$householdsUrban(breaks[2:length(breaks)]) - 
+  empiricalDistributions$householdsUrban(breaks[1:(length(breaks) - 1)])
+householdValsRural = empiricalDistributions$householdsRural(breaks[2:length(breaks)]) - 
+  empiricalDistributions$householdsRural(breaks[1:(length(breaks) - 1)])
+
+xRange[2] = xRange[2] + .5
+yRange = c(0, max(c(householdVals, householdValsUrban, householdValsRural))) / by
+pdf("figures/empiricalHouseholdDistributionsPMF.pdf", width=5, height=8)
+nBuffer = match(1, breaks[2:length(breaks)] >= xRange[1]) - 1
+nRest = length(householdVals) - nBuffer
+cVec = c(rep(rgb(1,1,1,0), nBuffer), rep("black", nRest))
+par(mfrow=c(3, 1), xpd=FALSE)
+barplot(householdVals / by, main="Households Per Cluster", xlab="Households Per Cluster", 
+        ylab="Binned Empirical PMF", xlim=xRange, ylim=yRange, width=by, col="skyblue", space=0, 
+        axes=FALSE, border=cVec)
+axis(1,at=seq(50, 150, by=50),labels=seq(50, 150, by=50))
+axis(2,at=c(0, .005, .01, .015),labels=c("", "0.005", "", "0.015"))
+barplot(householdValsUrban / by, main="Households Per Cluster (Urban)", xlab="Households Per Cluster", 
+        ylab="Binned Empirical PMF", xlim=xRange, ylim=yRange, width=by, col="skyblue", space=0, 
+        axes=FALSE, border=cVec)
+axis(1,at=seq(50, 150, by=50),labels=seq(50, 150, by=50))
+axis(2,at=c(0, .005, .01, .015),labels=c("", "0.005", "", "0.015"))
+barplot(householdValsRural / by, main="Households Per Cluster (Rural)", xlab="Households Per Cluster", 
+        ylab="Binned Empirical PMF", xlim=xRange, ylim=yRange, width=by, col="skyblue", space=0, 
+        axes=FALSE, border=cVec)
+axis(1,at=seq(50, 150, by=50),labels=seq(50, 150, by=50))
+axis(2,at=c(0, .005, .01, .015),labels=c("", "0.005", "", "0.015"))
+dev.off()
+
+# mothers per household
+by = 1
+motherKnots = knots(empiricalDistributions$mothers)
+motherKnotsUrban = knots(empiricalDistributions$mothersUrban)
+motherKnotsRural = knots(empiricalDistributions$mothersRural)
+xRange = range(c(knots(empiricalDistributions$mothers), knots(empiricalDistributions$mothersUrban), 
+                 knots(empiricalDistributions$mothersRural)))
+breaks = seq(ceiling(xRange[1]/by)*by - by, ceiling(xRange[2]/by)*by, by=by)
+motherVals = empiricalDistributions$mothers(breaks[2:length(breaks)]) - 
+  empiricalDistributions$mothers(breaks[1:(length(breaks) - 1)])
+motherValsUrban = empiricalDistributions$mothersUrban(breaks[2:length(breaks)]) - 
+  empiricalDistributions$mothersUrban(breaks[1:(length(breaks) - 1)])
+motherValsRural = empiricalDistributions$mothersRural(breaks[2:length(breaks)]) - 
+  empiricalDistributions$mothersRural(breaks[1:(length(breaks) - 1)])
+xRange[2] = xRange[2] + .5
+yRange = c(0, max(c(motherVals, motherValsUrban, motherValsRural))) / by
+pdf("figures/empiricalMothersDistributionsPMF.pdf", width=5, height=8)
+par(mfrow=c(3, 1))
+barplot(motherVals / by, main="Mothers Per Household", xlab="Mothers Per Household", space=0, 
+        ylab="Binned Empirical PMF", xlim=xRange, ylim=yRange, width=by, col="skyblue")
+axis(1,at=0:max(xRange)+.5,labels=0:max(xRange))
+barplot(motherValsUrban / by, main="Mothers Per Household (Urban)", xlab="Mothers Per Household", space=0, 
+        ylab="Binned Empirical PMF", xlim=xRange, ylim=yRange, width=by, col="skyblue")
+axis(1,at=0:max(xRange)+.5,labels=0:max(xRange))
+barplot(motherValsRural / by, main="Mothers Per Household (Rural)", xlab="Mothers Per Household", space=0, 
+        ylab="Binned Empirical PMF", xlim=xRange, ylim=yRange, width=by, col="skyblue")
+axis(1,at=0:max(xRange)+.5,labels=0:max(xRange))
+dev.off()
+
+# children per mother
+by = 1
+childrenKnots = knots(empiricalDistributions$children)
+childrenKnotsUrban = knots(empiricalDistributions$childrenUrban)
+childrenKnotsRural = knots(empiricalDistributions$childrenRural)
+xRange = range(c(knots(empiricalDistributions$children), knots(empiricalDistributions$childrenUrban), 
+                 knots(empiricalDistributions$childrenRural)))
+breaks = seq(ceiling(xRange[1]/by)*by - by, ceiling(xRange[2]/by)*by, by=by)
+childrenVals = empiricalDistributions$children(breaks[2:length(breaks)]) - 
+  empiricalDistributions$children(breaks[1:(length(breaks) - 1)])
+childrenValsUrban = empiricalDistributions$childrenUrban(breaks[2:length(breaks)]) - 
+  empiricalDistributions$childrenUrban(breaks[1:(length(breaks) - 1)])
+childrenValsRural = empiricalDistributions$childrenRural(breaks[2:length(breaks)]) - 
+  empiricalDistributions$childrenRural(breaks[1:(length(breaks) - 1)])
+xRange[1] = 0
+xRange[2] = xRange[2] + .5
+yRange = c(0, max(c(childrenVals, childrenValsUrban, childrenValsRural))) / by
+pdf("figures/empiricalChildrenDistributionsPMF.pdf", width=5, height=8)
+par(mfrow=c(3, 1))
+barplot(childrenVals / by, main="Children Per Mother", xlab="Children Per Mother", space=0, 
+        ylab="Binned Empirical PMF", xlim=xRange, ylim=yRange, width=by, col="skyblue")
+axis(1,at=0:(max(xRange)-1)+.5,labels=1:max(xRange))
+barplot(childrenValsUrban / by, main="Children Per Mother (Urban)", xlab="Children Per Mother", space=0, 
+        ylab="Binned Empirical PMF", xlim=xRange, ylim=yRange, width=by, col="skyblue")
+axis(1,at=0:(max(xRange)-1)+.5,labels=1:max(xRange))
+barplot(childrenValsRural / by, main="Children Per Mother (Rural)", xlab="Children Per Mother", space=0, 
+        ylab="Binned Empirical PMF", xlim=xRange, ylim=yRange, width=by, col="skyblue")
+axis(1,at=0:(max(xRange)-1)+.5,labels=1:max(xRange))
+dev.off()
+
+
+
+
+

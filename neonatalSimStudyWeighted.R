@@ -11,11 +11,12 @@ logit<-function(x){
 }
 
 # function to extend dataset to binary form 
-extendData <- function(clustDatRow, v001){
+extendData <- function(clustDatRow, v001, divideWeight=TRUE){
   
   # add extra columns for ageMonth, ageGrpD, v001, v002
   nC = clustDatRow$numChildren
-  tmp = data.frame(clustDatRow[c(1, 6:16)])
+  # tmp = data.frame(clustDatRow[c(1, 6:16)])
+  tmp = data.frame(clustDatRow[c(1, 6:ncol(clustDatRow))])
   tmp$v001 = v001
 
   ageMonth = rep(0, nC)
@@ -36,6 +37,8 @@ extendData <- function(clustDatRow, v001){
   
   res$regionRural <- with(res, interaction(admin1, urbanRural), drop=TRUE)
   
+  if(divideWeight)
+    res$samplingWeight = res$samplingWeight / nC
   return(res)
 }
 

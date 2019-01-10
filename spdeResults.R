@@ -95,7 +95,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
     truthByPixel = data.frame(pixel=regions, truth=deathsPerPixel / childrenPerPixel, countyI=pixelToAdmin, urban=urbanPixel)
     
     # EA
-    truthByEa = data.frame(EA = 1:nrow(eaDat), truth = eaDat$died/25, urban=eaDat$urban)
+    truthByEa = data.frame(EA = 1:nrow(eaDat), truth = eaDat$died/eaDat$numChildren, urban=eaDat$urban)
   } else {
     truthByRegion = NULL
     truthByCounty = NULL
@@ -128,7 +128,8 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
   }
   # we only care about the probability, not counts, so not used except for the purposes 
   # of calling inla:
-  predNs = rep(25, nrow(predCoords))
+  # predNs = rep(25, nrow(predCoords))
+  predNs = rep(1, nrow(predCoords))
   
   # first make a function for combining the results
   combineResults = function(...) {
@@ -153,7 +154,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
     
     # get observations from dataset
     obsCoords = cbind(clustDat$east, clustDat$north)
-    obsNs = rep(25, nrow(obsCoords))
+    obsNs = clustDat$numChildren
     obsCounts = clustDat$died
     obsUrban = clustDat$urban
     
@@ -191,9 +192,10 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
       }
       else {
         # get the marginal "binomial" densities at each location
-        n = 25
+        # n = 25
+        n = max(eaDat$numChildren)
         binomProb = function(k, i) {
-          inla.emarginal(function(logitP) {dbinom(k, n, expit(logitP))}, eaMarginals[[i]])
+          inla.emarginal(function(logitP) {dbinom(k, eaDat$numChildren[i], expit(logitP))}, eaMarginals[[i]])
         }
         
         ## make highest density coverage interval on count scale

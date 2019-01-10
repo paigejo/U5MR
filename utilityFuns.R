@@ -338,9 +338,124 @@ parMatMult = function(leftMat, rightMat, cl) {
   do.call(rbind, ans)
 }
 
+# draw random numbers from an ecdf object
+recdf = function(n, distribution) {
+  probs = runif(n)
+  quantile(distribution, probs, type=1) # type=1 signifies inverse ecdf
+}
 
+# this function generates the sampling 
+# probabilities of EAs within this strata
+# i: the strata index, 1-47, corresponding to the row of easpc
+# Nsamples: the total number of EAs drawn among strata with this urban/rural value
+# m: the minimum number of draws in each strata
+# urban: whether or not we are sampling from urban or rural strata
+# log: return log probability or just probability
+getStratumSamplingProb = function(i, nHHi, nHHTotal, Nsamples=617, m=3, urban=TRUE, dolog=FALSE) {
+  # the number of households in this stratum (the commented out line should be the same as the one below)
+  # Ni = ifelse(urban, easpc[i, "HHUrb"], easpc[i, "HHRur"])
+  Ni = sum(nHHi)
+  
+  # the total number of households in Kenya that are either urban or rural
+  Ntotal = ifelse(urban, sum(easpc$HHUrb), sum(easpc$HHRur))
+  
+  # the total number of strata with the given urban/rural categorization
+  Nstrata = ifelse(urban, 47, 45)
+  
+  # the probability that you pick a particular ea in the first m draws from this stratum
+  # pickEAinFirstM = dhyper(1, 1, Ni - 1, m)
+  pickEAinFirstM = m * nHHi / Ni
+  
+  # the probability that you pick a particular ea in k additional draws from the stratum, 
+  # given it wasn't drawn in the first m draws
+  pickEAInK = function(k) {
+    # successStates = Ni - m
+    # totalStates = Ntotal - m * Nstrata
+    # failureStates = totalStates - successStates
+    totalDrawsLeft = Nsamples - m * Nstrata
+    # probDrawStrataKTimes = dhyper(k, successStates, failureStates, totalDrawsLeft, log=TRUE)
+    probDrawStrataKTimes = dbinom(k, totalDrawsLeft, Ni / Ntotal, log=TRUE)
+    
+    # countySuccessStates = 1
+    # countyTotalStates = Ni - m
+    # countyFailureStates = countyTotalStates - countySuccessStates
+    # probDrawEaOutOfK = dhyper(1, countySuccessStates, countyFailureStates, k, log=TRUE)
+    probDrawEaOutOfK = log(k * nHHi / Ni)
+    
+    # multiply the probabilities by summing on the log scale
+    exp(probDrawStrataKTimes + probDrawEaOutOfK)
+  }
+  
+  # the probability of picking this ea after the first m are drawn from the stratum 
+  # is the probability it is drawn after the first m given that it was not drawn in 
+  # the first m times the probability that it was not drawn in the first m
+  maxDraws = min(Ni - m, Nsamples - m*Nstrata)
+  pickEAafterFirstM = sum(sapply(1:maxDraws, pickEAInK)) * (1 - pickEAinFirstM)
+  
+  # probabilities of mutually exclusive events are summed
+  pickEA = pickEAinFirstM + pickEAafterFirstM
+  
+  ifelse(dolog, log(pickEA), pickEA)
+}
 
+# this function generates the sampling probabilities of all households
+# i: the strata index, 1-47, corresponding to the row of easpc
+# Nsamples: the total number of EAs drawn among strata with this urban/rural value
+# m: the minimum number of draws in each strata
+# urban: whether or not we are sampling from urban or rural strata
+# log: return log probability or just probability
+getStratumSamplingProb2 = function(eaDat, eaDatLong, nSamplesUrban=617, nSamplesTotal=1612, m=3) {
+  # the number of households in each stratum
+  Nis = eaDat[, .(nHH=sum(nHH)), by=.(admin1, urban)]
+  Ntotal = sum(Nis[["nHH"]])
+  
+  # the total number of households in Kenya that are either urban or rural
+  Ntotal = ifelse(urban, sum(easpc$HHUrb), sum(easpc$HHRur))
+  
+  # the total number of strata with the given urban/rural categorization
+  Nstrata = ifelse(urban, 47, 45)
+  
+  # the probability that you pick a particular ea in the first m draws from this stratum
+  # pickEAinFirstM = dhyper(1, 1, Ni - 1, m)
+  pickEAinFirstM = m * nHHi / Ni
+  
+  # the probability that you pick a particular ea in k additional draws from the stratum, 
+  # given it wasn't drawn in the first m draws
+  pickEAInK = function(k) {
+    # successStates = Ni - m
+    # totalStates = Ntotal - m * Nstrata
+    # failureStates = totalStates - successStates
+    totalDrawsLeft = Nsamples - m * Nstrata
+    # probDrawStrataKTimes = dhyper(k, successStates, failureStates, totalDrawsLeft, log=TRUE)
+    probDrawStrataKTimes = dbinom(k, totalDrawsLeft, Ni / Ntotal, log=TRUE)
+    
+    # countySuccessStates = 1
+    # countyTotalStates = Ni - m
+    # countyFailureStates = countyTotalStates - countySuccessStates
+    # probDrawEaOutOfK = dhyper(1, countySuccessStates, countyFailureStates, k, log=TRUE)
+    probDrawEaOutOfK = log(k * nHHi / Ni)
+    
+    # multiply the probabilities by summing on the log scale
+    exp(probDrawStrataKTimes + probDrawEaOutOfK)
+  }
+  
+  # the probability of picking this ea after the first m are drawn from the stratum 
+  # is the probability it is drawn after the first m given that it was not drawn in 
+  # the first m times the probability that it was not drawn in the first m
+  maxDraws = min(Ni - m, Nsamples - m*Nstrata)
+  pickEAafterFirstM = sum(sapply(1:maxDraws, pickEAInK)) * (1 - pickEAinFirstM)
+  
+  # probabilities of mutually exclusive events are summed
+  pickEA = pickEAinFirstM + pickEAafterFirstM
+  
+  ifelse(dolog, log(pickEA), pickEA)
+}
 
+# get the probability of drawing a given household out of an enumeration area
+getHHprob = function(nHH, nDraws=25, log=FALSE) {
+  # dhyper(1, 1, nHH - 1, nDraws, log=log)
+  nDraws/nHH
+}
 
 
 

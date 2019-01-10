@@ -155,9 +155,9 @@ intervalWidth = function(lower, upper, logit = TRUE) {
     upper = expit(upper)
   }
   
-  res = mean(upper - lower)
-  if(res <= 0)
-    warning("negative interval width")
+  res = mean(abs(upper - lower))
+  if(any(lower > upper))
+    warning("some interval widths are negative, taking absolute value")
   res
 }
 

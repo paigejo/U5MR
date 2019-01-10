@@ -89,7 +89,7 @@ getSPDEPrior = function(mesh, sigma0=1) {
 #                   the aggregation area with respect to population density
 # genCountLevel: whether or not to generate predictions at the count level versus logistic
 # nSamplePixel: fewer samples are required for good approximation of the posterior at the pixel level 
-#               than county, so we only take this many of the posterior samples 4 pixel level estimation
+#               than county, so we only take this many of the posterior samples for pixel level estimation
 fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, obsUrban, predCoords, predNs = rep(25, nrow(predCoords)), 
                         predUrban, prior=NULL, mesh=NULL, int.strategy="eb", strategy="gaussian", 
                         genCountyLevel=FALSE, popGrid=NULL, nPostSamples=100, kmRes=5, counties=sort(unique(eaDat$admin1)), 

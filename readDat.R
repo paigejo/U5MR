@@ -14,6 +14,7 @@ library(fields)
 library(zoo)
 library(latex2exp)
 library(maptools)
+library(data.table)
 
 # lines represent births
 data <- data.frame(read_dta("Kenya2014BirthRecode/KEBR70FL.DTA"))

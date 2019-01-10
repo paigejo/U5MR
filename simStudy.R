@@ -25,7 +25,8 @@ simEAs = function(kenyaPop, numEAs=96251, totalKenyaPop=43.0 * 10^6, seed=123) {
 
 # simulate enumeration areas from population data.  stratified by urban 
 # and rural and county
-simEAs2 = function(kenyaPop, numEAs=96251, totalKenyaPop=43.0 * 10^6, seed=123, sampleByPop=TRUE, fixNumUrbanAtTruth=FALSE) {
+simEAs2 = function(kenyaPop, numEAs=96251, totalKenyaPop=43.0 * 10^6, seed=123, 
+                   sampleByPop=TRUE, fixNumUrbanAtTruth=FALSE, thisEasPC=easpc) {
   set.seed(seed)
   
   # determine which points in Kenya are urban
@@ -98,6 +99,167 @@ simEAs2 = function(kenyaPop, numEAs=96251, totalKenyaPop=43.0 * 10^6, seed=123, 
   kenyaEAs$north = projCoords[,2]
   
   kenyaEAs
+}
+
+# get empirical mothers and children distribution per cluster
+getSurveyEmpiricalDistributions = function(data=NULL, yearOfBirth = 2010) {
+  # read in DHS data
+  if(is.null(data))
+    data <- data.frame(read_dta("Kenya2014BirthRecode/KEBR70FL.DTA"))
+  
+  # initialize lists of numbers for the empirical distributions
+  clusters = unique(data$v001)
+  nHouseholds = rep(0, length(clusters))
+  nMothers = list()
+  nChildren = list()
+  
+  for(i in 1:length(clusters)) {
+    if(i %% 25 == 0)
+      print(paste0("household ", i, "/", length(nHouseholds)))
+    
+    thisCluster = clusters[i]
+    clusterData = data[data$v001 == thisCluster, ]
+    households = unique(data$v002[data$v001 == thisCluster])
+    nHouseholds[i] = max(households)
+    
+    for(j in 1:length(households)) {
+      thisHousehold = households[j]
+      thisData = clusterData[clusterData$v002 == thisHousehold, ]
+      nMothers = c(nMothers, list(thisData$v138[1]))
+      nChildren = c(nChildren, list(sum(thisData$b2 == yearOfBirth)))
+    }
+  }
+  
+  nMothers = unlist(nMothers)
+  nChildren = unlist(nChildren)
+  householdDistribution = ecdf(nHouseholds)
+  motherDistribution = ecdf(nMothers)
+  childrenDistribution = ecdf(nChildren)
+  list(households=householdDistribution, mothers=motherDistribution, children=childrenDistribution)
+}
+
+# get empirical mothers and children distribution per cluster
+# maxAge: the maximum age of the children being included in the distribution rounded down
+getSurveyEmpiricalDistributions2 = function(data=NULL, dataDHS=NULL, maxAge=4) {
+  
+  # read in DHS data for the estimate of the number of households within each cluster
+  print("reading in DHS data")
+  if(is.null(dataDHS))
+    dataDHS <- data.frame(read_dta("Kenya2014BirthRecode/KEBR70FL.DTA"))
+
+  # initialize lists of numbers for the empirical distributions
+  print("calculating households per cluster empirical distribution")
+  urbanDat = dataDHS[dataDHS$v025 == 1, ]
+  ruralDat = dataDHS[dataDHS$v025 == 2, ]
+  nHouseholds = aggregate(dataDHS$v002, data.frame(v001=dataDHS$v001), function(x) {max(x)})$x
+  nHouseholdsUrban = aggregate(urbanDat$v002, data.frame(v001=urbanDat$v001), function(x) {max(x)})$x
+  nHouseholdsRural = aggregate(ruralDat$v002, data.frame(v001=ruralDat$v001), function(x) {max(x)})$x
+  
+  nHouseholds=nHouseholds[(nHouseholds >= 50) & (nHouseholds <= 150)]
+  nHouseholdsUrban=nHouseholdsUrban[(nHouseholdsUrban >= 50) & (nHouseholdsUrban <= 150)]
+  nHouseholdsRural=nHouseholdsRural[(nHouseholdsRural >= 50) & (nHouseholdsRural <= 150)]
+
+  # read in census data for the other empirical distributions
+  print("reading and census data if necessary")
+  if(is.null(data))
+    data <- data.frame(read_dta("popSurvey2009/Population_2009KPHC_10PCT_STATA.dta"))
+  data = data[, c("PROVINCE", "DISTRICT", "DIVISION", "LOCATION", "SUBLOC", "COUNTY", 
+                  "RecreatedEANO", "HHNO", "EATYPE", "BARCODE", "P12", "P13")]
+  
+  print("beginning data table operations")
+  dat = as.data.table(data)
+  print(system.time(outMothers <- dat[, {
+    .("nMothers"=uniqueN(P13[P13 != 0 & P12 <= maxAge]), "urban"=any(EATYPE != 1))
+  }
+  , by = .(PROVINCE, DISTRICT, DIVISION, LOCATION, SUBLOC, COUNTY, RecreatedEANO, HHNO, BARCODE)]))
+  
+  dat0 = dat[P13 != 0 & P12 <= maxAge,]
+  print(system.time(outChildren <- dat0[, {
+    if(any(unlist(tapply(P13, P13, length, simplify = FALSE))) >= 15)
+      print(.SD)
+    .("nChildren"=unlist(tapply(P13, P13, length, simplify = FALSE)), "urban"=rep(any(EATYPE != 1), uniqueN(P13)))
+  }
+  , by = .(PROVINCE, DISTRICT, DIVISION, LOCATION, SUBLOC, COUNTY, RecreatedEANO, HHNO, BARCODE)]))
+  
+  nMothers = outMothers[["nMothers"]]
+  nMothersUrban = outMothers[urban == TRUE, nMothers]
+  nMothersRural = outMothers[urban == TRUE, nMothers]
+  nChildren = outChildren[["nChildren"]]
+  nChildrenUrban = outChildren[urban == TRUE, nChildren]
+  nChildrenRural = outChildren[urban == TRUE, nChildren]
+  
+  householdDistribution = ecdf(nHouseholds)
+  motherDistribution = ecdf(nMothers)
+  childrenDistribution = ecdf(nChildren)
+  householdDistributionUrban = ecdf(nHouseholdsUrban)
+  motherDistributionUrban = ecdf(nMothersUrban)
+  childrenDistributionUrban = ecdf(nChildrenUrban)
+  householdDistributionRural = ecdf(nHouseholdsRural)
+  motherDistributionRural = ecdf(nMothersRural)
+  childrenDistributionRural = ecdf(nChildrenRural)
+  list(households=householdDistribution, mothers=motherDistribution, children=childrenDistribution,
+       householdsUrban=householdDistributionUrban, mothersUrban=motherDistributionUrban, childrenUrban=childrenDistributionUrban,
+       householdsRural=householdDistributionRural, mothersRural=motherDistributionRural, childrenRural=childrenDistributionRural)
+}
+
+# simulate EAs household, mother, and child values in the clusters based on empirical distributions 
+# from getSurveyEmpiricalDistributions. First simulate the "long form", where each row is 
+# a household, then simulate the "short form", were each row is a EA
+simEAEmpirical = function(empiricalDistributions, nEAs=423) {
+  # simulate the long form
+  householdValues = knots(empiricalDistributions$households)
+  householdProbs = empiricalDistributions$households(householdValues) - empiricalDistributions$households(householdValues - 1)
+  motherValues = knots(empiricalDistributions$mothers)
+  motherProbs = empiricalDistributions$mothers(motherValues) - empiricalDistributions$mothers(motherValues - 1)
+  childrenValues = knots(empiricalDistributions$children)
+  childrenProbs = empiricalDistributions$children(childrenValues) - empiricalDistributions$children(childrenValues - 1)
+  
+  # simulate the number of households per numeration area, and mothers and children per household
+  nHouseholds = sample(householdValues, nEAs, TRUE, householdProbs)
+  nMothers = sample(motherValues, sum(nHouseholds), TRUE, motherProbs)
+  nChildren = sample(childrenValues, sum(nHouseholds), TRUE, childrenProbs)
+  
+  # generate full data sets
+  longform = data.frame(eaI=rep(1:nEAs, nHouseholds), mothers=nMothers, children=nChildren)
+  totalMothers = aggregate(longform$mothers, data.frame(list(house=longform$eaI)), sum)$x
+  totalChildren = aggregate(longform$children, data.frame(list(house=longform$eaI)), sum)$x
+  shortform = data.frame(eaI=1:nEAs, mothers=totalMothers, children=totalChildren)
+  
+  list(longform=longform, shortform=shortform)
+}
+
+# same as simEAEmpirical, except use empirical distributions from getSurveyEmpiricalDistributions2, 
+# which stratify by urban/rural
+simEAEmpirical2 = function(empiricalDistributions, eaDat, eaDatLong) {
+  urban = eaDat$urban
+  nEAs = length(urban)
+  nUrban = sum(urban)
+  nRural = nEAs - nUrban
+  
+  # simulate the number of households per numeration area
+  nHouseholdsUrban = recdf(nUrban, empiricalDistributions$householdsUrban)
+  nHouseholdsRural = recdf(nRural, empiricalDistributions$householdsRural)
+  nHouseholds = urban
+  nHouseholds[urban] = nHouseholdsUrban
+  nHouseholds[!urban] = nHouseholdsRural
+  nMothersUrban = recdf(nUrban, empiricalDistributions$mothersUrban)
+  nMothersRural = recdf(nRural, empiricalDistributions$mothersRural)
+  nMothers = urban
+  nMothers[urban] = nMothersUrban
+  nMothers[!urban] = nMothersRural
+  nChildrenUrban = recdf(nUrban, empiricalDistributions$childrenUrban)
+  nChildrenRural = recdf(nRural, empiricalDistributions$childrenRural)
+  nChildren = urban
+  nChildren[urban] = nChildrenUrban
+  nChildren[!urban] = nChildrenRural
+  
+  # generate full data sets
+  longform = data.frame(eaI=rep(1:nEAs, nHouseholds), mothers=nMothers, children=nChildren)
+  totalMothers = aggregate(longform$mothers, data.frame(list(house=longform$eaI)), sum)$x
+  totalChildren = aggregate(longform$children, data.frame(list(house=longform$eaI)), sum)$x
+  shortform = data.frame(eaI=1:nEAs, mothers=totalMothers, children=totalChildren)
+  
+  list(longform=longform, shortform=shortform)
 }
 
 saveSimDat = function(seed=123, HHoldVar=0) {
@@ -382,6 +544,11 @@ simClusters3 = function(eaDat, numClusters=423, urbanOverSample=1, nsim=1, seed=
   list(eaIs=eaIs, sampleWeights=sampleWeights)
 }
 
+# convert from output of simClusters3 to the result of generateSimDataSets.R
+genAndreaFormatFromEAIs = function(eaDat, eaIs, sampleWeights) {
+  lapply(1:ncol(eaIs), genClustDatFromEAIs, eaDat=eaDat, eaIs=eaIs, sampleWeights=sampleWeights)
+}
+
 # given the above function (simClusters2Mult), generates a dataframe following the format 
 # of simClusters2 given a simulation index, i
 genClustDatFromEAIs = function(eaDat, eaIs, sampleWeights, i) {
@@ -392,8 +559,193 @@ genClustDatFromEAIs = function(eaDat, eaIs, sampleWeights, i) {
 }
 
 # convert from output of simClusters3 to the result of generateSimDataSets.R
-genAndreaFormatFromEAIs = function(eaDat, eaIs, sampleWeights) {
-  lapply(1:ncol(eaIs), genClustDatFromEAIs, eaDat=eaDat, eaIs=eaIs, sampleWeights=sampleWeights)
+genAndreaFormatFromEAIsLong = function(eaDat, eaIs, eaDatLong, HHIs, sampleWeights) {
+  lapply(1:ncol(eaIs), genClustDatFromEAIsLong, eaDat=eaDat, eaIs=eaIs, eaDatLong=eaDatLong, 
+         HHIs=HHIs, sampleWeights=sampleWeights)
+}
+
+# given the above function (simClusters2Mult), generates a dataframe following the format 
+# of simClusters2 given a simulation index, i
+genClustDatFromEAIsLong = function(eaDat, eaIs, eaDatLong, HHIs, sampleWeights, i) {
+  clustDatLong = as.data.table(eaDatLong[HHIs[,i],])
+  
+  # aggregate the long format to the short format
+  # TODO: figure out what columns are in the cluster data and how to aggregate
+  clustDat = clustDatLong[, .(lon=lon[1], lat=lat[1], pop=pop[1], popOrig=popOrig[1], popDens=popDens[1], 
+                              admin1=admin1[1], region=region[1], 
+                              east=east[1], north=north[1], urban=urban[1], nHH=nHH[1], 
+                              numWomen=sum(numWomen), numChildren=sum(numChildren), 
+                              died=sum(died), 
+                              probsHH=probsHH[1], trueProbDeathNoNug=trueProbDeathNoNug[1], 
+                              trueProbDeath=trueProbDeath[1]), 
+                          by=eaIs]
+  
+  clustDat$samplingWeight = sampleWeights[,i]
+  clustDat$eaIs = eaIs[,i]
+  clustDat
+}
+
+# simulate clusters from enumeration areas.  Returns indices of rows in eaDat that are included 
+# in the cluster sample.  Simulate same number of clusters per county (9)
+# eaDatLong: long format enumeration area table, where each row is a household
+# nPerStrata: if fixedPerStrata == TRUE, this is the number of clusters sampled per strata
+simClustersEmpirical = function(eaDat, eaDatLong, nsim=1, seed=NULL, urbanOverSamplefrac=0, 
+                                nHHSampled=25, fixedPerStrata=FALSE, nPerStrata=3, verbose=TRUE) {
+  if(!is.null(seed))
+    set.seed(seed)
+  
+  # get the number of clusters for each strata
+  nUrbanClusters = clustpc$clustUrb
+  nRuralClusters = clustpc$clustRur
+  
+  # make sure the ea tables are a data.tables
+  if(!("data.table" %in% class(eaDatLong)))
+    eaDatLong = as.data.table(eaDatLong)
+  if(!("data.table" %in% class(eaDat)))
+    eaDat = as.data.table(eaDat)
+  eaDat = cbind(eaIs=1:nrow(eaDat), eaDat)
+  
+  if(!fixedPerStrata) {
+    # set number of clusters empirically if not otherwise set, scale by a factor depending on how much to oversample urban areas
+    thisclustpc = clustpc
+    thisclustpc$clustUrb = round(thisclustpc$clustUrb * (1 + urbanOverSamplefrac))
+    thisclustpc$clustUrb[thisclustpc$clustUrb >= thisclustpc$clustTotal] = thisclustpc$clustTotal[thisclustpc$clustUrb >= thisclustpc$clustTotal]
+    thisclustpc$clustRur = thisclustpc$clustTotal - thisclustpc$clustUrb
+  } else {
+    thisclustpc = clustpc
+    thisclustpc$clustUrb = nPerStrata
+    thisclustpc$clustRur = nPerStrata
+    thisclustpc$clustRur[thisclustpc$County == "Mombasa"] = 0
+    thisclustpc$clustRur[thisclustpc$County == "Nairobi"] = 0
+  }
+  
+  # collect samples stratified by county and rural/urban based on empirical distribution
+  counties = as.character(thisclustpc$County)
+  urban = eaDat[["urban"]]
+  
+  generateSample = function() {
+    allSamples = c()
+    # allSamples = list()
+    for(i in 1:nrow(thisclustpc)) {
+      countyName = counties[i]
+      countyI = eaDat[,as.character(admin1) == countyName]
+      if(verbose)
+        print(paste0("County ", i, "/", length(counties), ": ", countyName))
+      
+      # number of rural and urban clusters to sample
+      numUrban = thisclustpc$clustUrb[thisclustpc$County == countyName]
+      numRural = thisclustpc$clustRur[thisclustpc$County == countyName]
+      
+      # urban samples
+      thisCountyI = countyI & urban
+      # probs = thisCountyI * eaDat$popOrig
+      probs = thisCountyI * eaDat$nHH
+      probs = probs/sum(probs)
+      # allSamples = c(allSamples, sample(1:nrow(eaDat), numUrban, FALSE, prob=probs))
+      zs = probs[thisCountyI] * numUrban # the inclusion probabilities
+      if(any(zs >= 1-1e-6)) {
+        warning("inclusion probabilities greater than one, modifying to be .999")
+        zs[zs >= 1-1e-6] = .999
+      }
+      newSamples = (1:length(thisCountyI))[thisCountyI][as.logical(UPtille(zs))]
+      allSamples = c(allSamples, newSamples)
+      
+      # allSamples = c(allSamples, pps.sampling(eaDat$nHH[thisCountyI], numUrban, (1:nrow(eaDat))[thisCountyI], FALSE, prob=probs))
+      
+      # rural samples (if the county has any)
+      if((countyName != "Mombasa") && (countyName != "Nairobi")) {
+        thisCountyI = countyI & !urban
+        # probs = thisCountyI * eaDat$popOrig
+        probs = thisCountyI * eaDat$nHH
+        probs = probs/sum(probs)
+        
+        zs = probs[thisCountyI] * numRural # the inclusion probabilities
+        if(any(zs >= 1-1e-6)) {
+          warning("inclusion probabilities greater than one, modifying to be .999")
+          zs[zs >= 1-1e-6] = .999
+        }
+        newSamples = (1:length(thisCountyI))[thisCountyI][as.logical(UPtille(zs))]
+        
+        # allSamples = c(allSamples, sample(1:nrow(eaDat), numRural, FALSE, prob=probs))
+        allSamples = c(allSamples, newSamples)
+      }
+    }
+    sort(allSamples)
+  }
+  # the comment out line below works, accept it does not enable you to print out progress
+  # eaIs = replicate(nsim, generateSample())
+  eaIs = matrix(ncol=nsim, nrow=sum(thisclustpc$clustUrb) + sum(thisclustpc$clustRur))
+  for(i in 1:nsim) {
+    print(paste0("simulating data set ", i, "/", nsim))
+    eaIs[, i] = generateSample()
+  }
+  
+  ## decide which households within each cluster to sample
+  eaDatLong = data.table(HHI=1:nrow(eaDatLong), eaDatLong)
+  sampleHouseholds = function(sim) {
+    assign("thisEAIs", eaIs[,sim], globalenv())
+    clusterDatLong = eaDatLong[eaIs %in% get("thisEAIs", globalenv()), ]
+    assign("nHHSampled", nHHSampled, globalenv())
+    HHIs = clusterDatLong[, {
+      .("HHIs"=sort(sample(HHI, get("nHHSampled", globalenv()), FALSE)))
+    }, by=eaIs]
+    # cumulativeHouseholds = c(0, cumsum(eaDat[["nHH"]]))
+    # HHIs[["HHIs"]] = HHIs[["HHIs"]] + cumulativeHouseholds[HHIs[["eaIs"]] - 1]
+    HHIs[["HHIs"]]
+  }
+  HHIs = sapply(1:nsim, sampleHouseholds)
+  
+  # compute the probability of each enumeration area and household being in our sample
+  probsEA = rep(0, nrow(eaDat))
+  for(i in 1:nrow(thisclustpc)) {
+    countyName = counties[i]
+    countyI = eaDat[,as.character(admin1) == countyName]
+    
+    # number of rural and urban clusters to sample
+    numUrban = thisclustpc$clustUrb[thisclustpc$County == countyName]
+    numRural = thisclustpc$clustRur[thisclustpc$County == countyName]
+    
+    # urban samples
+    thisCountyI = countyI & urban
+    probs = thisCountyI * eaDat[["nHH"]]
+    probs = probs * (1/sum(probs))
+    zs = probs[thisCountyI] * numUrban # the inclusion probabilities
+    if(any(zs >= 1-1e-6)) {
+      warning("inclusion probabilities greater than one, modifying to be .999")
+      zs[zs >= 1-1e-6] = .999
+    }
+    probsEA[thisCountyI] = zs
+    
+    # rural samples (if the county has any)
+    if((countyName != "Mombasa") && (countyName != "Nairobi")) {
+      thisCountyI = countyI & !urban
+      # probs = thisCountyI * eaDat$popOrig
+      probs = thisCountyI * eaDat[["nHH"]]
+      probs = probs * (1/sum(probs))
+      zs = probs[thisCountyI] * numRural # the inclusion probabilities
+      if(any(zs >= 1-1e-6)) {
+        warning("inclusion probabilities greater than one, modifying to be .999")
+        zs[zs >= 1-1e-6] = .999
+      }
+      probsEA[thisCountyI] = zs
+    }
+  }
+  probsHH = probsEA * (25 / eaDat[["nHH"]])
+  
+  # calculate the sampling weights. Each child has probability of being sampled same as its household, 
+  # calculate the child's weight then multiply by number in HH or EA
+  sampleWeightsLong = eaDatLong[["numChildren"]] / probsHH[eaDatLong[["eaIs"]]]
+  # sampleWeights = eaDat[["numChildren"]] / probsHH
+  # sampleWeightsEA = sampleWeights
+  # sampleWeights = matrix(sampleWeights[eaIs], ncol=nsim)
+  getSampleWeightsCluster = function(i) {
+    sampleWeightsClusterLong = sampleWeightsLong[HHIs[,i]]
+    thisEAIs = eaDatLong[HHIs[,i], eaIs]
+    aggregate(sampleWeightsClusterLong, by=list(thisEAIs), FUN="sum")$x
+  }
+  sampleWeights = sapply(1:nsim, getSampleWeightsCluster)
+  
+  list(eaIs=eaIs, HHIs=HHIs, sampleWeights=sampleWeights)
 }
 
 expit = function(x) { exp(x)/(1+exp(x)) }
@@ -505,7 +857,7 @@ simDat = function(eaDat, clustDat=NULL, urbanProps=NULL, counties=as.character(c
 }
 
 # function for simulating data given enumeration areas and their info.  Simulate using 
-# LatticeKrig model on logit scale.  Note that this function has some notable differences with simDat:
+# SPDE or LatticeKrig model on logit scale.  Note that this function has some notable differences with simDat:
 # 1. allows for multiple simulations, although each of them share the same simulate EA data
 # 2. uses simClusters3 instead of simClusters2, which enables oversampling in urban or rural areas
 # urbanOverSample: ratio of probabilities passed to the sample function between urban and rural sampling probabilities
@@ -532,7 +884,7 @@ simDat = function(eaDat, clustDat=NULL, urbanProps=NULL, counties=as.character(c
 # useSPDE: simulate the datasets with SPDE model or LatticeKrig model
 simDat2 = function(eaDat, clustDat=NULL, nsim=1, margVar=4, nu=1, NC=5, effRange=300, 
                    nLayer=3, beta0=0, gamma=-1, tausq=1, normalize=TRUE, nBuffer=5, 
-                   womenFrac=1/3, urbanOverSample=1, numClusters=423, seed=NULL, fullEADat=NULL, 
+                   womenFrac=1/3, urbanOverSample=1, numClusters=423, seed=NULL, 
                    HHoldVar=0, fixedWomenPerClust=TRUE, useSPDE=TRUE) {
   if(!is.null(seed))
     set.seed(seed)
@@ -692,6 +1044,135 @@ simDatLK = function(eaDat, clustDat=NULL, nsim=1, margVar=4, nu=1.5, NC=5, effRa
   
   # return cluster data in Andrea's format:
   clustList = genAndreaFormatFromEAIs(eaDat, clustDat$eaIs, clustDat$sampleWeights)
+  
+  list(eaDat=eaDat, clustDat=clustList)
+}
+
+# function for simulating data given enumeration areas and their info.  Simulate using 
+# SPDE or LatticeKrig model on logit scale.  Note that this function has some notable differences with simDat:
+# 1. allows for multiple simulations, although each of them share the same simulate EA data
+# 2. uses simClusters3 instead of simClusters2, which enables oversampling in urban or rural areas
+# empiricalDistributions: the set of empirical distributions for households per cluster, 
+#                         mothers per household, and children per mother stratified by urban
+# urbanOverSample: ratio of probabilities passed to the sample function between urban and rural sampling probabilities
+#                  (see simClusters3 for more details)
+# eaDatShort: enumeration area data set in "short form" were each row is a cluster. 
+#             "long form" is where each row is a household.
+# clustDat: cluster samples data set
+# urbanProps: see simClusters2
+# counties: a vector of county names giving the order with which to simulate the data
+# nsim: number of simulations
+# margVar: marginal variance of the spatial process, excluding household end cluster effects
+# beta0: intercept of logit model for mortality rate
+# gamma: effect of urban on logit scale for logit model for mortality rate
+# tausq: cluster effect variance for logit model of mortality rate
+# womenFrac: proportion of total population in each cluster that is a woman
+# numClusters: number of clusters in the faux cluster data set
+# seed: random number generator seed
+simDatEmpirical = function(empiricalDistributions, eaDat, clustDat=NULL, nsim=1, 
+                           margVar=4, effRange=150, beta0=0, gamma=-1, tausq=1, 
+                           urbanOverSamplefrac=0, seed=NULL, 
+                           fullEADat=NULL, HHoldVar=0, nHHSampled=25) {
+  if(!is.null(seed))
+    set.seed(seed)
+  
+  ### simulate binomial data for each enumeration area
+  # first generate the number of households
+  numHouseholds = rep(0, nrow(eaDat))
+  numHouseholds[eaDat$urban] = recdf(sum(eaDat$urban), empiricalDistributions$householdsUrban)
+  numHouseholds[!eaDat$urban] = recdf(sum(!eaDat$urban), empiricalDistributions$householdsRural)
+  eaDat$nHH = numHouseholds
+  
+  # now expand the eaDat table to be in the long format, were each row is a house
+  rowsLong = rep(1:nrow(eaDat), numHouseholds)
+  eaDatLong = eaDat[rowsLong, ]
+  eaDatLong$eaIs = rowsLong
+  eaUrbanLong = eaDatLong$urban
+  
+  # generate how many women and childen are in each cluster
+  numWomenLong = rep(0, length(eaUrbanLong))
+  numWomenLong[eaUrbanLong] = recdf(sum(eaUrbanLong), empiricalDistributions$mothersUrban)
+  numWomenLong[!eaUrbanLong] = recdf(sum(!eaUrbanLong), empiricalDistributions$mothersRural)
+  eaDatLong$numWomen = numWomenLong
+  
+  # now expand the eaDat table to be in the extra long format, were each row is a mother
+  rowsExtraLong = rep(1:length(eaUrbanLong), numWomenLong)
+  eaUrbanExtraLong = eaUrbanLong[rowsExtraLong]
+  
+  # generate the number of children per mother
+  numChildrenExtraLong = rep(0, length(eaUrbanExtraLong))
+  numChildrenExtraLong[eaUrbanExtraLong] = recdf(sum(eaUrbanExtraLong), empiricalDistributions$childrenUrban)
+  numChildrenExtraLong[!eaUrbanExtraLong] = recdf(sum(!eaUrbanExtraLong), empiricalDistributions$childrenRural)
+  
+  # aggregate up from mother to household level
+  numChildrenLong = rep(0, length(eaUrbanLong))
+  numChildrenLong[numWomenLong!=0] = aggregate(numChildrenExtraLong, list(rowsExtraLong), sum)$x
+  eaDatLong$numChildren = numChildrenLong
+  
+  ### generate Binomial probabilities from transformed logit scale GP
+  # generate Lattice Krig simulations
+  eaCoords = cbind(eaDat$east, eaDat$north)
+  print("Simulating nationwide mortality rates and data")
+  SPDEArgs = list(coords=eaCoords, nsim=1, margVar=margVar, effRange=effRange)
+  simVals = do.call("simSPDE", SPDEArgs)
+  
+  # add in intercept
+  simVals = simVals + beta0
+  
+  # add in urban effect
+  simVals = sweep(simVals, 1, gamma*eaDat$urban, "+")
+  
+  # add in nugget/cluster effect
+  simValsNug = simVals + matrix(rnorm(length(simVals), sd=sqrt(tausq)), ncol=1)
+  simValsNugLong = simValsNug[rowsLong]
+  
+  if(HHoldVar != 0) {
+    simValsFinalLong = simValsNugLong + matrix(rnorm(length(simValsNugLong), sd=sqrt(HHoldVar)), ncol=1)
+    probsFinalLong = expit(simValsFinalLong)
+    eaDiedLong = matrix(rbinom(nrow(eaDatLong)*nsim, eaDatLong$numChildren, probsFinalLong), ncol=nsim)
+  }
+  else {
+    probsFinalLong = expit(simValsNugLong)
+    eaDiedLong = matrix(rbinom(nrow(eaDatLong)*nsim, eaDatLong$numChildren, rep(probsFinalLong, nsim)), ncol=nsim)
+  }
+  # transform back to original scale for the cluster level probabilities
+  probs = expit(simValsNug)
+  probsNoNug = expit(simVals)
+  probsNoNugLong = probsNoNug[rowsLong]
+  probsNugLong = probs[rowsLong]
+  
+  eaDatLong$died = eaDiedLong
+  eaDatLong$probsHH = probsFinalLong
+  eaDatLong$trueProbDeathNoNug = probsNoNugLong
+  eaDatLong$trueProbDeath = probsNugLong # technically, probsHH is the true probability at the household level
+  
+  # aggregate up from household to cluster level
+  numChildren = aggregate(numChildrenLong, list(rowsLong), sum)$x
+  numWomen = aggregate(numWomenLong, list(rowsLong), sum)$x
+  eaDied = aggregate(c(eaDiedLong), list(rowsLong), sum)$x
+  
+  eaDat = as.data.frame(eaDat)
+  eaDat$died = eaDied
+  eaDat$numWomen = numWomen
+  eaDat$numChildren = numChildren
+  eaDat$trueProbDeath = probs
+  eaDat$trueProbDeathNoNug = probsNoNug
+  
+  ### sample clusters and households within EAs
+  # first generate clusters
+  # if(is.null(clustDat))
+  #   clustDat = simClusters2(eaDat, numClusters, urbanProps, counties, seed=NULL)
+  if(is.null(clustDat)) {
+    print("simulation cluster locations:")
+    # clustDat = simClusters3(eaDat, numClusters, urbanOverSample, nsim)
+    clustDat = simClustersEmpirical(eaDat, eaDatLong, nsim, NULL, urbanOverSamplefrac, nHHSampled)
+  }
+  
+  # return simulated data
+  print("finishing up...")
+  
+  # return cluster data in Andrea's format:
+  clustList = genAndreaFormatFromEAIsLong(eaDat, clustDat$eaIs, eaDatLong, clustDat$HHIs, clustDat$sampleWeights)
   
   list(eaDat=eaDat, clustDat=clustList)
 }

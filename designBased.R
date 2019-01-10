@@ -11,11 +11,14 @@ library(INLA)
 # load("simDataMulti.RData")
 # load a different 1 of these depending on whether a cluster effect should be included 
 # in the simulation of the data or not (tausq is the cluster effect variance)
-load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOver2.RData")
+# load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOver2.RData")
 # load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOver2.RData")
 
+# load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0.25.RData")
+load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0.25.RData")
+
 # include urban/rural effect
-includeUrbanRural = TRUE
+includeUrbanRural = FALSE
 
 # Get true ratios of urban/rural
 urbRatio = vector('numeric', length = 47)
@@ -212,8 +215,8 @@ processSamples = function(samp){
     designRes = list(SRSdat = resSRSdat,
                      overSampDat = resOverSRSdat)
     # save(file = 'kenyaSpatialDesignResultNew.RData', designRes = designRes)
-    save(file = paste0('kenyaSpatialDesignResultNewTausq0UrbRur', 
-                         includeUrbanRural, '.RData'), designRes = designRes)
-    # save(file = paste0('kenyaSpatialDesignResultNewTausq0.01UrbRur', 
-    #                    includeUrbanRural, '.RData'), designRes = designRes)
+    # save(file = paste0('kenyaSpatialDesignResultNewTausq0UrbRur', 
+    #                      includeUrbanRural, '.RData'), designRes = designRes)
+    save(file = paste0('kenyaSpatialDesignResultNewTausq0.01UrbRur',
+                       includeUrbanRural, '.RData'), designRes = designRes)
     
