@@ -23,7 +23,7 @@ getDirectNaive = function(tausq=0.1^2, test=FALSE) {
   for(j in 1:length(SRSDat[[2]])){
     print(paste0("j: ", j))
     nChildrenSRS = sapply(SRSDat$clustDat, function(x) {x$numChildren})
-    nChildrenOverSamp = sapply(SRSDat$clustDat, function(x) {x$numChildren})
+    nChildrenOverSamp = sapply(overSampDat$clustDat, function(x) {x$numChildren})
     startISRS = 1
     startIOverSamp = 1
     for(i in 1:nrow(SRSDat[[2]][[j]])){

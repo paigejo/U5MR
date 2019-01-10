@@ -1,2 +1,3 @@
 source("setup.R")
-getDirectNaive(tausq=0)
+source("getMercer.R")
+getMercer(tausq=0)

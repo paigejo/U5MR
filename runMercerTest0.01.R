@@ -1,2 +1,3 @@
 source("setup.R")
-getDirectNaive(test=TRUE)
+source("getMercer.R")
+getMercer(test=TRUE)
