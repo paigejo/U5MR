@@ -1,0 +1,2 @@
+source("setup.R")
+getDirectNaive()
