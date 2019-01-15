@@ -344,6 +344,14 @@ recdf = function(n, distribution) {
   quantile(distribution, probs, type=1) # type=1 signifies inverse ecdf
 }
 
+# get expectation of an ecdf object
+ecdfExpectation = function(distribution) {
+  distributionKnots = knots(distribution)
+  distributionKnots = c(distributionKnots[1] - 1, distributionKnots)
+  probs = distribution(distributionKnots[2:length(distributionKnots)]) - distribution(distributionKnots[1:(length(distributionKnots) - 1)])
+  sum(distributionKnots[2:length(distributionKnots)] * probs)
+}
+
 # this function generates the sampling 
 # probabilities of EAs within this strata
 # i: the strata index, 1-47, corresponding to the row of easpc

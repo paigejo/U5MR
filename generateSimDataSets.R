@@ -1,6 +1,8 @@
-load("simDat.RData")
+# load("simDat.RData")
 library(profvis)
+library(logitnorm)
 source("setup.R")
+setwd("~/Google Drive/UW/Wakefield/WakefieldShared/U5MR/")
 
 ##### the code below does not use the same enumeration areas for each simulation, 
 ##### which was why was commented out
@@ -40,11 +42,22 @@ source("setup.R")
 #2: In doTryCatch(return(expr), name, parentenv, handler) :
 #  restarting interrupted promise evaluation
 
+
+
 # unlike the above script, this script holds the EA data for each simulation fixed, 
 # each simulation instead varying which clusters were sampled
 # urbanOverSample: within any county, any individual urban EA is urbanOverSample times 
 #                  as likely to be sampled than any individual rural EA to be a cluster
 # nsim=100
+
+# generate the empirical distributions and save them
+# wd = getwd()
+# setwd("~/Google Drive/UW/Wakefield/WakefieldShared/U5MR/")
+# empiricalDistributions = getSurveyEmpiricalDistributions2()
+# save(empiricalDistributions, file="empiricalDistributions.RData")
+# save(empiricalDistributions, file="~/git/U5MR/empiricalDistributions.RData")
+# setwd(wd)
+
 nsim=100
 set.seed(580252)
 beta0 = -1.75
@@ -55,7 +68,8 @@ gamma = -1
 HHoldVar = 0
 # urbanOverSample = 2
 effRange = 150
-urbanOverSamplefrac = 0.25
+# urbanOverSamplefrac = 0.25
+urbanOverSamplefrac = 0
 
 # there should be 1 true data set, but many simulated cluster samples
 # simulatedEAs = simDat2(kenyaEAs, clustDat=NULL, nsim=1, urbanOverSample=urbanOverSample,
@@ -83,11 +97,11 @@ overSampDatTest = list(eaDat=simulatedEAs$eaDat, clustDat=clustListTest)
 
 # SRSClustDat = simClusters3(kenyaEAs, urbanOverSample=1, nsim=nsim)
 # SRSClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsim, NULL, 0, 25)
-SRSClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsim, NULL, verbose=FALSE)
+SRSClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsim, NULL, SRS=TRUE, verbose=FALSE)
 clustList = genAndreaFormatFromEAIs(simulatedEAs$eaDat, SRSClustDat$eaIs, SRSClustDat$sampleWeights)
 SRSDat = list(eaDat=simulatedEAs$eaDat, clustDat=clustList) # the only thing different is the sampling of the clusters
 
-SRSClustDatTest = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsim, NULL, fixedPerStrata=TRUE, nPerStrata=3, verbose=FALSE)
+SRSClustDatTest = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsim, NULL, fixedPerStrata=TRUE, nPerStrata=3, SRS=TRUE, verbose=FALSE)
 clustListTest = genAndreaFormatFromEAIs(simulatedEAs$eaDat, SRSClustDatTest$eaIs, SRSClustDatTest$sampleWeights)
 SRSDatTest = list(eaDat=simulatedEAs$eaDat, clustDat=clustListTest) # the only thing different is the sampling of the clusters
 
@@ -130,7 +144,7 @@ SRSDat = SRSDatTest
 save(overSampDat, SRSDat, file=paste0("simDataMultiBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
                                       round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar", HHoldVar, "urbanOverSamplefrac", 
                                       round(urbanOverSamplefrac, 4), "Test.RData"))
-load(paste0("simDataMultiBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+out = load(paste0("simDataMultiBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
             round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar", HHoldVar, "urbanOverSamplefrac", 
             round(urbanOverSamplefrac, 4), ".RData"))
 
@@ -204,11 +218,13 @@ dev.off()
 setwd(wd)
 
 # check to make sure there are at least three clusters in each strata
-getStrata = function(dat) {
-  strata = dat$urban * 47 + match(dat$admin1, easpc$County) - 1 # subtract 1 since Mombasa is not rural
-  strata[strata  >= 46] = strata[strata  >= 46]-1 # subtract 1 since Nairobi is not rural
-  strata
-}
-test = sapply(SRSDat$clustDat, getStrata)
-temp = apply(test, 2, table)
-min(temp)
+# getStrata = function(dat) {
+#   strata = dat$urban * 47 + match(dat$admin1, easpc$County) - 1 # subtract 1 since Mombasa is not rural
+#   strata[strata  >= 46] = strata[strata  >= 46]-1 # subtract 1 since Nairobi is not rural
+#   strata
+# }
+# test = sapply(SRSDat$clustDat, getStrata)
+# temp = apply(test, 2, table)
+# min(temp)
+
+setwd("~/git/U5MR/")

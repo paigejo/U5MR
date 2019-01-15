@@ -101,3 +101,5 @@ if(!exists("doParallel") || (exists("doParallel") && doParallel == FALSE)) {
   assign("cores", NULL, envir=.GlobalEnv)
   assign("cl", NULL, envir=.GlobalEnv)
 }
+
+options(error=recover)

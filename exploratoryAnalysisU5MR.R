@@ -891,7 +891,79 @@ barplot(childrenValsRural / by, main="Children Per Mother (Rural)", xlab="Childr
 axis(1,at=0:(max(xRange)-1)+.5,labels=1:max(xRange))
 dev.off()
 
+# expected households per cluster
+ecdfExpectation(empiricalDistributions$householdsUrban) # 92.81475
+ecdfExpectation(empiricalDistributions$householdsRural) # 87.7717
 
+# expected children per cluster (assuming independence of children per mother and mothers per household conditional on urbanicity)
+ecdfExpectation(empiricalDistributions$householdsUrban) * ecdfExpectation(empiricalDistributions$mothersUrban) * 
+  ecdfExpectation(empiricalDistributions$childrenUrban) # 42.06381
+ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiricalDistributions$mothersRural) * 
+  ecdfExpectation(empiricalDistributions$childrenRural) # 61.15194
 
+# expected children per household (assuming independence of children per mother and mothers per household conditional on urbanicity)
+ecdfExpectation(empiricalDistributions$mothersUrban) * ecdfExpectation(empiricalDistributions$childrenUrban) # 0.4532017 urban
+ecdfExpectation(empiricalDistributions$mothersRural) * ecdfExpectation(empiricalDistributions$childrenRural) # 0.6967159 rural
 
+# test sampling weights:
+getWeightedMean = function(clusterDat) {
+  weights = clusterDat$samplingWeight
+  weights = weights / sum(weights)
+  props = clusterDat$died / clusterDat$numChildren
+  sum(props * weights)
+}
+getWeightedSum = function(clusterDat, N=3906862) {
+  weights = clusterDat$samplingWeight
+  weights = weights / sum(weights)
+  died = clusterDat$died
+  sum(died * weights) * (N / sum(clusterDat$numChildren))
+}
+# if(tausq == .1^2) {
+#   # out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOver2.RData")
+#   if(test) {
+#     out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0.25Test.RData")
+#   } else {
+    out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0.25.RData")
+#   }
+# }
+# else {
+#   if(tausq != 0)
+#     stop("tausq can only be equal to .1^2 or 0")
+#   
+#   # out = load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOver2.RData")
+#   if(test) {
+#     out = load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0.25Test.RData")
+#   } else {
+    out = load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0.25.RData")
+#   }
+# }
+mean(sapply(SRSDat$clustDat, getWeightedMean))
+mean(SRSDat$eaDat$died / SRSDat$eaDat$numChildren)
+sum(SRSDat$eaDat$died) / sum(SRSDat$eaDat$numChildren)
+
+mean(sapply(SRSDat$clustDat, function(x) {sum(x$samplingWeight)}))
+
+sum(SRSDat$eaDat$numChildren)
+mean(sapply(SRSDat$clustDat, getWeightedSum))
+sum(SRSDat$eaDat$died)
+
+## are urban areas overrepresented by the DHS?
+# see if urban clusters are overrepresented/oversampled (yes they are when averaging over county, but total urban versus total rural is good)
+mean((clustpc$clustUrb / clustpc$clustRur)  / (easpc$EAUrb / easpc$EARur), na.rm=TRUE)
+mean((clustpc$clustUrb / clustpc$clustRur)  - (easpc$EAUrb / easpc$EARur), na.rm=TRUE)
+sum(clustpc$clustUrb) / sum(clustpc$clustTotal)
+sum(easpc$EAUrb) / sum(easpc$EATotal)
+cbind(clustpc$clustTotal, (clustpc$clustUrb / clustpc$clustRur)  / (easpc$EAUrb / easpc$EARur))
+plot(clustpc$clustTotal, (clustpc$clustUrb / clustpc$clustRur)  / (easpc$EAUrb / easpc$EARur)) # as the total number of clusters increases, urban areas are over5sampled less
+
+# see if urban children are overrepresented/oversampled (yes they are when averaging over county, but total urban versus total rural is good)
+mean(((clustpc$clustUrb * 0.4532017) / (clustpc$clustRur * 0.6967159))  / ((easpc$EAUrb * 0.4532017) / (easpc$EARur * 0.6967159)), na.rm=TRUE)
+mean(((clustpc$clustUrb * 0.4532017) / (clustpc$clustRur * 0.6967159)) - ((easpc$EAUrb * 0.4532017) / (easpc$EARur * 0.6967159)), na.rm=TRUE)
+sum(clustpc$clustUrb * 0.4532017) / sum(clustpc$clustRur * 0.6967159)
+sum(easpc$EAUrb * 0.4532017) / sum(easpc$EARur * 0.6967159)
+
+# expected children per household (assuming independence of children per mother and mothers per household conditional on urbanicity)
+ecdfExpectation(empiricalDistributions$mothersUrban) * ecdfExpectation(empiricalDistributions$childrenUrban) # 0.4532017 urban
+ecdfExpectation(empiricalDistributions$mothersRural) * ecdfExpectation(empiricalDistributions$childrenRural) # 0.6967159 rural
+poppc$
 

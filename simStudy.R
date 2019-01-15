@@ -183,10 +183,10 @@ getSurveyEmpiricalDistributions2 = function(data=NULL, dataDHS=NULL, maxAge=4) {
   
   nMothers = outMothers[["nMothers"]]
   nMothersUrban = outMothers[urban == TRUE, nMothers]
-  nMothersRural = outMothers[urban == TRUE, nMothers]
+  nMothersRural = outMothers[urban == FALSE, nMothers]
   nChildren = outChildren[["nChildren"]]
   nChildrenUrban = outChildren[urban == TRUE, nChildren]
-  nChildrenRural = outChildren[urban == TRUE, nChildren]
+  nChildrenRural = outChildren[urban == FALSE, nChildren]
   
   householdDistribution = ecdf(nHouseholds)
   motherDistribution = ecdf(nMothers)
@@ -589,8 +589,9 @@ genClustDatFromEAIsLong = function(eaDat, eaIs, eaDatLong, HHIs, sampleWeights, 
 # in the cluster sample.  Simulate same number of clusters per county (9)
 # eaDatLong: long format enumeration area table, where each row is a household
 # nPerStrata: if fixedPerStrata == TRUE, this is the number of clusters sampled per strata
+# SRS: either SRS or PPS sampling
 simClustersEmpirical = function(eaDat, eaDatLong, nsim=1, seed=NULL, urbanOverSamplefrac=0, 
-                                nHHSampled=25, fixedPerStrata=FALSE, nPerStrata=3, verbose=TRUE) {
+                                nHHSampled=25, fixedPerStrata=FALSE, nPerStrata=3, SRS=FALSE, verbose=TRUE) {
   if(!is.null(seed))
     set.seed(seed)
   
@@ -639,7 +640,10 @@ simClustersEmpirical = function(eaDat, eaDatLong, nsim=1, seed=NULL, urbanOverSa
       # urban samples
       thisCountyI = countyI & urban
       # probs = thisCountyI * eaDat$popOrig
-      probs = thisCountyI * eaDat$nHH
+      if(SRS)
+        probs = thisCountyI
+      else
+        probs = thisCountyI * eaDat$nHH
       probs = probs/sum(probs)
       # allSamples = c(allSamples, sample(1:nrow(eaDat), numUrban, FALSE, prob=probs))
       zs = probs[thisCountyI] * numUrban # the inclusion probabilities
@@ -656,7 +660,10 @@ simClustersEmpirical = function(eaDat, eaDatLong, nsim=1, seed=NULL, urbanOverSa
       if((countyName != "Mombasa") && (countyName != "Nairobi")) {
         thisCountyI = countyI & !urban
         # probs = thisCountyI * eaDat$popOrig
-        probs = thisCountyI * eaDat$nHH
+        if(SRS)
+          probs = thisCountyI
+        else
+          probs = thisCountyI * eaDat$nHH
         probs = probs/sum(probs)
         
         zs = probs[thisCountyI] * numRural # the inclusion probabilities
@@ -707,7 +714,10 @@ simClustersEmpirical = function(eaDat, eaDatLong, nsim=1, seed=NULL, urbanOverSa
     
     # urban samples
     thisCountyI = countyI & urban
-    probs = thisCountyI * eaDat[["nHH"]]
+    if(SRS)
+      probs = thisCountyI
+    else
+      probs = thisCountyI * eaDat[["nHH"]]
     probs = probs * (1/sum(probs))
     zs = probs[thisCountyI] * numUrban # the inclusion probabilities
     if(any(zs >= 1-1e-6)) {
@@ -720,7 +730,10 @@ simClustersEmpirical = function(eaDat, eaDatLong, nsim=1, seed=NULL, urbanOverSa
     if((countyName != "Mombasa") && (countyName != "Nairobi")) {
       thisCountyI = countyI & !urban
       # probs = thisCountyI * eaDat$popOrig
-      probs = thisCountyI * eaDat[["nHH"]]
+      if(SRS)
+        probs = thisCountyI
+      else
+        probs = thisCountyI * eaDat[["nHH"]]
       probs = probs * (1/sum(probs))
       zs = probs[thisCountyI] * numRural # the inclusion probabilities
       if(any(zs >= 1-1e-6)) {

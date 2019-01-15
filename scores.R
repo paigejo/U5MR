@@ -37,7 +37,7 @@ mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=25){
 
 bias <- function(truth, my.est, logit=TRUE, my.var=NULL, n=25){
   
-  if(!logit){
+  if(!logit) {
     # this is the bias of the median prediction, not the mean
     # truth = expit(truth)
     # my.est = expit(my.est)
@@ -142,6 +142,13 @@ coverage = function(truth, lower, upper, logit = TRUE){
     lower = expit(lower)
     upper = expit(upper)
     # truth = expit(truth)
+  }
+  
+  if(lower >= upper) {
+    warning("lower >= upper, reordering")
+    tmp = lower
+    lower = upper
+    upper = tmp
   }
   
   res = mean(lower <= truth & upper >= truth)
