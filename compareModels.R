@@ -24,7 +24,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   resultType = match.arg(resultType)
   sampling = match.arg(sampling)
   
-  if(tausq == .1^2) {
+  if(tausq == .1^2 || tausq == .01) {
     # out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOver2.RData")
     if(test) {
       out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0.25Test.RData")
@@ -90,7 +90,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   models = allModels[modelsI]
   
   # load data
-  if(tausq == .1^2) {
+  if(tausq == .1^2 || tausq == 0.01) {
     if(test) {
       if("naive" %in% models || "direct" %in% models)
         out = load("resultsDirectNaiveTausq0.01Test.RData")
@@ -440,7 +440,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
       } else {
         stop("direct estimates must be included at this point in order to name the estimate table columns")
       }
-      if("knife" %in% models)
+      if("naive" %in% models)
         allresoverSamp = merge(allresoverSamp, naiveoverSampi, by=resultType)
       if("mercer" %in% models)
         allresoverSamp = merge(allresoverSamp, merceroverSampi, by=resultType)
@@ -451,7 +451,11 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
     }
     
     # set whether or not to calculate scores on logit scale depending on result type
-    thisTruth = allresSRS$truth
+    if(sampling == "SRS")
+      thisTruth = allresSRS$truth
+    else
+      thisTruth = allresoverSamp$truth
+    
     if(is.null(uselogit)) {
       useLogit = FALSE
       if(resultType != "EA" && resultType != "pixel") {
@@ -619,6 +623,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.dssoverSampdirect = dss(thisTruth, allresoverSamp$logit.estdirect, allresoverSamp$var.estdirect)
         my.crpsoverSampdirect = crpsNormal(thisTruth, allresoverSamp$logit.estdirect, allresoverSamp$var.estdirect, resultType=resultType)
         my.coverageoverSampdirect = coverage(thisTruth, allresoverSamp$upperdirect, allresoverSamp$lowerdirect, logit=useLogit)
+        my.lengthoverSampdirect = intervalWidth(allresoverSamp$lowerdirect, allresoverSamp$upperdirect, logit=useLogit)
       }
       
       if("naive" %in% models) {
@@ -627,6 +632,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.dssoverSampnaive = dss(thisTruth, allresoverSamp$logit.est, allresoverSamp$var.est)
         my.crpsoverSampnaive = crpsNormal(thisTruth, allresoverSamp$logit.est, allresoverSamp$var.est, resultType=resultType)
         my.coverageoverSampnaive = coverage(thisTruth, allresoverSamp$upper, allresoverSamp$lower, logit=useLogit)
+        my.lengthoverSampnaive = intervalWidth(allresoverSamp$lower, allresoverSamp$upper, logit=useLogit)
       }
       
       if("mercer" %in% models) {
@@ -635,6 +641,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.dssoverSampmercer = dss(thisTruth, allresoverSamp$logit.est.mercer, allresoverSamp$var.est.mercer)
         my.crpsoverSampmercer = crpsNormal(thisTruth, allresoverSamp$logit.est.mercer, allresoverSamp$var.est.mercer, resultType=resultType)
         my.coverageoverSampmercer = coverage(thisTruth, allresoverSamp$lower.mercer, allresoverSamp$upper.mercer, logit=useLogit)
+        my.lengthoverSampmercer = intervalWidth(allresoverSamp$lower.mercer, allresoverSamp$upper.mercer, logit=useLogit)
       }
       
       if("bymNoUrb" %in% models) {
@@ -643,6 +650,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.dssoverSampbymNoUrb = dss(thisTruth, designResNoUrb$overSampDat$mean[,i], (designResNoUrb$overSampDat$stddev[,i])^2)
         my.crpsoverSampbymNoUrb = crpsNormal(thisTruth, designResNoUrb$overSampDat$mean[,i], (designResNoUrb$overSampDat$stddev[,i])^2, resultType=resultType)
         my.coverageoverSampbymNoUrb = coverage(thisTruth, designResNoUrb$overSampDat$Q10[,i],designResNoUrb$overSampDat$Q90[,i], logit=useLogit)
+        my.lengthoverSampbymNoUrb = intervalWidth(designResNoUrb$overSampDat$Q10[,i], designResNoUrb$overSampDat$Q90[,i], logit=useLogit)
       }
       
       if("bym" %in% models) {
@@ -651,6 +659,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.dssoverSampbym = dss(thisTruth, designRes$overSampDat$mean[,i], (designRes$overSampDat$stddev[,i])^2)
         my.crpsoverSampbym = crpsNormal(thisTruth, designRes$overSampDat$mean[,i], (designRes$overSampDat$stddev[,i])^2, resultType=resultType)
         my.coverageoverSampbym = coverage(thisTruth, designRes$overSampDat$Q10[,i],designRes$overSampDat$Q90[,i], logit=useLogit)
+        my.lengthoverSampbym = intervalWidth(designRes$overSampDat$Q10[,i], designRes$overSampDat$Q90[,i], logit=useLogit)
       }
       
       if("spdeNoUrb" %in% models) {
@@ -659,6 +668,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.dssoverSampspdeNoUrb = dss(thisTruth, allresoverSamp$logit.est.spdeNoUrb, allresoverSamp$var.est.spdeNoUrb)
         my.crpsoverSampspdeNoUrb = crpsNormal(thisTruth, allresoverSamp$logit.est.spdeNoUrb, allresoverSamp$var.est.spdeNoUrb, resultType=resultType)
         my.coverageoverSampspdeNoUrb = coverage(thisTruth, allresoverSamp$lower.spdeNoUrb, allresoverSamp$upper.spdeNoUrb, logit=useLogit)
+        my.lengthoverSampspdeNoUrb = intervalWidth(allresoverSamp$lower.spdeNoUrb, allresoverSamp$upper.spdeNoUrb, logit=useLogit)
       }
       
       if("spde" %in% models) {
@@ -667,6 +677,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.dssoverSampspde = dss(thisTruth, allresoverSamp$logit.est.spde, allresoverSamp$var.est.spde)
         my.crpsoverSampspde = crpsNormal(thisTruth, allresoverSamp$logit.est.spde, allresoverSamp$var.est.spde, resultType=resultType)
         my.coverageoverSampspde = coverage(thisTruth, allresoverSamp$lower.spde, allresoverSamp$upper.spde, logit=useLogit)
+        my.lengthoverSampspde = intervalWidth(allresoverSamp$lower.spde, allresoverSamp$upper.spde, logit=useLogit)
       }
       
       if("direct" %in% models) {
@@ -677,7 +688,8 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
                                                  dss=my.dssoverSampdirect,
                                                  coverage=my.coverageoverSampdirect, 
                                                  var=mean(allresoverSamp$var.estdirect),
-                                                 crps=my.crpsoverSampdirect))
+                                                 crps=my.crpsoverSampdirect, 
+                                                 length=my.lengthoverSampdirect))
       }
       
       if("naive" %in% models) {
@@ -688,7 +700,8 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
                                                dss=my.dssoverSampnaive,
                                                coverage=my.coverageoverSampnaive, 
                                                var=mean(allresoverSamp$var.est),
-                                               crps=my.crpsoverSampnaive))
+                                               crps=my.crpsoverSampnaive, 
+                                               length=my.lengthoverSampnaive))
       }
       
       if("mercer" %in% models) {
@@ -699,7 +712,8 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
                                                 dss=my.dssoverSampmercer,
                                                 coverage=my.coverageoverSampmercer, 
                                                 var=mean(allresoverSamp$var.est.mercer),
-                                                crps=my.crpsoverSampmercer))
+                                                crps=my.crpsoverSampmercer, 
+                                                length=my.lengthoverSampmercer))
       }
       
       if("bymNoUrb" %in% models) {
@@ -710,7 +724,8 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
                                                    dss=my.dssoverSampbymNoUrb,
                                                    coverage=my.coverageoverSampbymNoUrb, 
                                                    var=mean((designResNoUrb$overSampDat$stddev[,i])^2),
-                                                   crps=my.crpsoverSampbymNoUrb))
+                                                   crps=my.crpsoverSampbymNoUrb, 
+                                                   length=my.lengthoverSampbymNoUrb))
       }
       
       if("bym" %in% models) {
@@ -721,7 +736,8 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
                                               dss=my.dssoverSampbym,
                                               coverage=my.coverageoverSampbym, 
                                               var=mean((designRes$overSampDat$stddev[,i])^2),
-                                              crps=my.crpsoverSampbym))
+                                              crps=my.crpsoverSampbym, 
+                                              length=my.lengthoverSampbym))
       }
       
       if("spdeNoUrb" %in% models) {
@@ -732,7 +748,8 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
                                                     dss=my.dssoverSampspdeNoUrb,
                                                     coverage=my.coverageoverSampspdeNoUrb, 
                                                     var=mean(allresoverSamp$var.est.spdeNoUrb),
-                                                    crps=my.crpsoverSampspdeNoUrb))
+                                                    crps=my.crpsoverSampspdeNoUrb, 
+                                                    length=my.lengthoverSampspdeNoUrb))
       }
       
       
@@ -744,7 +761,8 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
                                                dss=my.dssoverSampspde,
                                                coverage=my.coverageoverSampspde, 
                                                var=mean(allresoverSamp$var.est.spde),
-                                               crps=my.crpsoverSampspde))
+                                               crps=my.crpsoverSampspde, 
+                                               length=my.lengthoverSampspde))
       }
       
     }
