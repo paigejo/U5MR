@@ -63,22 +63,27 @@ getDirectNaive = function(tausq=0.1^2, test=FALSE, loadResults=FALSE, big=FALSE)
 
         # initialize the data frames on the first iteration only
         if(i == 1) {
-          resSRS = as.data.frame(matrix(nrow=sum(SRSDat[[2]][[j]]$numChildren), ncol=ncol(tmpSRS)))
-          resoverSamp = as.data.frame(matrix(nrow=sum(overSampDat[[2]][[j]]$numChildren), ncol=ncol(tmpoverSamp)))
+          resSRS = as.data.frame(matrix(nrow=sum(SRSDat[[2]][[j]]$numChildren), ncol=ncol(tmpSRS) + 1))
+          resoverSamp = as.data.frame(matrix(nrow=sum(overSampDat[[2]][[j]]$numChildren), ncol=ncol(tmpoverSamp) + 1))
         }
 
         # append to the data frames
-        names(resSRS) = names(tmpSRS)
-        names(resoverSamp) = names(tmpoverSamp)
+        names(resSRS) = c(names(tmpSRS), "regionRural")
+        names(resoverSamp) = c(names(tmpoverSamp), "regionRural")
         endISRS = startISRS + nrow(tmpSRS) - 1
         endIoverSamp = startIoverSamp + nrow(tmpoverSamp) - 1
-        resSRS[startISRS:endISRS,] = tmpSRS
-        resoverSamp[startIoverSamp:endIoverSamp,] = tmpoverSamp
+        resSRS[startISRS:endISRS, 1:ncol(tmpSRS)] = tmpSRS
+        resoverSamp[startIoverSamp:endIoverSamp, 1:ncol(tmpoverSamp)] = tmpoverSamp
 
         # update row index
         startISRS = endISRS + 1
         startIoverSamp = endIoverSamp + 1
       }
+      
+      # add in RegionRural interaction
+      resSRS$regionRural <- with(resSRS, interaction(admin1, urban), drop=TRUE)
+      resoverSamp$regionRural <- with(resoverSamp, interaction(admin1, urban), drop=TRUE)
+      
       if(any(is.na(resSRS)) || any(is.na(resoverSamp)))
         stop()
       data4directSRS[[j]] = resSRS

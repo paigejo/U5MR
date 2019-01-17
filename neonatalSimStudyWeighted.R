@@ -35,7 +35,9 @@ extendData <- function(clustDatRow, v001, divideWeight=TRUE){
 
   res = merge(data.frame(died, ageMonth, ageGrpD, v001, v002, urbanRural), tmp, by="v001")
   
-  res$regionRural <- with(res, interaction(admin1, urbanRural), drop=TRUE)
+  # the below line was commented out since each cluster only has one type of admin and urban level. 
+  # The equivalent line has been added into the parent function
+  # res$regionRural <- with(res, interaction(admin1, urbanRural), drop=TRUE)
   
   if(divideWeight)
     res$samplingWeight = res$samplingWeight / nC

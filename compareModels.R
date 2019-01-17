@@ -27,9 +27,9 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   if(tausq == .1^2 || tausq == .01) {
     # out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOver2.RData")
     if(test) {
-      out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0.25Test.RData")
+      out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0Test.RData")
     } else {
-      out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0.25.RData")
+      out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0.RData")
     }
   }
   else {
@@ -38,9 +38,9 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
     
     # out = load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOver2.RData")
     if(test) {
-      out = load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0.25Test.RData")
+      out = load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0Test.RData")
     } else {
-      out = load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0.25.RData")
+      out = load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0.RData")
     }
   }
   eaDat = SRSDat$eaDat
@@ -252,7 +252,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
     designRes$overSampDat$stddev = getSubLevelResults(designRes$overSampDat$stddev)
   }
   
-  for(i in c(1:100)) { # for problem fitting mercerSRS for SRS sampling, tausq=0
+  for(i in c(1:length(clustDat$clustDat))) { # for problem fitting mercerSRS for SRS sampling, tausq=0
     # for(i in 1:100) {
     print(i)
     resultName = paste0(resultType, "Results")
@@ -848,10 +848,10 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
       spde = apply(scoresSPDEoverSamp[, c("bias", "mse", "dss", "crps","var", "coverage", "length")], 2, mean)
     idx = c(1,2,5,4,6,7)
     tab = c()
-    if("direct" %in% models)
-      tab = rbind(tab, c(direct[idx]))
     if("naive" %in% models)
       tab = rbind(tab, c(naive[idx]))
+    if("direct" %in% models)
+      tab = rbind(tab, c(direct[idx]))
     if("mercer" %in% models)
       tab = rbind(tab, c(mercer[idx]))
     if("bym" %in% models)
