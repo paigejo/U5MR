@@ -17,31 +17,28 @@ source("scores.R")
 # produceFigures: whether or not to produce figures based on the results
 # uselogit: whether or not to produce scoring rule results at the logit or count scale. 
 #           By default this is to use loaded scale results unless the resultType is EA or pixel
+# printIEvery: how often to print progress
 runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixel", "EA"), 
                             sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:3, 
-                            produceFigures=FALSE, uselogit=NULL) {
+                            produceFigures=FALSE, uselogit=NULL, big=FALSE, printIEvery=50) {
   # match the arguments with their correct values
   resultType = match.arg(resultType)
   sampling = match.arg(sampling)
   
+  # test to make sure only the naive and direct models are included if big is set to TRUE
+  if(!all(modelsI == 1:2) && big)
+    stop("if big is set to TRUE, only naive and direct results can be included")
+  
+  testText = ifelse(test, "Test", "")
+  bigText = ifelse(big, "Big", "")
   if(tausq == .1^2 || tausq == .01) {
-    # out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOver2.RData")
-    if(test) {
-      out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0Test.RData")
-    } else {
-      out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0.RData")
-    }
+    out = load(paste0("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0", testText, bigText, ".RData"))
   }
   else {
     if(tausq != 0)
       stop("tausq can only be equal to .1^2 or 0")
     
-    # out = load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOver2.RData")
-    if(test) {
-      out = load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0Test.RData")
-    } else {
-      out = load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0.RData")
-    }
+    out = load(paste0("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0", testText, bigText, ".RData"))
   }
   eaDat = SRSDat$eaDat
   
@@ -93,7 +90,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   if(tausq == .1^2 || tausq == 0.01) {
     if(test) {
       if("naive" %in% models || "direct" %in% models)
-        out = load("resultsDirectNaiveTausq0.01Test.RData")
+        out = load(paste0("resultsDirectNaiveTausq0.01Test", bigText, ".RData")) # this is the only case that uses the big dataset
       if("mercer" %in% models)
         out = load("resultsMercerTausq0.01test.RData")
       if("bymNoUrb" %in% models) {
@@ -111,7 +108,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         out = load("resultsSPDETausq0.01urbanEffectTRUETest.RData")
     } else {
       if("naive" %in% models || "direct" %in% models)
-        out = load("resultsDirectNaiveTausq0.01.RData")
+        out = load(paste0("resultsDirectNaiveTausq0.01", bigText, ".RData"))
       if("mercer" %in% models)
         out = load("resultsMercerTausq0.01.RData")
       if("bymNoUrb" %in% models) {
@@ -131,7 +128,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   } else if(tausq == 0) {
     if(test) {
       if("naive" %in% models || "direct" %in% models)
-        out = load("resultsDirectNaiveTausq0Test.RData")
+        out = load(paste0("resultsDirectNaiveTausq0Test", bigText, ".RData")) # this is the only case that uses the big dataset
       if("mercer" %in% models)
         out = load("resultsMercerTausq0test.RData")
       if("bymNoUrb" %in% models) {
@@ -149,7 +146,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         out = load("resultsSPDETausq0urbanEffectTRUETest.RData")
     } else {
       if("naive" %in% models || "direct" %in% models)
-        out = load("resultsDirectNaiveTausq0.RData")
+        out = load(paste0("resultsDirectNaiveTausq0", bigText, ".RData")) # this is the only case that uses the big dataset
       if("mercer" %in% models)
         out = load("resultsMercerTausq0.RData")
       if("bymNoUrb" %in% models) {
@@ -254,7 +251,8 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   
   for(i in c(1:length(clustDat$clustDat))) { # for problem fitting mercerSRS for SRS sampling, tausq=0
     # for(i in 1:100) {
-    print(i)
+    if((i %% printIEvery == 0) || (i == 1))
+      print(i)
     resultName = paste0(resultType, "Results")
     if(resultType == "EA")
       resultName = "eaResults"

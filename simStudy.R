@@ -612,6 +612,16 @@ simClustersEmpirical = function(eaDat, eaDatLong, nsim=1, seed=NULL, urbanOverSa
     thisclustpc$clustUrb = round(thisclustpc$clustUrb * (1 + urbanOverSamplefrac))
     thisclustpc$clustUrb[thisclustpc$clustUrb >= thisclustpc$clustTotal] = thisclustpc$clustTotal[thisclustpc$clustUrb >= thisclustpc$clustTotal]
     thisclustpc$clustRur = thisclustpc$clustTotal - thisclustpc$clustUrb
+    
+    if(SRS) {
+      # in this case, we want the naive model to be unbiased so we need the proportion of urban clusters and rural clusters to 
+      # be representative of the population within each county
+      thisclustpc$clustUrb = (poppc$pctUrb / 100) * thisclustpc$clustTotal
+      thisclustpc$clustRur = (1 - poppc$pctUrb / 100) * thisclustpc$clustTotal
+      
+      # NOTE: the number of urban and rural clusters will be fractions, so we need to pick the number randomly for each county 
+      #       so that on average the estimate within each county will be unbiased
+    }
   } else {
     thisclustpc = clustpc
     thisclustpc$clustUrb = nPerStrata
@@ -624,21 +634,58 @@ simClustersEmpirical = function(eaDat, eaDatLong, nsim=1, seed=NULL, urbanOverSa
   counties = as.character(thisclustpc$County)
   urban = eaDat[["urban"]]
   
+  # check if we need to randomly allocate clusters
+  roundedUrban = round(thisclustpc$clustUrb, 0)
+  roundedRural = round(thisclustpc$clustRur, 0)
+  randomClusters = any(roundedUrban != thisclustpc$clustUrb) | any(roundedRural != thisclustpc$clustRur)
+  
+  # if we have random clusters, precalculate certain probabilities
+  if(randomClusters) {
+    extraUrban = thisclustpc$clustUrb - floor(thisclustpc$clustUrb)
+    extraRural = thisclustpc$clustRur - floor(thisclustpc$clustRur)
+    probUrbanTotal = sum(extraUrban) / sum(extraUrban + extraRural)
+    probUrban = extraUrban / sum(extraUrban)
+    probRural = extraRural / sum(extraRural)
+  }
+  
   generateSample = function() {
+    thisclustpcI = thisclustpc
+    
+    if(randomClusters) {
+      # we need to randomly allot clusters to strata so the naive case remains unbiased
+      
+      # calculate the number of clusters we need to randomly allot
+      nExtra = round(sum(extraUrban + extraRural), 0)
+      
+      # calculate the number of extra urban and rural clusters
+      nExtraUrbanTotal = rbinom(1, nExtra, probUrbanTotal)
+      nExtraRuralTotal = nExtra - nExtraUrbanTotal
+      
+      # calculate the number of extra clusters in each strata conditional on the number of urban and rural
+      nExtraUrban = rmultinom(1, nExtraUrbanTotal, probUrban)
+      nExtraRural = rmultinom(1, nExtraRuralTotal, probRural)
+      
+      # add extra clusters to their corresponding strata
+      thisclustpcI$clustUrb = floor(thisclustpcI$clustUrb) + nExtraUrban
+      thisclustpcI$clustRur = floor(thisclustpcI$clustRur) + nExtraRural
+      thisclustpcI$clustTotal = thisclustpcI$clustUrb + thisclustpcI$clustRur
+    }
+    
     allSamples = c()
     # allSamples = list()
-    for(i in 1:nrow(thisclustpc)) {
+    for(i in 1:nrow(thisclustpcI)) {
       countyName = counties[i]
       countyI = eaDat[,as.character(admin1) == countyName]
       if(verbose)
         print(paste0("County ", i, "/", length(counties), ": ", countyName))
       
       # number of rural and urban clusters to sample
-      numUrban = thisclustpc$clustUrb[thisclustpc$County == countyName]
-      numRural = thisclustpc$clustRur[thisclustpc$County == countyName]
+      numUrban = thisclustpcI$clustUrb[thisclustpcI$County == countyName]
+      numRural = thisclustpcI$clustRur[thisclustpcI$County == countyName]
       
       # urban samples
       thisCountyI = countyI & urban
+      
       # probs = thisCountyI * eaDat$popOrig
       if(SRS)
         probs = thisCountyI

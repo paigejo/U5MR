@@ -84,11 +84,13 @@ kenyaEAs = simulatedEAs$eaDat
 kenyaEAs$eaIs = 1:nrow(kenyaEAs)
 kenyaEAsLong = kenyaEAs[rep(1:nrow(kenyaEAs), kenyaEAs$nHH),]
 
+set.seed(1234)
 # simulate the cluster sampling and add to the data sets
 # overSampClustDat = simClusters3(kenyaEAs, urbanOverSample=urbanOverSample, nsim=nsim)
 # overSampClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsim, NULL, 0, 25, 
 #                                         urbanOverSamplefrac)
-out = profvis({temp = simClustersEmpirical(kenyaEAs, kenyaEAsLong, 10, NULL, urbanOverSamplefrac, verbose=FALSE)})
+# temp = simClustersEmpirical(kenyaEAs, kenyaEAsLong, 2, NULL, urbanOverSamplefrac, verbose=FALSE, SRS = TRUE)
+# out = profvis({temp = simClustersEmpirical(kenyaEAs, kenyaEAsLong, 5, NULL, urbanOverSamplefrac, verbose=FALSE)})
 overSampClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, urbanOverSamplefrac, verbose=FALSE)
 overSampClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, urbanOverSamplefrac, verbose=FALSE)
 clustList = genAndreaFormatFromEAIs(simulatedEAs$eaDat, overSampClustDat$eaIs, overSampClustDat$sampleWeights)
