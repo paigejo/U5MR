@@ -4,10 +4,7 @@
 #    aggregation using true population and BYM spatial model                     #
 ##################################################################################
 
-# Load library
-library(INLA)
-
-runBYM = function(tausq=0.1^2, test=FALSE) {
+runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE) {
   
   # load and relevant data
   if(!test)
@@ -17,9 +14,6 @@ runBYM = function(tausq=0.1^2, test=FALSE) {
   # load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0.25.RData")
   # load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0.25Test.RData")
   # load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0.25Test.RData")
-  
-  # include urban/rural effect
-  includeUrbanRural = FALSE
   
   # Get true ratios of urban/rural
   urbRatio = vector('numeric', length = 47)

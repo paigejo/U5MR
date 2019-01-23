@@ -1,3 +1,4 @@
 source("setup.R")
 source("designBased.R")
-getBYM(tausq=0)
+runBYM(tausq=0)
+runBYM(tausq=0, includeUrbanRural=FALSE)
