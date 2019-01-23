@@ -90,7 +90,7 @@ getSPDEPrior = function(mesh, sigma0=1) {
 # genCountLevel: whether or not to generate predictions at the count level versus logistic
 # nSamplePixel: fewer samples are required for good approximation of the posterior at the pixel level 
 #               than county, so we only take this many of the posterior samples for pixel level estimation
-fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, obsUrban, predCoords, predNs = rep(25, nrow(predCoords)), 
+fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, obsUrban, predCoords, predNs = rep(1, nrow(predCoords)), 
                         predUrban, prior=NULL, mesh=NULL, int.strategy="eb", strategy="gaussian", 
                         genCountyLevel=FALSE, popGrid=NULL, nPostSamples=100, kmRes=5, counties=sort(unique(eaDat$admin1)), 
                         includeClustEffect=TRUE, verbose=TRUE, genRegionLevel=FALSE, regions=sort(unique(eaDat$region)), 
@@ -374,8 +374,9 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
         regionProbMat = matrix(eaMat[regionI,], nrow=sum(regionI))
         
         # combine results by EA
-        numClusters = sum(regionI)
-        distribution = dSumBinomRandom(0:(25 * numClusters), rep(25, numClusters), regionProbMat)
+        # numClusters = sum(regionI)
+        numChildren = eaDat$numChildren[regionI]
+        distribution = dSumBinomRandom(0:sum(numChildren), numChildren, regionProbMat)
         distribution
       }
       
@@ -422,7 +423,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
           # get the marginal "binomial" densities at each location
           
           # this function evaluates the "binomial" probability mass for a fixed n, k, and a marginal
-          n = 25
+          n = eaDat$numChildren[pixelI]
           binomProb = function(k) {
             inla.emarginal(function(logitP) {dbinom(k, n, expit(logitP))}, pixelMarginals[[pixelIndex]])
           }
@@ -440,8 +441,10 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
           pixelProbMat = matrix(thisEaMat[pixelI,], nrow=sum(pixelI))
           
           # combine results by pixel
-          numClusters = sum(pixelI)
-          distribution = dSumBinomRandom(0:(25 * numClusters), rep(25, numClusters), pixelProbMat)
+          # numClusters = sum(pixelI)
+          numChildren = eaDat$numChildren[pixelI]
+          n = sum(numChildren)
+          distribution = dSumBinomRandom(0:n, numChildren, pixelProbMat)
           distribution
         }
       }

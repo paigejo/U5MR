@@ -965,5 +965,176 @@ sum(easpc$EAUrb * 0.4532017) / sum(easpc$EARur * 0.6967159)
 # expected children per household (assuming independence of children per mother and mothers per household conditional on urbanicity)
 ecdfExpectation(empiricalDistributions$mothersUrban) * ecdfExpectation(empiricalDistributions$childrenUrban) # 0.4532017 urban
 ecdfExpectation(empiricalDistributions$mothersRural) * ecdfExpectation(empiricalDistributions$childrenRural) # 0.6967159 rural
-poppc$
 
+
+##### test how well the pearson distribution works for approximating sums of binomials
+# in the first case, assume the probabilities are normally distributed on the logit scale
+# also, assume exchangeable correlation structure
+logitMuFirst = -2.6
+logitMuSecond = -1.7
+logitVar = .1^2
+
+# calculate some "scoring rules" (mean, variance, crps)
+# to calculate crps, take a fake draw or calculate at the mean
+allN = c(1, 10, 1000)
+allNSims = c(1, 10, 100, 1000) # 1 signals to take mean
+scoringRulesPearson = matrix(nrow = length(allN) * length(allNSims) * length(allNSims), ncol = 11)
+scoringRulesBinom = matrix(nrow = length(allN) * length(allNSims) * length(allNSims), ncol = 11)
+thisRow = 1
+for(i in 1:length(allN)) {
+  nFirst = allN[i]
+  nSecond = allN[i]
+  
+  # generate logit mean vector
+  logitMu = c(rep(logitMuFirst, nFirst), rep(logitMuSecond, nSecond))
+  
+  # generate covariance matrix and Cholesky decomposition for simulations
+  rho = .75 # rho should be high for pixel, and low for county
+  Sigma = matrix(rho, nrow = nFirst + nSecond, ncol = nFirst + nSecond)
+  diag(Sigma) = 1
+  Sigma = logitVar * Sigma
+  L = t(chol(Sigma))
+  
+  for(j in 1:length(allNSims)) {
+    nSimProbs = allNSims[j]
+    
+    # simulate values of ps
+    if(nSimProbs != 1) {
+      logitProbs = L %*% matrix(rnorm((nFirst + nSecond) * nSimProbs), nrow = nFirst + nSecond)
+      logitProbs = sweep(logitProbs, 1, logitMu, "+")
+      probMat = expit(logitProbs)
+    }
+    else {
+      probMat = matrix(expit(logitMu), ncol=1)
+    }
+    
+    # use a pearson distribution approximation
+    xs = 0:round(25 * (nFirst + nSecond))
+    pearsonTime = system.time(pearsonApproximation <- dSumBinomRandom(xs, 25, probMat))[3]
+    
+    # generate false data based on the mode of the pearson approximation
+    index = which.max(pearsonApproximation)
+    falseData = xs[index]
+    
+    # calculate the "scoring rules" for the pearson approximation
+    pearsonMean = sum(xs * pearsonApproximation)
+    pearsonVar = sum(xs^2 * pearsonApproximation) - pearsonMean^2
+    pearsonCrps = crpsCounts(falseData, pearsonApproximation)
+    pearsonTime = pearsonTime + system.time(pearsonCi <- generateBinomialInterval(pearsonApproximation))[3]
+    
+    for(k in 1:length(allNSims)) {
+      
+      # generate simulation from a binomial for approximation
+      nSimBinom = allNSims[k]
+      simTime = system.time(simApproximation <- dSumBinomRandomSim(xs, 25, probMat, nSim=nSimBinom))[3]
+      
+      # calculate the "scoring rules" for the binomial approximation
+      simMean = sum(xs * simApproximation)
+      simVar = sum(xs^2 * simApproximation) - simMean^2
+      simCrps = crpsCounts(falseData, simApproximation)
+      simTime = simTime + system.time(simCi <- generateBinomialInterval(simApproximation))[3]
+      
+      # update scoring rules tables
+      scoringRulesPearson[thisRow, ] = c(nFirst * 2, nSimProbs, nSimBinom, 
+                                         pearsonMean, pearsonVar, pearsonCrps, pearsonTime, 
+                                         pearsonCi)
+      scoringRulesBinom[thisRow, ] = c(nFirst * 2, nSimProbs, nSimBinom, 
+                                       simMean, simVar, simCrps, simTime, 
+                                       simCi)
+      
+      # plot the distributions
+      maxMass = max(c(pearsonApproximation, simApproximation))
+      
+      pdf(paste0("figures/pearsonTest_", nFirst, "_", nSecond, "_nSimProb", nSimProbs, "_nSimBinom", nSimBinom, ".pdf"), 
+          width=5, height=5)
+      plot(xs / (25 * (nFirst + nSecond)), pearsonApproximation, pch=19, ylim=c(0, maxMass), main="Pearson Versus Binomial Simulation With 80% CIs", 
+           ylab="Probability Mass", xlab="Proportion Mortality", cex=.1, xlim=c(0, 1/4))
+      points(xs / (25 * (nFirst + nSecond)), simApproximation, pch=19, cex=.1, col="blue")
+      legend("topright", c("Pearson", "Simulation"), pch=19, col=c("black", "blue"))
+      abline(v=pearsonCi[1] / (25 * (nFirst + nSecond)), lty=2)
+      abline(v=pearsonCi[2] / (25 * (nFirst + nSecond)), lty=2)
+      abline(v=simCi[1] / (25 * (nFirst + nSecond)), lty=2, col="blue")
+      abline(v=simCi[2] / (25 * (nFirst + nSecond)), lty=2, col="blue")
+      dev.off()
+      
+      thisRow = thisRow + 1
+    }
+  }
+}
+
+colnames(scoringRulesPearson) = c("totClusters", "nSimProb", "nSimBinom", 
+                                  "mean", "var", "crps", "time", "lower80", "upper80", 
+                                  "leftReject80", "rightReject80")
+colnames(scoringRulesBinom) = c("totClusters", "nSimProb", "nSimBinom", 
+                                "mean", "var", "crps", "time", "lower80", "upper80", 
+                                "leftReject80", "rightReject80")
+scoringRulesPearson = data.frame(scoringRulesPearson)
+scoringRulesBinom = data.frame(scoringRulesBinom)
+scoringRulesAll = cbind(scoringRulesPearson[, 1:4], scoringRulesBinom$mean, scoringRulesPearson$var, 
+                        scoringRulesBinom$var, scoringRulesPearson$crps, scoringRulesBinom$crps, 
+                        scoringRulesPearson$time, scoringRulesBinom$time, 
+                        paste0("(", round(scoringRulesPearson$lower80, 4), ", ", round(scoringRulesPearson$upper80, 4), ")"), 
+                        paste0("(", round(scoringRulesBinom$lower80, 4), ", ", round(scoringRulesBinom$upper80, 4), ")"), 
+                        paste0("(", round(scoringRulesPearson$leftReject80, 4), ", ", round(scoringRulesPearson$rightReject80, 4), ")"), 
+                        paste0("(", round(scoringRulesBinom$leftReject80, 4), ", ", round(scoringRulesBinom$rightReject80, 4), ")"))
+names(scoringRulesAll) = c(names(scoringRulesPearson)[1:3], "meanPearson", "meanBinom", 
+                           "varPearson", "varBinom", "crpsPearson", "crpsBinom", 
+                           "timePearson", "timeBinom", 
+                           "CI80Pearson", "CI80Binom", "reject80Pearson", "reject80Binom")
+cbind(round(scoringRulesAll[,1:11], 4), scoringRulesAll[,12:15])
+save(scoringRulesAll, "pearsonTests.RData")
+
+##### test parallelization
+n = 5000
+N = 25
+truth = rep(12, n) / N
+preds = expit(rnorm(n))
+system.time(out <- crpsBinomial(truth, preds, N))[3]
+system.time(out <- crpsBinomial(truth, preds, N, parClust = NULL))[3]
+
+n = 5000
+m = 100
+ns = rep(25, n)
+pMat = matrix(.5, nrow=n, ncol=m)
+k = 0:sum(ns)
+system.time(out <- dSumBinomRandom(k, ns, pMat))[3]
+system.time(out <- dSumBinomRandom(k, ns, pMat, parClust=NULL))[3]
+
+##### test intra-cluster correlation
+logitMu = seq(-3, -1, length=30)
+logitVarEps = seq(.1^2, 2, length=30)
+
+# calculate some "scoring rules" (mean, variance, crps)
+# to calculate crps, take a fake draw
+nSim = 100
+n = 25
+tausq = .1^2
+correlationMat = matrix(nrow=length(logitMu), ncol=length(logitVarEps))
+thisRow = 1
+for(i in 1:length(logitMu)) {
+  thisLogitMu = logitMu[i]
+  
+  for(j in 1:length(logitVarEps)) {
+    thisLogitVarEps = logitVarEps[j]
+    
+    correlationMat[i, j] = logitNormCor(muSigmaMat = matrix(c(thisLogitMu, sqrt(thisLogitVarEps)), ncol=2))
+    
+    if(is.na(correlationMat[i, j])) {
+      debug(logitNormCor)
+      logitNormCor(muSigmaMat = matrix(c(thisLogitMu, sqrt(thisLogitVarEps)), ncol=2))
+    }
+  }
+}
+
+image.plot(logitMu, logitVarEps, correlationMat, xlab="Logit Mean", ylab="Nugget Variance", 
+           main="Within Cluster Correlation")
+abline(v=-1.75, col="green", lwd=2)
+abline(v=-2.75, col="blue", lwd=2)
+
+out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOver2.RData")
+pdf("~/Google Drive/UW/Wakefield/WakefieldShared/UM5R/figures/mortalityCountHist.pdf", width=5, height=15)
+par(mfrow=c(3,1))
+hist(mort$y, freq=FALSE, main="Mortality Count Histogram (Empirical)", xlab="Mortality Counts", breaks=seq(0, 11) - .5)
+hist(SRSDat$clustDat[[1]]$died, freq=FALSE, main="Mortality Count Histogram (SRS)", xlab="Mortality Counts", breaks=seq(0, 11)-.5)
+hist(overSampDat$clustDat[[1]]$died, freq=FALSE, main="Mortality Count Histogram (Urban Over Sampled)", xlab="Mortality Counts", breaks=seq(0, 11) - .5)
+dev.off()

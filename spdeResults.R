@@ -16,8 +16,11 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=5, verbose=TRUE,
   # in the simulation of the data or not (tausq is the cluster effect variance)
   # load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOver2.RData")
   # load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOver2.RData")
-  load(paste0("simDataMultiBeta-1.75margVar0.0225tausq", round(tausq, 3), 
-              "gamma-1HHoldVar0urbanOver2.RData"))
+  # load and relevant data
+  if(!test)
+    load(paste0("simDataMultiBeta-1.75margVar0.0225tausq", round(tausq, 4), "gamma-1HHoldVar0urbanOverSamplefrac0.RData"))
+  else
+    load(paste0("simDataMultiBeta-1.75margVar0.0225tausq", round(tausq, 4), "gamma-1HHoldVar0urbanOverSamplefrac0Test.RData"))
   eaDat = overSampDat$eaDat
   clustSRS = SRSDat$clustDat
   clustOverSamp = overSampDat$clustDat
@@ -66,22 +69,26 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
     # region
     regions = sort(unique(eaDat$region))
     truthbyregion <- rep(NA, 8)
+    numChildren = truthbyregion
     
     for(i in 1:8){
       super = eaDat[eaDat$region == regions[i],]
+      numChildren[i] = sum(super$numChildren)
       truthbyregion[i] <- sum(super$died)/sum(super$numChildren)
     }
-    truthByRegion = data.frame(admin1=regions, truth=truthbyregion)
+    truthByRegion = data.frame(admin1=regions, truth=truthbyregion, numChildren=numChildren)
     
     # county
     regions = sort(unique(eaDat$admin1))
     truthbycounty <- rep(NA, 47)
+    numChildren = truthbycounty
     
     for(i in 1:47){
       super = eaDat[eaDat$admin1 == regions[i],]
-      truthbycounty[i] <- sum(super$died)/sum(super$numChildren)
+      numChildren[i] = sum(super$numChildren)
+      truthbycounty[i] <- sum(super$died)/numChildren[i]
     }
-    truthByCounty = data.frame(admin1=regions, truth=truthbycounty)
+    truthByCounty = data.frame(admin1=regions, truth=truthbycounty, numChildren=numChildren)
     
     # pixel
     counties = sort(unique(eaDat$admin1))
@@ -92,10 +99,10 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
     regions = names(childrenPerPixel) # these are the pixels with enumeration areas in them
     pixelToAdmin = match(popGrid$admin1[as.numeric(regions)], counties)
     
-    truthByPixel = data.frame(pixel=regions, truth=deathsPerPixel / childrenPerPixel, countyI=pixelToAdmin, urban=urbanPixel)
+    truthByPixel = data.frame(pixel=regions, truth=deathsPerPixel / childrenPerPixel, countyI=pixelToAdmin, urban=urbanPixel, numChildren=childrenPerPixel)
     
     # EA
-    truthByEa = data.frame(EA = 1:nrow(eaDat), truth = eaDat$died/eaDat$numChildren, urban=eaDat$urban)
+    truthByEa = data.frame(EA = 1:nrow(eaDat), truth = eaDat$died/eaDat$numChildren, urban=eaDat$urban, numChildren=eaDat$numChildren)
   } else {
     truthByRegion = NULL
     truthByCounty = NULL
@@ -107,6 +114,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
   out = getTruthByCounty(eaDat)
   counties = out$counties
   trueMort = out$mortRate
+  numChildren = out$numChildren
   nsim = length(clustDatMulti)
   
   # get truth
@@ -388,5 +396,5 @@ getTruthByCounty = function(eaDat, counties=as.character(unique(mort$admin1))) {
   
   # sort to be in the order of the input countries variable
   sortI = match(counties, theseCounties)
-  list(counties=counties, mortRate=mortRate[sortI])
+  list(counties=counties, mortRate=mortRate[sortI], numChildren=nByCounty)
 }

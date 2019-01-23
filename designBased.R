@@ -19,7 +19,8 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE) {
   urbRatio = vector('numeric', length = 47)
   for(i in 1:47){
     idx = which(as.numeric(factor(SRSDat$eaDat$admin1)) == i)
-    urbRatio[i] = sum(SRSDat$eaDat$numChildren[SRSDat$eaDat$urban[idx]])/sum(SRSDat$eaDat$numChildren[idx])
+    urbanI = idx[SRSDat$eaDat$urban[idx]]
+    urbRatio[i] = sum(SRSDat$eaDat$numChildren[urbanI])/sum(SRSDat$eaDat$numChildren[idx])
   }
   
   # Define formula

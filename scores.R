@@ -115,14 +115,14 @@ crpsBinomial <- function(trueProportion, p.est, n=25, parClust=NULL, empiricalPr
     crpsByRegion = parLapply(parClust, 1:nrow(p.est), function(i) {mean(unlist(rowFun(i)))})
   
   if(empiricalProportion)
-    mean(unlist(crpsByRegion) / n)
+    sum(unlist(crpsByRegion) / n)
   else
-    mean(unlist(crpsByRegion))
+    sum(unlist(crpsByRegion))
 }
 
 # for a discrete random variable, determine the CRPS. 
 # probs: a vector of probabilities of length n + 1
-crpsCounts <- function(trueCount, probs, parClust=NULL) {
+crpsCounts <- function(trueCount, probs, parClust=NULL, empiricalProportion=TRUE) {
   n = length(probs) - 1
   toN = eval(0:n)
   
@@ -130,12 +130,17 @@ crpsCounts <- function(trueCount, probs, parClust=NULL) {
   cdf = cumsum(probs)
   
   if(is.null(parClust))
-    sum((cdf - (trueCount <= toN))^2)
+    res = sum((cdf - (trueCount <= toN))^2)
   else {
     res = parSapply(parClust, toN, function(x) {trueCount <= x})
     res = parSapply(parClust, 1:(n + 1), function(x) {(cdf[x] - res[x])^2})
-    sum(res)
+    res = sum(res)
   }
+  
+  if(empiricalProportion)
+    res / n
+  else
+    res
 }
 
 dss = function(truth, my.est, my.var){
@@ -244,7 +249,9 @@ generateBinomialInterval = function(probs, significance = .80) {
   rightI = maxI
   
   expandInterval = function(leftI, rightI) {
-    
+    if(length(leftI) > 1 || length(rightI) > 1) {
+      print("woah there")
+    }
     currentProb = sum(probs[leftI:rightI])
     
     if(currentProb >= significance)
