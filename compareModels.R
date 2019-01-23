@@ -15,15 +15,17 @@ source("scores.R")
 #          so the default value of this argument is to include results for the naive, 
 #          direct, and mercer models. 1:7 is all models
 # produceFigures: whether or not to produce figures based on the results
-# uselogit: whether or not to produce scoring rule results at the logit or count scale. 
+# logitScale: whether or not to produce scoring rule results at the logit or count scale. 
 #           By default this is to use loaded scale results unless the resultType is EA or pixel
 # printIEvery: how often to print progress
 runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixel", "EA"), 
                             sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:3, 
-                            produceFigures=FALSE, uselogit=NULL, big=FALSE, printIEvery=50) {
+                            produceFigures=FALSE, logitScale=NULL, big=FALSE, printIEvery=50) {
+  
   # match the arguments with their correct values
   resultType = match.arg(resultType)
   sampling = match.arg(sampling)
+  useLogit = logitScale
   
   # test to make sure only the naive and direct models are included if big is set to TRUE
   if(!all(modelsI == 1:2) && big)
@@ -55,12 +57,14 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
       # compute truth based on superpopulation
       regions = sort(unique(eaDat$admin1))
       truthbycounty <- rep(NA, 47)
+      childrenPerCounty = truthbycounty
       
       for(i in 1:47){
         super = eaDat[eaDat$admin1 == regions[i],]
-        truthbycounty[i] <- sum(super$died)/sum(super$numChildren)
+        childrenPerCounty[i] = sum(super$numChildren)
+        truthbycounty[i] <- sum(super$died)/childrenPerCounty[i]
       }
-      truth = data.frame(admin1=regions, truth=truthbycounty)
+      truth = data.frame(admin1=regions, truth=truthbycounty, numChildren=childrenPerCounty)
       save(truth, file="truthbycounty.RData")
     } else if(resultType == "pixel") {
       counties = sort(unique(eaDat$admin1))
@@ -71,10 +75,10 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
       regions = names(childrenPerPixel) # these are the pixels with enumeration areas in them
       pixelToAdmin = match(popGrid$admin1[as.numeric(regions)], counties)
       
-      truth = data.frame(pixel=regions, truth=deathsPerPixel / childrenPerPixel, countyI=pixelToAdmin, urban=urbanPixel)
+      truth = data.frame(pixel=regions, truth=deathsPerPixel / childrenPerPixel, countyI=pixelToAdmin, urban=urbanPixel, numChildren=childrenPerPixel)
       save(truth, file="truthbyPixel.RData")
     } else if(resultType == "EA") {
-      truth = data.frame(EA = 1:nrow(eaDat), truth = eaDat$died/25, urban=eaDat$urban)
+      truth = data.frame(EA = 1:nrow(eaDat), truth = eaDat$died/25, urban=eaDat$urban, numChildren=eaDat$numChildren)
       save(truth, file="truthbyEA.RData")
     }
   } else {
@@ -213,6 +217,9 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   # convert the truth to the desired aggregation level
   if(resultType == "county")
     truth = getSubLevelResults(truth)
+  
+  # calculate the binomial n (number of children) for each prediction unit
+  numChildren = truth$numChildren
   
   # compute scores
   scoresDirectSRS = scoresNaiveSRS = scoresMercerSRS = scoresBYMNoUrbSRS = scoresBYMSRS = scoresSPDENoUrbSRS = scoresSPDESRS = data.frame()
@@ -454,12 +461,14 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
     else
       thisTruth = allresoverSamp$truth
     
-    if(is.null(uselogit)) {
+    if(is.null(useLogit)) {
       useLogit = FALSE
       if(resultType != "EA" && resultType != "pixel") {
         thisTruth = logit(thisTruth)
         useLogit=TRUE
       }
+    } else if(useLogit == TRUE) {
+      thisTruth = logit(thisTruth)
     }
     
     # SRS setting 
@@ -468,7 +477,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasSRSdirect = bias(thisTruth, allresSRS$logit.estdirect, logit=useLogit, my.var=allresSRS$var.estdirect)
         my.mseSRSdirect = mse(thisTruth, allresSRS$logit.estdirect, logit=useLogit, my.var=allresSRS$var.estdirect)
         my.dssSRSdirect = dss(thisTruth, allresSRS$logit.estdirect, allresSRS$var.estdirect)
-        my.crpsSRSdirect = crpsNormal(thisTruth, allresSRS$logit.estdirect, allresSRS$var.estdirect, resultType=resultType)
+        my.crpsSRSdirect = crpsNormal(thisTruth, allresSRS$logit.estdirect, allresSRS$var.estdirect, logit=useLogit, n=numChildren)
         my.coverageSRSdirect = coverage(thisTruth, allresSRS$lowerdirect, allresSRS$upperdirect, logit=useLogit)
         my.lengthSRSdirect = intervalWidth(allresSRS$lowerdirect, allresSRS$upperdirect, logit=useLogit)
       }
@@ -477,7 +486,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasSRSnaive = bias(thisTruth, allresSRS$logit.est, logit=useLogit, my.var=allresSRS$var.est)
         my.mseSRSnaive = mse(thisTruth, allresSRS$logit.est, logit=useLogit, my.var=allresSRS$var.est)
         my.dssSRSnaive = dss(thisTruth, allresSRS$logit.est, allresSRS$var.est)
-        my.crpsSRSnaive = crpsNormal(thisTruth, allresSRS$logit.est, allresSRS$var.est, resultType=resultType)
+        my.crpsSRSnaive = crpsNormal(thisTruth, allresSRS$logit.est, allresSRS$var.est, logit=useLogit, n=numChildren)
         my.coverageSRSnaive = coverage(thisTruth, allresSRS$lower, allresSRS$upper, logit=useLogit)
         my.lengthSRSnaive = intervalWidth(allresSRS$lower, allresSRS$upper, logit=useLogit)
       }
@@ -486,7 +495,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasSRSmercer = bias(thisTruth, allresSRS$logit.est.mercer, logit=useLogit, my.var=allresSRS$var.est.mercer)
         my.mseSRSmercer = mse(thisTruth, allresSRS$logit.est.mercer, logit=useLogit, my.var=allresSRS$var.est.mercer)
         my.dssSRSmercer = dss(thisTruth, allresSRS$logit.est.mercer, allresSRS$var.est.mercer)
-        my.crpsSRSmercer = crpsNormal(thisTruth, allresSRS$logit.est.mercer, allresSRS$var.est.mercer, resultType=resultType)
+        my.crpsSRSmercer = crpsNormal(thisTruth, allresSRS$logit.est.mercer, allresSRS$var.est.mercer, logit=useLogit, n=numChildren)
         my.coverageSRSmercer = coverage(thisTruth, allresSRS$lower.mercer, allresSRS$upper.mercer, logit=useLogit)
         my.lengthSRSmercer = intervalWidth(allresSRS$lower.mercer, allresSRS$upper.mercer, logit=useLogit)
       }
@@ -495,7 +504,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasSRSbymNoUrb = bias(thisTruth, designResNoUrb$SRSdat$mean[,i], logit=useLogit, my.var=(designResNoUrb$SRSdat$stddev[,i])^2)
         my.mseSRSbymNoUrb = mse(thisTruth, designResNoUrb$SRSdat$mean[,i], logit=useLogit, my.var=(designResNoUrb$SRSdat$stddev[,i])^2)
         my.dssSRSbymNoUrb = dss(thisTruth, designResNoUrb$SRSdat$mean[,i], (designResNoUrb$SRSdat$stddev[,i])^2)
-        my.crpsSRSbymNoUrb = crpsNormal(thisTruth, designResNoUrb$SRSdat$mean[,i], (designResNoUrb$SRSdat$stddev[,i])^2, resultType=resultType)
+        my.crpsSRSbymNoUrb = crpsNormal(thisTruth, designResNoUrb$SRSdat$mean[,i], (designResNoUrb$SRSdat$stddev[,i])^2, logit=useLogit, n=numChildren)
         my.coverageSRSbymNoUrb = coverage(thisTruth, designResNoUrb$SRSdat$Q10[,i],designResNoUrb$SRSdat$Q90[,i], logit=useLogit)
         my.lengthSRSbymNoUrb = intervalWidth(designResNoUrb$SRSdat$Q10[,i], designResNoUrb$SRSdat$Q90[,i], logit=useLogit)
       }
@@ -504,7 +513,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasSRSbym = bias(thisTruth, designRes$SRSdat$mean[,i], logit=useLogit, my.var=(designRes$SRSdat$stddev[,i])^2)
         my.mseSRSbym = mse(thisTruth, designRes$SRSdat$mean[,i], logit=useLogit, my.var=(designRes$SRSdat$stddev[,i])^2)
         my.dssSRSbym = dss(thisTruth, designRes$SRSdat$mean[,i], (designRes$SRSdat$stddev[,i])^2)
-        my.crpsSRSbym = crpsNormal(thisTruth, designRes$SRSdat$mean[,i], (designRes$SRSdat$stddev[,i])^2, resultType=resultType)
+        my.crpsSRSbym = crpsNormal(thisTruth, designRes$SRSdat$mean[,i], (designRes$SRSdat$stddev[,i])^2, logit=useLogit, n=numChildren)
         my.coverageSRSbym = coverage(thisTruth, designRes$SRSdat$Q10[,i],designRes$SRSdat$Q90[,i], logit=useLogit)
         my.lengthSRSbym = intervalWidth(designRes$SRSdat$Q10[,i], designRes$SRSdat$Q90[,i], logit=useLogit)
       }
@@ -513,7 +522,8 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasSRSspdeNoUrb = bias(thisTruth, allresSRS$logit.est.spdeNoUrb, logit=useLogit, my.var=allresSRS$var.est.spdeNoUrb)
         my.mseSRSspdeNoUrb = mse(thisTruth, allresSRS$logit.est.spdeNoUrb, logit=useLogit, my.var=allresSRS$var.est.spdeNoUrb)
         my.dssSRSspdeNoUrb = dss(thisTruth, allresSRS$logit.est.spdeNoUrb, allresSRS$var.est.spdeNoUrb)
-        # my.crpsSRSspdeNoUrb = crpsNormal(thisTruth, allresSRS$logit.est.spdeNoUrb, allresSRS$var.est.spdeNoUrb, resultType=resultType)
+        # the below line used to be commented for some reason
+        my.crpsSRSspdeNoUrb = crpsNormal(thisTruth, allresSRS$logit.est.spdeNoUrb, allresSRS$var.est.spdeNoUrb, logit=useLogit, n=numChildren)
         my.crpsSRSspdeNoUrb = allresSRS$crps.spdeNoUrb
         my.coverageSRSspdeNoUrb = coverage(thisTruth, allresSRS$lower.spdeNoUrb, allresSRS$upper.spdeNoUrb, logit=useLogit)
         my.lengthSRSspdeNoUrb = intervalWidth(allresSRS$lower.spdeNoUrb, allresSRS$upper.spdeNoUrb, logit=useLogit)
@@ -523,7 +533,8 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasSRSspde = bias(thisTruth, allresSRS$logit.est.spde, logit=useLogit, my.var=allresSRS$var.est.spde)
         my.mseSRSspde = mse(thisTruth, allresSRS$logit.est.spde, logit=useLogit, my.var=allresSRS$var.est.spde)
         my.dssSRSspde = dss(thisTruth, allresSRS$logit.est.spde, allresSRS$var.est.spde)
-        # my.crpsSRSspde = crpsNormal(thisTruth, allresSRS$logit.est.spde, allresSRS$var.est.spde, resultType=resultType)
+        # the below line needs to be commented for some reason
+        my.crpsSRSspde = crpsNormal(thisTruth, allresSRS$logit.est.spde, allresSRS$var.est.spde, logit=useLogit, n=numChildren)
         my.crpsSRSspde = allresSRS$crps.spde
         my.coverageSRSspde = coverage(thisTruth, allresSRS$lower.spde, allresSRS$upper.spde, logit=useLogit)
         my.lengthSRSspde = intervalWidth(allresSRS$lower.spde, allresSRS$upper.spde, logit=useLogit)
@@ -619,7 +630,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasoverSampdirect = bias(thisTruth, allresoverSamp$logit.estdirect, logit=useLogit, my.var=allresoverSamp$var.estdirect)
         my.mseoverSampdirect = mse(thisTruth, allresoverSamp$logit.estdirect, logit=useLogit, my.var=allresoverSamp$var.estdirect)
         my.dssoverSampdirect = dss(thisTruth, allresoverSamp$logit.estdirect, allresoverSamp$var.estdirect)
-        my.crpsoverSampdirect = crpsNormal(thisTruth, allresoverSamp$logit.estdirect, allresoverSamp$var.estdirect, resultType=resultType)
+        my.crpsoverSampdirect = crpsNormal(thisTruth, allresoverSamp$logit.estdirect, allresoverSamp$var.estdirect, logit=useLogit, n=numChildren)
         my.coverageoverSampdirect = coverage(thisTruth, allresoverSamp$upperdirect, allresoverSamp$lowerdirect, logit=useLogit)
         my.lengthoverSampdirect = intervalWidth(allresoverSamp$lowerdirect, allresoverSamp$upperdirect, logit=useLogit)
       }
@@ -628,7 +639,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasoverSampnaive = bias(thisTruth, allresoverSamp$logit.est, logit=useLogit, my.var=allresoverSamp$var.est)
         my.mseoverSampnaive = mse(thisTruth, allresoverSamp$logit.est, logit=useLogit, my.var=allresoverSamp$var.est)
         my.dssoverSampnaive = dss(thisTruth, allresoverSamp$logit.est, allresoverSamp$var.est)
-        my.crpsoverSampnaive = crpsNormal(thisTruth, allresoverSamp$logit.est, allresoverSamp$var.est, resultType=resultType)
+        my.crpsoverSampnaive = crpsNormal(thisTruth, allresoverSamp$logit.est, allresoverSamp$var.est, logit=useLogit, n=numChildren)
         my.coverageoverSampnaive = coverage(thisTruth, allresoverSamp$upper, allresoverSamp$lower, logit=useLogit)
         my.lengthoverSampnaive = intervalWidth(allresoverSamp$lower, allresoverSamp$upper, logit=useLogit)
       }
@@ -637,7 +648,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasoverSampmercer = bias(thisTruth, allresoverSamp$logit.est.mercer, logit=useLogit, my.var=allresoverSamp$var.est.mercer)
         my.mseoverSampmercer = mse(thisTruth, allresoverSamp$logit.est.mercer, logit=useLogit, my.var=allresoverSamp$var.est.mercer)
         my.dssoverSampmercer = dss(thisTruth, allresoverSamp$logit.est.mercer, allresoverSamp$var.est.mercer)
-        my.crpsoverSampmercer = crpsNormal(thisTruth, allresoverSamp$logit.est.mercer, allresoverSamp$var.est.mercer, resultType=resultType)
+        my.crpsoverSampmercer = crpsNormal(thisTruth, allresoverSamp$logit.est.mercer, allresoverSamp$var.est.mercer, logit=useLogit, n=numChildren)
         my.coverageoverSampmercer = coverage(thisTruth, allresoverSamp$lower.mercer, allresoverSamp$upper.mercer, logit=useLogit)
         my.lengthoverSampmercer = intervalWidth(allresoverSamp$lower.mercer, allresoverSamp$upper.mercer, logit=useLogit)
       }
@@ -646,7 +657,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasoverSampbymNoUrb = bias(thisTruth, designResNoUrb$overSampDat$mean[,i], logit=useLogit, my.var=(designResNoUrb$overSampDat$stddev[,i])^2)
         my.mseoverSampbymNoUrb = mse(thisTruth, designResNoUrb$overSampDat$mean[,i], logit=useLogit, my.var=(designResNoUrb$overSampDat$stddev[,i])^2)
         my.dssoverSampbymNoUrb = dss(thisTruth, designResNoUrb$overSampDat$mean[,i], (designResNoUrb$overSampDat$stddev[,i])^2)
-        my.crpsoverSampbymNoUrb = crpsNormal(thisTruth, designResNoUrb$overSampDat$mean[,i], (designResNoUrb$overSampDat$stddev[,i])^2, resultType=resultType)
+        my.crpsoverSampbymNoUrb = crpsNormal(thisTruth, designResNoUrb$overSampDat$mean[,i], (designResNoUrb$overSampDat$stddev[,i])^2, logit=useLogit, n=numChildren)
         my.coverageoverSampbymNoUrb = coverage(thisTruth, designResNoUrb$overSampDat$Q10[,i],designResNoUrb$overSampDat$Q90[,i], logit=useLogit)
         my.lengthoverSampbymNoUrb = intervalWidth(designResNoUrb$overSampDat$Q10[,i], designResNoUrb$overSampDat$Q90[,i], logit=useLogit)
       }
@@ -655,7 +666,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasoverSampbym = bias(thisTruth, designRes$overSampDat$mean[,i], logit=useLogit, my.var=(designRes$overSampDat$stddev[,i])^2)
         my.mseoverSampbym = mse(thisTruth, designRes$overSampDat$mean[,i], logit=useLogit, my.var=(designRes$overSampDat$stddev[,i])^2)
         my.dssoverSampbym = dss(thisTruth, designRes$overSampDat$mean[,i], (designRes$overSampDat$stddev[,i])^2)
-        my.crpsoverSampbym = crpsNormal(thisTruth, designRes$overSampDat$mean[,i], (designRes$overSampDat$stddev[,i])^2, resultType=resultType)
+        my.crpsoverSampbym = crpsNormal(thisTruth, designRes$overSampDat$mean[,i], (designRes$overSampDat$stddev[,i])^2, logit=useLogit, n=numChildren)
         my.coverageoverSampbym = coverage(thisTruth, designRes$overSampDat$Q10[,i],designRes$overSampDat$Q90[,i], logit=useLogit)
         my.lengthoverSampbym = intervalWidth(designRes$overSampDat$Q10[,i], designRes$overSampDat$Q90[,i], logit=useLogit)
       }
@@ -664,7 +675,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasoverSampspdeNoUrb = bias(thisTruth, allresoverSamp$logit.est.spdeNoUrb, logit=useLogit, my.var=allresoverSamp$var.est.spdeNoUrb)
         my.mseoverSampspdeNoUrb = mse(thisTruth, allresoverSamp$logit.est.spdeNoUrb, logit=useLogit, my.var=allresoverSamp$var.est.spdeNoUrb)
         my.dssoverSampspdeNoUrb = dss(thisTruth, allresoverSamp$logit.est.spdeNoUrb, allresoverSamp$var.est.spdeNoUrb)
-        my.crpsoverSampspdeNoUrb = crpsNormal(thisTruth, allresoverSamp$logit.est.spdeNoUrb, allresoverSamp$var.est.spdeNoUrb, resultType=resultType)
+        my.crpsoverSampspdeNoUrb = crpsNormal(thisTruth, allresoverSamp$logit.est.spdeNoUrb, allresoverSamp$var.est.spdeNoUrb, logit=useLogit, n=numChildren)
         my.coverageoverSampspdeNoUrb = coverage(thisTruth, allresoverSamp$lower.spdeNoUrb, allresoverSamp$upper.spdeNoUrb, logit=useLogit)
         my.lengthoverSampspdeNoUrb = intervalWidth(allresoverSamp$lower.spdeNoUrb, allresoverSamp$upper.spdeNoUrb, logit=useLogit)
       }
@@ -673,7 +684,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.biasoverSampspde = bias(thisTruth, allresoverSamp$logit.est.spde, logit=useLogit, my.var=allresoverSamp$var.est.spde)
         my.mseoverSampspde = mse(thisTruth, allresoverSamp$logit.est.spde, logit=useLogit, my.var=allresoverSamp$var.est.spde)
         my.dssoverSampspde = dss(thisTruth, allresoverSamp$logit.est.spde, allresoverSamp$var.est.spde)
-        my.crpsoverSampspde = crpsNormal(thisTruth, allresoverSamp$logit.est.spde, allresoverSamp$var.est.spde, resultType=resultType)
+        my.crpsoverSampspde = crpsNormal(thisTruth, allresoverSamp$logit.est.spde, allresoverSamp$var.est.spde, logit=useLogit, n=numChildren)
         my.coverageoverSampspde = coverage(thisTruth, allresoverSamp$lower.spde, allresoverSamp$upper.spde, logit=useLogit)
         my.lengthoverSampspde = intervalWidth(allresoverSamp$lower.spde, allresoverSamp$upper.spde, logit=useLogit)
       }

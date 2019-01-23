@@ -12,7 +12,7 @@ expit <- function(x) {
   exp(x)/(1+exp(x))
 }
 
-mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=25){
+mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1){
   
   if(!logit){
     # this is the MSE of the median prediction
@@ -26,7 +26,7 @@ mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=25){
     quantiles = matrix(rep(seq(0, 1, l=nsim + 2)[c(-1, -(nsim + 2))], length(my.est)), ncol=nsim, byrow=TRUE)
     logitP = matrix(qnorm(quantiles, my.est, sd=sqrt(my.var)), ncol=nsim)
     my.est = expit(logitP)
-    res = mean(sweep(my.est, 1, truth, "-")^2) * n^2
+    res = mean(sweep(my.est, 1, truth, "-")^2 * n^2)
   }
   else {
     res <- mean((truth - my.est)^2)
@@ -35,7 +35,7 @@ mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=25){
   return(res)
 }
 
-bias <- function(truth, my.est, logit=TRUE, my.var=NULL, n=25){
+bias <- function(truth, my.est, logit=TRUE, my.var=NULL, n=1){
   
   if(!logit) {
     # this is the bias of the median prediction, not the mean
@@ -50,13 +50,13 @@ bias <- function(truth, my.est, logit=TRUE, my.var=NULL, n=25){
   res <- my.est - truth
   
   if(!logit) {
-    return(n * mean(res))
+    return(mean(n * res))
   }
   
   return(mean(res))
 }
 
-crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="county"){
+crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="county", n=25){
   if(resultType == "EA" || resultType == "pixel")
     logit=FALSE
   
@@ -75,7 +75,7 @@ crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="c
     p = expit(logitP)
     
     # for each value of p, calculate the crps and return the mean
-    crpsVals = crpsBinomial(truth, p)
+    crpsVals = crpsBinomial(truth, p, n=n)
     res = mean(crpsVals)
   }
   
@@ -86,28 +86,38 @@ crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="c
 # trueProportion: can be a vector
 # p.est: can be a matrix, with number of rows equal to length(trueProportion)
 # n: can be a vector, with length equal to length(trueProportion)
-crpsBinomial <- function(trueProportion, p.est, n=25, parClust=NULL) {
+# empiricalProportion: if true, calculate the CRPS of the empirical proportion distribution on [0, 1] 
+#                      rather than the binomial distribution on [0, n]
+crpsBinomial <- function(trueProportion, p.est, n=25, parClust=NULL, empiricalProportion=TRUE) {
   trueCounts = trueProportion * n
   p.est = matrix(p.est, nrow=length(trueProportion))
-  toN = eval(0:n)
+  
+  # make sure n is a vector
+  if(length(n) == 1)
+    n = rep(n, length(trueProportion))
   
   rowFun = function(rowI) {
+    toN = eval(0:n[rowI])
     thisCount = trueCounts[rowI]
     
     crpsBinomialSingle = function(colI) {
       thisP = p.est[rowI, colI]
       
-      sum((pbinom(toN, n, thisP) - (thisCount <= toN))^2)
+      sum((pbinom(toN, n[rowI], thisP) - (thisCount <= toN))^2)
     }
     
     lapply(1:ncol(p.est), crpsBinomialSingle)
   }
   
   if(is.null(parClust))
-    crpsAll = lapply(1:nrow(p.est), rowFun)
+    crpsByRegion = lapply(1:nrow(p.est), function(i) {mean(unlist(rowFun(i)))})
   else
-    crpsAll = parLapply(parClust, 1:nrow(p.est), rowFun)
-  mean(unlist(crpsAll))
+    crpsByRegion = parLapply(parClust, 1:nrow(p.est), function(i) {mean(unlist(rowFun(i)))})
+  
+  if(empiricalProportion)
+    mean(unlist(crpsByRegion) / n)
+  else
+    mean(unlist(crpsByRegion))
 }
 
 # for a discrete random variable, determine the CRPS. 
@@ -144,11 +154,12 @@ coverage = function(truth, lower, upper, logit = TRUE){
     # truth = expit(truth)
   }
   
-  if(lower >= upper) {
+  if(any(lower >= upper)) {
     warning("lower >= upper, reordering")
     tmp = lower
-    lower = upper
-    upper = tmp
+    wrongOrder = lower >= upper
+    lower[wrongOrder] = upper[wrongOrder]
+    upper[wrongOrder] = tmp[wrongOrder]
   }
   
   res = mean(lower <= truth & upper >= truth)
