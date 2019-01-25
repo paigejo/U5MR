@@ -465,5 +465,22 @@ getHHprob = function(nHH, nDraws=25, log=FALSE) {
   nDraws/nHH
 }
 
-
+# match first occurrence of x in fun(values) using binary search assuming monotonicity of values
+binarySearchMatch = function(x, values, fun=function(v, i) {v[i]}) {
+  
+  leftI = 1
+  rightI = length(values)
+  while(leftI < rightI) {
+    matchI = floor((leftI + rightI) / 2)
+    if(x <= fun(values, matchI))
+      rightI = matchI
+    else
+      leftI = matchI + 1
+  }
+  
+  if(x <= fun(values, leftI))
+    leftI
+  else
+    NA
+}
 

@@ -12,6 +12,25 @@ expit <- function(x) {
   exp(x)/(1+exp(x))
 }
 
+# this function computes all scoring rules, with and without binomial variation
+# truth: the true empirical proportions of mortality rates within the regions or enumeration areas of interest
+# numChildren: a vector containing the number of children with the same length as truth
+# logitEst: the predictive mean on the logit scale, of the same length as truth
+# logitVar: the predictive variance on the logit scale, of the same length as truth
+# est: the estimate on the probability scale, of the same length as truth. By default calculated from probMat
+# var: the estimate variance on the probability scale, of the same length as truth. By default calculated from probMat
+# logitL: the lower end of the credible interval on the logit scale
+# logitU: the upper end of the credible interval on the logit scale
+# probMat: a matrix of joint draws of probability values, with number of rows equal to the length of truth, a number of columns equal to the number of draws
+# significance: the significance level of the credible interval. By default 80%
+# NOTE: Discrete, count level credible intervals are estimated based on the input probMat along with coverage and CRPS
+getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL, logitL=NULL, logitU=NULL, probMat, significance=.8) {
+  thisBias = bias(truth, logitEst, logit=FALSE, logicVar, n=numChildren)
+  thisLogitVar = mean(logitVar)
+  if(is.null(var))
+  thisVar = mean(apply())
+}
+
 mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1){
   
   if(!logit){
@@ -56,7 +75,7 @@ bias <- function(truth, my.est, logit=TRUE, my.var=NULL, n=1){
   return(mean(res))
 }
 
-crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="county", n=25){
+crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="county", n=25, bVar=TRUE){
   if(resultType == "EA" || resultType == "pixel")
     logit=FALSE
   
@@ -69,14 +88,32 @@ crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="c
     res <- -res
   }
   else {
-    # first draw different values of p from the predictive distribution
-    quantiles = matrix(rep(seq(0, 1, l=nsim + 2)[c(-1, -(nsim + 2))], length(my.est)), ncol=nsim, byrow=TRUE)
-    logitP = matrix(qnorm(quantiles, my.est, sd=sqrt(my.var)), ncol=nsim)
-    p = expit(logitP)
-    
-    # for each value of p, calculate the crps and return the mean
-    crpsVals = crpsBinomial(truth, p, n=n)
-    res = mean(crpsVals)
+    if(bVar) {
+      # first draw different values of p from the predictive distribution
+      quantiles = matrix(rep(seq(0, 1, l=nsim + 2)[c(-1, -(nsim + 2))], length(my.est)), ncol=nsim, byrow=TRUE)
+      logitP = matrix(qnorm(quantiles, my.est, sd=sqrt(my.var)), ncol=nsim)
+      p = expit(logitP)
+      
+      # for each value of p, calculate the crps and return the mean
+      crpsVals = crpsBinomial(truth, p, n=n)
+      res = mean(crpsVals)
+    } else {
+      # no binomial variation is included. Integrate numerically on the proportion scale
+      
+      # compute the crps for this row of truth
+      crpsRow = function(rowI) {
+        thisTruth = truth[rowI]
+        thisEst = my.est[rowI]
+        thisVar = my.var[rowI]
+        
+        intFun = function(ws) {
+          (pnorm(ws, thisEst, sqrt(thisVar)) - (ws >= thisTruth))^2
+        }
+        integrate(intFun, 0, 1)$value
+      }
+      crpsVals = sapply(1:length(truth), crpsRow)
+      res = mean(crpsVals)
+    }
   }
   
   res
@@ -143,6 +180,29 @@ crpsCounts <- function(trueCount, probs, parClust=NULL, empiricalProportion=TRUE
     res
 }
 
+# for a discrete random variable, determine the CRPS. 
+# probs: a vector of probabilities of length n + 1
+crpsCountsNoBVar <- function(trueProportion, logitEst, logitVar, parClust=NULL, empiricalProportion=TRUE) {
+  n = length(probs) - 1
+  toN = eval(0:n)
+  
+  # get cdf
+  cdf = cumsum(probs)
+  
+  if(is.null(parClust))
+    res = sum((cdf - (trueCount <= toN))^2)
+  else {
+    res = parSapply(parClust, toN, function(x) {trueCount <= x})
+    res = parSapply(parClust, 1:(n + 1), function(x) {(cdf[x] - res[x])^2})
+    res = sum(res)
+  }
+  
+  if(empiricalProportion)
+    res / n
+  else
+    res
+}
+
 dss = function(truth, my.est, my.var){
   
   my.sd = sqrt(my.var)
@@ -185,7 +245,8 @@ intervalWidth = function(lower, upper, logit = TRUE) {
 }
 
 # taken from logitnorm package.  Calculates the mean of a distribution whose 
-# logit is Gaussian.
+# logit is Gaussian. Each row of muSigmaMat has a mean and standard deviation 
+# on the logit scale
 logitNormMean = function(muSigmaMat, parClust=NULL, ...) {
   if(length(muSigmaMat) > 2) {
     if(is.null(parClust))
@@ -314,6 +375,54 @@ generateBinomialInterval = function(probs, significance = .80) {
   c(lower=leftI - 1, upper=rightI - 1, leftRejectProb=leftRejectProb, rightRejectProb=rightRejectProb)
 }
 
+# generate a highest density interval with at least the significance requested
+# NOTE: the returned confidence interval is on counts, not the index of the probs vector
+getHDI = function(probs, significance = .80) {
+  if(any(is.na(probs)))
+    return(list(lower=NA, upper=NA, leftRejectProb=NA, rightRejectProb=NA))
+  
+  # Find the maximum probability, and expand outward from there
+  maxI = which.max(probs)
+  n = length(probs) - 1
+  cumulativeProbs = cumsum(probs)
+  
+  getIntervalWidth = function(leftI) {
+    # totalProbs = probs[leftI] + cumulativeProbs[leftI:(n + 1)] - cumulativeProbs[leftI]
+    # width = binarySearchMatch(1, totalProbs >= significance)
+    width = binarySearchMatch(1, cumulativeProbs[leftI:(n + 1)], function(x, i) {(x[i] - x[1] + probs[leftI]) >= significance})
+    rightI = leftI - 1 + width
+    c(width = width, leftI = leftI, rightI = rightI, prob=cumulativeProbs[rightI] - cumulativeProbs[leftI] + probs[leftI])
+  }
+  
+  # calculate interval widths for relevant starting points
+  maxRelevantI = binarySearchMatch(1, cumulativeProbs >= 1 - significance)
+  intervalMatrix = sapply(1:maxRelevantI, getIntervalWidth)
+  
+  # determine which interval is the highest density interval, and get its information
+  # NOTE: there may be multiple highest density intervals, since the distribution is discrete. 
+  #       Taking any of them is fine.
+  minI = which.min(intervalMatrix[1,])
+  leftI = intervalMatrix[2, minI]
+  rightI = intervalMatrix[3, minI]
+  totalProb = intervalMatrix[4, minI]
+  
+  # determine probability of rejection at boundary
+  extraProb = totalProb - significance
+  leftProb = probs[leftI]
+  rightProb = probs[rightI]
+  if(leftProb <= rightProb) {
+    leftRejectProb = extraProb
+    rightRejectProb = 0
+  }
+  else {
+    rightRejectProb = extraProb
+    leftRejectProb = 0
+  }
+  
+  # return results (subtract one to the index to get the count)
+  c(lower=leftI - 1, upper=rightI - 1, leftRejectProb=leftRejectProb, rightRejectProb=rightRejectProb)
+}
+
 # approximate the sum of binomial distributions using the method from:
 # https://stackoverflow.com/questions/15926448/approximate-the-distribution-of-a-sum-of-binomial-random-variables-in-r
 # http://www.dtic.mil/dtic/tr/fulltext/u2/a266969.pdf
@@ -386,5 +495,6 @@ dSumBinomSim = function(k, ns=25, ps=.5, nSim=1000) {
   cdf = ecdf(colSums(countSims))
   cdf(k) - cdf(k - 1)
 }
+
 
 

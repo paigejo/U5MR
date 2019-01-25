@@ -97,7 +97,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
                         keepPixelPreds=FALSE, genEALevel=FALSE, eaIndices=1:nrow(kenyaEAs), 
                         urbanEffect=TRUE, link=1, predictionType=c("median", "mean"), eaDat=NULL, 
                         exactAggregation=FALSE, genCountLevel=FALSE, nSamplePixel=10, truthByPixel=NULL, 
-                        truthByCounty=NULL, truthByRegion=NULL) {
+                        truthByCounty=NULL, truthByRegion=NULL, truthByEa=NULL) {
   
   # match the prediction type
   predictionType = match.arg(predictionType)
@@ -283,8 +283,9 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
         countyProbMat = matrix(eaMat[eaIndices[countyI],], nrow=sum(countyI))
         
         # combine results by EA
-        numClusters = sum(countyI)
-        distribution = dSumBinomRandom(0:(25 * numClusters), rep(25, numClusters), countyProbMat)
+        # numClusters = sum(countyI)
+        numChildren = eaDat$numChildren
+        distribution = dSumBinomRandom(0:sum(numChildren), numChildren, countyProbMat)
         distribution
       }
       
@@ -292,7 +293,8 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       distributions <- lapply(counties, integratePredsByCounty)
       countyPredMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1)))}), ncol=1)
       countyVarMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1))^2) - sum(masses * (0:(length(masses) - 1)))^2}), ncol=1)
-      intervals = matrix(as.numeric(sapply(distributions, generateBinomialInterval)), nrow=4)
+      # intervals = matrix(as.numeric(sapply(distributions, generateBinomialInterval)), nrow=4)
+      intervals = matrix(as.numeric(sapply(distributions, getHDI)), nrow=4)
       
       # calculate crps
       calcCrpsByI = function(i) {
@@ -384,7 +386,8 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       distributions <- lapply(regions, integratePredsByRegion)
       regionPredMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1)))}), ncol=1)
       regionVarMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1))^2) - sum(masses * (0:(length(masses) - 1)))^2}), ncol=1)
-      intervals = matrix(as.numeric(sapply(distributions, generateBinomialInterval)), nrow=4)
+      # intervals = matrix(as.numeric(sapply(distributions, generateBinomialInterval)), nrow=4)
+      intervals = matrix(as.numeric(sapply(distributions, getHDI)), nrow=4)
       
       # calculate crps
       calcCrpsByI = function(i) {
@@ -453,7 +456,8 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       distributions <- lapply(1:nrow(predMat), integratePredsByRegion)
       pixelPredMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1)))}), ncol=1)
       pixelVarMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1))^2) - sum(masses * (0:(length(masses) - 1)))^2}), ncol=1)
-      intervals = matrix(as.numeric(sapply(distributions, generateBinomialInterval)), nrow=4)
+      # intervals = matrix(as.numeric(sapply(distributions, generateBinomialInterval)), nrow=4)
+      intervals = matrix(as.numeric(sapply(distributions, getHDI)), nrow=4)
       
       # calculate crps
       calcCrpsByI = function(i) {

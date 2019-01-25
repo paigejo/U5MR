@@ -107,7 +107,7 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE) {
   
   # Go through datasets for overSampDat
   sampCountyOverSampDat = array(NA, dim = c(47, 1000, length(overSampDat$clustDat)))
-  for(i in 1:length(overSampDat$clustDat[[i]])){
+  for(i in 1:length(overSampDat$clustDat)) {
     # Extract data
     currData = overSampDat$clustDat[[i]]
     currData$admin1 = factor(currData$admin1)
