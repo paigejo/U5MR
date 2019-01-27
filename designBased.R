@@ -4,7 +4,7 @@
 #    aggregation using true population and BYM spatial model                     #
 ##################################################################################
 
-runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE) {
+runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluster=TRUE) {
   
   # load and relevant data
   if(!test)
@@ -25,22 +25,39 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE) {
   
   # Define formula
   if(includeUrbanRural) {
-    formula = y ~ rural +
-      f(idx, model="iid", 
-        hyper=list(prec=list(param=c(0.5, 0.001488), prior="loggamma"))) + 
-      f(idx2, model="besag",
-        graph="Kenyaadm1.graph", 
-        hyper=list(prec=list(param=c(0.5, 0.00360), prior="loggamma"))) +
-      f(idxEps, model = "iid",
-        hyper = list(prec = list(prior = 'loggamma', param = c(1,0.01))))
+    if(includeCluster) {
+      formula = y ~ rural +
+        f(idx, model="iid", 
+          hyper=list(prec=list(param=c(0.5, 0.001488), prior="loggamma"))) + 
+        f(idx2, model="besag",
+          graph="Kenyaadm1.graph", 
+          hyper=list(prec=list(param=c(0.5, 0.00360), prior="loggamma"))) +
+        f(idxEps, model = "iid",
+          hyper = list(prec = list(prior = 'loggamma', param = c(1,0.01))))
+    } else {
+      formula = y ~ rural + 
+        f(idx2, model="besag",
+          graph="Kenyaadm1.graph", 
+          hyper=list(prec=list(param=c(0.5, 0.00360), prior="loggamma"))) +
+        f(idxEps, model = "iid",
+          hyper = list(prec = list(prior = 'loggamma', param = c(1,0.01))))
+    }
   } else {
-    formula = y ~ f(idx, model="iid", 
-                    hyper=list(prec=list(param=c(0.5, 0.001488), prior="loggamma"))) + 
-      f(idx2, model="besag",
-        graph="Kenyaadm1.graph", 
-        hyper=list(prec=list(param=c(0.5, 0.00360), prior="loggamma"))) +
-      f(idxEps, model = "iid",
-        hyper = list(prec = list(prior = 'loggamma', param = c(1,0.01))))
+    if(includeCluster) {
+      formula = y ~ f(idx, model="iid", 
+                      hyper=list(prec=list(param=c(0.5, 0.001488), prior="loggamma"))) + 
+        f(idx2, model="besag",
+          graph="Kenyaadm1.graph", 
+          hyper=list(prec=list(param=c(0.5, 0.00360), prior="loggamma"))) +
+        f(idxEps, model = "iid",
+          hyper = list(prec = list(prior = 'loggamma', param = c(1,0.01))))
+    } else {
+      formula = y ~ f(idx2, model="besag",
+          graph="Kenyaadm1.graph", 
+          hyper=list(prec=list(param=c(0.5, 0.00360), prior="loggamma"))) +
+        f(idxEps, model = "iid",
+          hyper = list(prec = list(prior = 'loggamma', param = c(1,0.01))))
+    }
   }
   
   
@@ -215,7 +232,8 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE) {
   #                      includeUrbanRural, '.RData'), designRes = designRes)
   testText = ifelse(test, "Test", "")
   save(file = paste0('kenyaSpatialDesignResultNewTausq', round(tausq, 4), 'UrbRur',
-                     includeUrbanRural, testText, '.RData'), designRes = designRes)
+                     includeUrbanRural, 'Cluster', includeCluster, testText, '.RData'), 
+       designRes = designRes)
   
   invisible(NULL)
 }

@@ -24,11 +24,45 @@ expit <- function(x) {
 # probMat: a matrix of joint draws of probability values, with number of rows equal to the length of truth, a number of columns equal to the number of draws
 # significance: the significance level of the credible interval. By default 80%
 # NOTE: Discrete, count level credible intervals are estimated based on the input probMat along with coverage and CRPS
-getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL, logitL=NULL, logitU=NULL, probMat, significance=.8) {
-  thisBias = bias(truth, logitEst, logit=FALSE, logicVar, n=numChildren)
+getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL, logitL=NULL, logitU=NULL, probL=NULL, probU=NULL, probMat, significance=.8) {
+  # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
+  thisBias = bias(truth, logitEst, logit=FALSE, logicVar, n=1)
+  
+  # calculate average predictive variance on the logit scale
   thisLogitVar = mean(logitVar)
+  
+  # if necessary, calculate credible interval boundaries on the logit scale without binomial variation
+  if(is.null(logitL))
+    logitL = qnorm((1 - significance) / 2, logitEst, sqrt(logitVar))
+  if(is.null(logitU))
+    logitU = qnorm(1 - (1 - significance) / 2, logitEst, sqrt(logitVar))
+  
+  # if necessary, do the same with binomial variation based on the joint simulations in the probability matrix
+  if(is.null(probL))
+    probL = apply(probMat, 1, function(x) {quantile(x, prob=(1 - significance) / 2)})
+  if(is.null(probU))
+    probU = apply(probMat, 1, function(x) {quantile(x, prob=1 - (1 - significance) / 2)})
+  
+  # calculate credible interval width on the proportion scale with and without binomial variation
+  thisWidthNoBinom = mean(expit(logitU) - expit(logitL))
+  thisWidthBinom = mean(probU - probL)
+  
+  # calculate mean squared error at the proportion scale
+  if(is.null(est))
+    thisMSE = mse(truth, logitEst, logit=FALSE, logitVar)
+  else
+    thisMSE = mse(truth, logit(est), logit=FALSE, logitVar)
+  
+  # calculate estimates and variance at the proportion scale based on the joint simulation probability matrix
+  if(is.null(est))
+    est = apply(probMat, 1, mean)
   if(is.null(var))
-  thisVar = mean(apply())
+    var = apply(probMat, 1, sd)^2
+  
+  # 
+  thisVar = mean(var)
+  
+  
 }
 
 mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1){

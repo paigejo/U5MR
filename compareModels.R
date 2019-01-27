@@ -87,7 +87,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   }
   
   ## Now pick which models to include in the results
-  allModels = c("naive", "direct", "mercer", "bym", "bymNoUrb", "spde", "spdeNoUrb")
+  allModels = c("naive", "direct", "mercer", "bym", "bymNoUrb", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
   models = allModels[modelsI]
   
   # load data
@@ -98,11 +98,17 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
       if("mercer" %in% models)
         out = load("resultsMercerTausq0.01test.RData")
       if("bymNoUrb" %in% models) {
-        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurFALSETest.RData")
+        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurFALSEClusterTRUETest.RData")
         designResNoUrb = designRes
       }
       if("bym" %in% models)
-        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurTRUETest.RData")
+        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurTRUEClusterTRUETest.RData")
+      if("bymNoUrbClust" %in% models) {
+        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurFALSEClusterFALSETest.RData")
+        designResNoUrb = designRes
+      }
+      if("bymNoClust" %in% models)
+        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurTRUEClusterFALSETest.RData")
       if("spdeNoUrb" %in% models) {
         out = load("resultsSPDETausq0.01urbanEffectFALSETest.RData")
         spdeSRSNoUrb = spdeSRS
@@ -116,11 +122,17 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
       if("mercer" %in% models)
         out = load("resultsMercerTausq0.01.RData")
       if("bymNoUrb" %in% models) {
-        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurFALSE.RData")
+        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurFALSEClusterTRUE.RData")
         designResNoUrb = designRes
       }
       if("bym" %in% models)
-        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurTRUE.RData")
+        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurTRUEClusterTRUE.RData")
+      if("bymNoUrbClust" %in% models) {
+        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurFALSEClusterFALSE.RData")
+        designResNoUrb = designRes
+      }
+      if("bymNoClust" %in% models)
+        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurTRUEClusterFALSE.RData")
       if("spdeNoUrb" %in% models) {
         out = load("resultsSPDETausq0.01urbanEffectFALSE.RData")
         spdeSRSNoUrb = spdeSRS
