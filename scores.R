@@ -59,10 +59,15 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
   if(is.null(var))
     var = apply(probMat, 1, sd)^2
   
-  # 
+  # calculate predictive variance on the proportion scale
   thisVar = mean(var)
   
+  # calculate CRPS on the proportion scale with and without binomial variation
+  thisCRPSNoBinom = crpsNormal(truth, logitEst, logitVar, logit=FALSE, n=numChildren, bVar=FALSE)
+  thisCRPSBinom = crpsNormal(truth, logitEst, logitVar, logit=FALSE, n=numChildren, bVar=TRUE)
   
+  # calculate coverage with and without binomial variation
+  coverageNoBinom = coverage
 }
 
 mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1){
@@ -109,6 +114,11 @@ bias <- function(truth, my.est, logit=TRUE, my.var=NULL, n=1){
   return(mean(res))
 }
 
+# truth: a vector of observations on the desired scale
+# my.est: a vector of logit-scale predictions of the same length as truth 
+# my.var: a vector of logit-scale predictive variances of the same length as truth
+# logit: whether CRPS should be computed on the logit scale or the empirical proportion scale
+# nsim: if binomial variation is included, 
 crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="county", n=25, bVar=TRUE){
   if(resultType == "EA" || resultType == "pixel")
     logit=FALSE
@@ -141,7 +151,7 @@ crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="c
         thisVar = my.var[rowI]
         
         intFun = function(ws) {
-          (pnorm(ws, thisEst, sqrt(thisVar)) - (ws >= thisTruth))^2
+          (pnorm(logit(ws), thisEst, sqrt(thisVar)) - (ws >= thisTruth))^2
         }
         integrate(intFun, 0, 1)$value
       }
@@ -153,9 +163,10 @@ crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="c
   res
 }
 
-# for a fixed binomial, determine the CRPS. 
+# for a set of independent fixed binomials, determine the CRPS.
 # trueProportion: can be a vector
-# p.est: can be a matrix, with number of rows equal to length(trueProportion)
+# p.est: can be a matrix, with number of rows equal to length(trueProportion). In that case, the 
+#        number of columns can be thought of as the number of draws of p in the case of a random p.
 # n: can be a vector, with length equal to length(trueProportion)
 # empiricalProportion: if true, calculate the CRPS of the empirical proportion distribution on [0, 1] 
 #                      rather than the binomial distribution on [0, n]
@@ -246,8 +257,70 @@ dss = function(truth, my.est, my.var){
   return(mean(dss_score))
 }
 
-coverage = function(truth, lower, upper, logit = TRUE){
-  if(!logit){
+# either include both lower and upper, or include either: 
+#    - the probability draw matrix
+#    - estimates and variances on the logit scale
+# lower: the logit scale lower end of the credible interval
+# upper: the logit scale upper end of the credible interval
+# nsim: the number of draws from the distribution of p in the case that the logit estimates and variance are provided
+#       to estimate the probability mass function
+coverage = function(truth, lower=NULL, upper=NULL, doLogit = TRUE, bVar=FALSE, numChildren=NULL, probMat=NULL, logitEst=NULL, logitVar=NULL, 
+                    nsim=10, significance=.8, returnIntervalWidth=FALSE){
+  
+  if(any(is.null(lower)) || any(is.null(upper))) {
+    # if the user did not supply their own credible intervals, we must get them ourselves given the other information
+    
+    if(is.null(probMat) || (is.null(logitEst) || is.null(logitVar)))
+      stop("either include both lower and upper, probMat, or both logitEst and logitVar")
+    
+    if(!is.null(logitEst) && !is.null(logitVar) && bVar) {
+      # in this case, we must generate the probabilities over which we will later integrate to get the 
+      # pmfs and credible intervals
+      
+      ## first we estimate the probability mass function
+      # get the probabilities over which we will integrate to get the probability mass function
+      quantiles = matrix(rep(seq(0, 1, l=nsim + 2)[c(-1, -(nsim + 2))], length(logitEst)), ncol=nsim, byrow=TRUE)
+      logitP = matrix(qnorm(quantiles, logitEst, sd=sqrt(logitVar)), ncol=nsim)
+      probMat = expit(logitP)
+    } else if(!is.null(logitEst) && !is.null(logitVar) && !bVar) {
+      lower = qnorm((1 - significance) / 2, logitEst, sqrt(logitVar))
+      upper = qnorm(1 - (1 - significance) / 2, logitEst, sqrt(logitVar))
+      doLogit = TRUE
+    } else {
+      if(!bVar) {
+        # we aren't accounting for binomial variation, so just take the quantiles of the probability draws
+        CIs = logit(apply(probMat, 1, function(ps) {quantile(ps, probs=c((1 - significance) / 2, 1 - (1 - significance) / 2))}))
+        lower = CIs[1,]
+        upper = CIs[2,]
+      }
+      else {
+        # don't need to do anything here, since it will be already done to probMat in the following if statement
+      }
+    }
+    
+    if(bVar) {
+      # for each region, take the average binomial probability mass, averaging over that drawn probabilities (integrate)
+      # do this for all possible count values to get the probability mass for each count
+      getPMF = function(rowI) {
+        ps = pMat[rowI,]
+        n = numChildren[rowI]
+        
+        probMass = apply(sapply(ps, function(p) {dbinom(0:n, n, p)}), 1, mean)
+      }
+      pmfs = lapply(1:nrow(pMat), getPMF)
+      
+      ## now that we have the pmfs, we can calculate the credible intervals (on the logit rather than count scale)
+      # NOTE: it is fine if we have a 0 or 1 interval boundary, since if we take the logit and get infinite results, 
+      #       comparisons still work
+      intervals = sapply(pmfs, getHDI, significance=significance)
+      lower = logit(intervals[1,] / numChildren)
+      upper = logit(intervals[2,] / numChildren)
+      lowerRejectProb = intervals[3,]
+      upperRejectProb = intervals[4,]
+    }
+  }
+  
+  if(!doLogit && !discreteInterval){
     lower = expit(lower)
     upper = expit(upper)
     # truth = expit(truth)
@@ -261,9 +334,31 @@ coverage = function(truth, lower, upper, logit = TRUE){
     upper[wrongOrder] = tmp[wrongOrder]
   }
   
-  res = mean(lower <= truth & upper >= truth)
+  res = lower <= truth & upper >= truth
   
-  return(res)
+  if(returnIntervalWidth)
+    width = upper - lower
+  
+  if(bVar) {
+    # in the case of discrete credible intervals, reject if the truth is at the boundary with some probability
+    atLower = truth == lower
+    atUpper = truth == upper
+    rejectLower = runif(sum(atLower)) < lowerRejectProb
+    rejectUpper = runif(sum(atUpper)) < upperRejectProb
+    res[atLower] = res[atLower] - rejectLower
+    res[atUpper] = res[atUpper] - rejectUpper
+    
+    # adjust interval width for random rejection if necessary
+    if(returnIntervalWidth) {
+      width[atLower] = width[atLower] - rejectLower / numChildren[atLower]
+      width[atUpper] = width[atUpper] - rejectUpper / numChildren[atUpper]
+    }
+  }
+  
+  if(!returnIntervalWidth)
+    return(mean(res))
+  else
+    c(coverage=mean(res), width=mean(width))
 }
 
 intervalWidth = function(lower, upper, logit = TRUE) {
