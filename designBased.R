@@ -73,7 +73,7 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
   }
   
   # Go through datasets for SRSDat
-  sampCountySRSDat = array(NA, dim = c(47, 1000, length(SRSDat$clustDat)))
+  sampCountySRSDat = array(NA, dim = c(47, Nsim, length(SRSDat$clustDat)))
   for(i in 1:length(SRSDat$clustDat)){
     # Extract data
     currData = SRSDat$clustDat[[i]]
@@ -123,7 +123,7 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
   }
   
   # Go through datasets for overSampDat
-  sampCountyOverSampDat = array(NA, dim = c(47, 1000, length(overSampDat$clustDat)))
+  sampCountyOverSampDat = array(NA, dim = c(47, Nsim, length(overSampDat$clustDat)))
   for(i in 1:length(overSampDat$clustDat)) {
     # Extract data
     currData = overSampDat$clustDat[[i]]

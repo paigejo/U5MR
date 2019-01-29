@@ -21,53 +21,91 @@ expit <- function(x) {
 # var: the estimate variance on the probability scale, of the same length as truth. By default calculated from probMat
 # logitL: the lower end of the credible interval on the logit scale
 # logitU: the upper end of the credible interval on the logit scale
-# probMat: a matrix of joint draws of probability values, with number of rows equal to the length of truth, a number of columns equal to the number of draws
+# probMat: a matrix of joint draws of probability values, with number of rows equal to the length of truth, a number of 
+#          columns equal to the number of draws. If not included, a gaussian distribution is assumed on the logit scale.
 # significance: the significance level of the credible interval. By default 80%
+# nsim: the number of sample quantiles from the gaussian distribution when approximating the proportion scale 
+#       distributions from the logit scale
 # NOTE: Discrete, count level credible intervals are estimated based on the input probMat along with coverage and CRPS
-getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL, logitL=NULL, logitU=NULL, probL=NULL, probU=NULL, probMat, significance=.8) {
+getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL, probMat=NULL, significance=.8, nsim=10, 
+                     do1row=TRUE) {
   # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
-  thisBias = bias(truth, logitEst, logit=FALSE, logicVar, n=1)
+  thisBias = bias(truth, logitEst, logit=FALSE, logitVar, n=1)
   
   # calculate average predictive variance on the logit scale
-  thisLogitVar = mean(logitVar)
+  # thisLogitVar = mean(logitVar)
   
-  # if necessary, calculate credible interval boundaries on the logit scale without binomial variation
-  if(is.null(logitL))
-    logitL = qnorm((1 - significance) / 2, logitEst, sqrt(logitVar))
-  if(is.null(logitU))
-    logitU = qnorm(1 - (1 - significance) / 2, logitEst, sqrt(logitVar))
-  
-  # if necessary, do the same with binomial variation based on the joint simulations in the probability matrix
-  if(is.null(probL))
-    probL = apply(probMat, 1, function(x) {quantile(x, prob=(1 - significance) / 2)})
-  if(is.null(probU))
-    probU = apply(probMat, 1, function(x) {quantile(x, prob=1 - (1 - significance) / 2)})
-  
-  # calculate credible interval width on the proportion scale with and without binomial variation
-  thisWidthNoBinom = mean(expit(logitU) - expit(logitL))
-  thisWidthBinom = mean(probU - probL)
+  ##### The below code was commented out because it is done automatically in the coverage function:
+  # # if necessary, calculate credible interval boundaries on the logit scale without binomial variation
+  # if(is.null(logitL))
+  #   logitL = qnorm((1 - significance) / 2, logitEst, sqrt(logitVar))
+  # if(is.null(logitU))
+  #   logitU = qnorm(1 - (1 - significance) / 2, logitEst, sqrt(logitVar))
+  # 
+  # # if necessary, do the same with binomial variation based on the joint simulations in the probability matrix
+  # if(is.null(probL))
+  #   probL = apply(probMat, 1, function(x) {quantile(x, prob=(1 - significance) / 2)})
+  # if(is.null(probU))
+  #   probU = apply(probMat, 1, function(x) {quantile(x, prob=1 - (1 - significance) / 2)})
+  # 
+  # # calculate credible interval width on the proportion scale with and without binomial variation
+  # thisWidthNoBinom = mean(expit(logitU) - expit(logitL))
+  # thisWidthBinom = mean(probU - probL)
   
   # calculate mean squared error at the proportion scale
   if(is.null(est))
-    thisMSE = mse(truth, logitEst, logit=FALSE, logitVar)
+    thisMSE = mse(truth, logitEst, logit=FALSE, logitVar, nsim=nsim)
   else
-    thisMSE = mse(truth, logit(est), logit=FALSE, logitVar)
+    thisMSE = mse(truth, logit(est), logit=FALSE, logitVar, nsim=nsim)
   
-  # calculate estimates and variance at the proportion scale based on the joint simulation probability matrix
-  if(is.null(est))
-    est = apply(probMat, 1, mean)
-  if(is.null(var))
-    var = apply(probMat, 1, sd)^2
+  # calculate predictive variance at the proportion scale based on the joint simulation probability matrix 
+  # if available or assume gaussian predictive distribution on the logit scale otherwise
+  if(!is.null(probMat)) {
+    if(is.null(var))
+      var = apply(probMat, 1, sd)^2
+  }
+  else {
+    quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(logitEst)), ncol=nsim, byrow=TRUE)
+    logitP = matrix(qnorm(quantiles, logitEst, sd=sqrt(logitVar)), ncol=nsim)
+    pMat = expit(logitP)
+    if(is.null(var))
+      var = apply(pMat, 1, sd)^2
+  }
   
   # calculate predictive variance on the proportion scale
   thisVar = mean(var)
   
-  # calculate CRPS on the proportion scale with and without binomial variation
-  thisCRPSNoBinom = crpsNormal(truth, logitEst, logitVar, logit=FALSE, n=numChildren, bVar=FALSE)
-  thisCRPSBinom = crpsNormal(truth, logitEst, logitVar, logit=FALSE, n=numChildren, bVar=TRUE)
+  # calculate coverage and credible interval width with and without binomial variation
+  coverageNoBinom = coverage(truth, doLogit=FALSE, bVar=FALSE, numChildren=numChildren, logitEst=logitEst, logitVar=logitVar, 
+                             probMat=probMat, significance=significance, returnIntervalWidth=TRUE, nsim=nsim)
+  coverageBinom = coverage(truth, doLogit=FALSE, bVar=TRUE, numChildren=numChildren, logitEst=logitEst, logitVar=logitVar, 
+                           probMat=probMat, significance=significance, returnIntervalWidth=TRUE, returnPMFs=TRUE, nsim=nsim)
   
-  # calculate coverage with and without binomial variation
-  coverageNoBinom = coverage
+  thisCoverageNoBinom = coverageNoBinom[1]
+  thisCoverageBinom = coverageBinom$intervalInfo[1]
+  thisWidthNoBinom = coverageNoBinom[2]
+  thisWidthBinom = coverageBinom$intervalInfo[2]
+  
+  # also get the probability mass functions for the binomial predictive distributions for the CRPS calculations
+  pmfs = coverageBinom$pmfs
+  
+  # calculate CRPS on the proportion scale with and without binomial variation
+  thisCRPSNoBinom = crpsNormal(truth, logitEst, logitVar, logit=FALSE, n=numChildren, bVar=FALSE, probMat=probMat, nsim=nsim)
+  thisCRPSBinom = crpsNormal(truth, logitEst, logitVar, logit=FALSE, n=numChildren, bVar=TRUE, probMat=probMat, nsim=nsim, pmfs=pmfs)
+  
+  # return the results
+  if(do1row) {
+    results = matrix(c(thisBias, thisVar, thisMSE, thisCRPSNoBinom, thisCRPSBinom, thisCoverageNoBinom, thisCoverageBinom, 
+                       thisWidthNoBinom, thisWidthBinom), nrow=1)
+    colnames(results) = c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")
+    as.data.frame(results)
+  } else {
+    results = matrix(c(thisBias, thisVar, thisMSE, thisCRPSNoBinom, thisCoverageNoBinom, thisWidthNoBinom, 
+                       thisBias, thisVar, thisMSE, thisCRPSBinom, thisCoverageBinom, thisWidthBinom), 
+                     nrow=2, byrow = TRUE)
+    colnames(results) = c("bias", "var", "mse", "crps", "coverage", "length")
+    as.data.frame(results)
+  }
 }
 
 mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1){
@@ -81,7 +119,7 @@ mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1){
     # first draw different values of p from the predictive distribution
     if(is.null(my.var))
       stop("variance must be supplied when calculating mse on non-logit scale")
-    quantiles = matrix(rep(seq(0, 1, l=nsim + 2)[c(-1, -(nsim + 2))], length(my.est)), ncol=nsim, byrow=TRUE)
+    quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(my.est)), ncol=nsim, byrow=TRUE)
     logitP = matrix(qnorm(quantiles, my.est, sd=sqrt(my.var)), ncol=nsim)
     my.est = expit(logitP)
     res = mean(sweep(my.est, 1, truth, "-")^2 * n^2)
@@ -118,10 +156,15 @@ bias <- function(truth, my.est, logit=TRUE, my.var=NULL, n=1){
 # my.est: a vector of logit-scale predictions of the same length as truth 
 # my.var: a vector of logit-scale predictive variances of the same length as truth
 # logit: whether CRPS should be computed on the logit scale or the empirical proportion scale
-# nsim: if binomial variation is included, 
-crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="county", n=25, bVar=TRUE){
-  if(resultType == "EA" || resultType == "pixel")
-    logit=FALSE
+# nsim: if binomial variation is included, the number of probabilities over which to integrate in the pmf approximation
+# n: the binomial sample size. Can be a vector of the same length as truth
+# bVar: whether or not binomial variation should be included in the predictive distribution
+# probMat: if included, use these probability draws in the pmf integration/approximation. If the estimates are normal 
+#          on the logit scale, do not include this since just using the estimates and variance will be accurate.
+# pmfs: a list of probability mass functions of the same length as truth
+crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, n=25, bVar=TRUE, probMat=NULL, pmfs=NULL){
+  # if(resultType == "EA" || resultType == "pixel")
+  #   logit=FALSE
   
   if(logit) {
     sig = sqrt(my.var)
@@ -133,29 +176,50 @@ crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="c
   }
   else {
     if(bVar) {
-      # first draw different values of p from the predictive distribution
-      quantiles = matrix(rep(seq(0, 1, l=nsim + 2)[c(-1, -(nsim + 2))], length(my.est)), ncol=nsim, byrow=TRUE)
-      logitP = matrix(qnorm(quantiles, my.est, sd=sqrt(my.var)), ncol=nsim)
-      p = expit(logitP)
+      # first draw different values of p from the predictive distribution if necessary
+      if(is.null(probMat) && is.null(pmfs)) {
+        quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(my.est)), ncol=nsim, byrow=TRUE)
+        logitP = matrix(qnorm(quantiles, my.est, sd=sqrt(my.var)), ncol=nsim)
+        probMat = expit(logitP)
+      }
       
       # for each value of p, calculate the crps and return the mean
-      crpsVals = crpsBinomial(truth, p, n=n)
+      crpsVals = crpsBinomial(truth, probMat, n=n, pmfs=pmfs)
       res = mean(crpsVals)
     } else {
       # no binomial variation is included. Integrate numerically on the proportion scale
       
       # compute the crps for this row of truth
-      crpsRow = function(rowI) {
+      crpsRow = function(rowI) {6
         thisTruth = truth[rowI]
-        thisEst = my.est[rowI]
-        thisVar = my.var[rowI]
+        
+        # either build the predictive cdf assuming normality on the logit scale or from the 
+        # empirical distribution given by probMat if the user supplies it
+        if(is.null(probMat)) {
+          thisEst = my.est[rowI]
+          thisVar = my.var[rowI]
+          thisCdf = function(ws) {pnorm(logit(ws), thisEst, sqrt(thisVar))}
+        } else {
+          thisCdf = ecdf(probMat[rowI,])
+        }
         
         intFun = function(ws) {
-          (pnorm(logit(ws), thisEst, sqrt(thisVar)) - (ws >= thisTruth))^2
+          (thisCdf(ws) - (ws >= thisTruth))^2
         }
-        integrate(intFun, 0, 1)$value
+        
+        if(is.null(probMat)) {
+          integrate(intFun, 0, 1)$value
+        }
+        else {
+          # since we are using the empirical distribution, there is a closed form for the integral
+          ps = probMat[rowI,]
+          allPoints = sort(c(ps, thisTruth))
+          deltas = diff(allPoints)
+          sum(deltas * intFun(allPoints[1:length(ps)]))
+        }
       }
       crpsVals = sapply(1:length(truth), crpsRow)
+      
       res = mean(crpsVals)
     }
   }
@@ -170,36 +234,47 @@ crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, resultType="c
 # n: can be a vector, with length equal to length(trueProportion)
 # empiricalProportion: if true, calculate the CRPS of the empirical proportion distribution on [0, 1] 
 #                      rather than the binomial distribution on [0, n]
-crpsBinomial <- function(trueProportion, p.est, n=25, parClust=NULL, empiricalProportion=TRUE) {
+# pmfs: a list of probability mass functions with the same length as trueProportion
+crpsBinomial <- function(trueProportion, p.est=NULL, n=25, parClust=NULL, empiricalProportion=TRUE, pmfs=NULL) {
+  # get observations at the count scale, make sure n is a vector
   trueCounts = trueProportion * n
-  p.est = matrix(p.est, nrow=length(trueProportion))
-  
-  # make sure n is a vector
   if(length(n) == 1)
     n = rep(n, length(trueProportion))
   
+  if(is.null(pmfs)) {
+    p.est = matrix(p.est, nrow=length(trueProportion))
+  }
+  else
+    cdfs = lapply(pmfs, function(pmf) {cumsum(pmf)})
+  
   rowFun = function(rowI) {
+    thisCount = eval(trueCounts[rowI])
     toN = eval(0:n[rowI])
-    thisCount = trueCounts[rowI]
     
-    crpsBinomialSingle = function(colI) {
-      thisP = p.est[rowI, colI]
+    if(is.null(pmfs)) {
+      ## in this case we must compute the probability mass function for this region ourselves
+      thisN = eval(n[rowI])
       
-      sum((pbinom(toN, n[rowI], thisP) - (thisCount <= toN))^2)
-    }
-    
-    lapply(1:ncol(p.est), crpsBinomialSingle)
+      crpsBinomialSingle = function(colI) {
+        thisP = p.est[rowI, colI]
+        sum((pbinom(toN, thisN, thisP) - (thisCount <= toN))^2)
+      }
+      
+      # return the region CRPS, taking the expectation over the distribution of p
+      mean(unlist(sapply(1:ncol(p.est), crpsBinomialSingle)))
+    } else
+      sum((cdfs[[rowI]] - (thisCount <= toN))^2)
   }
   
   if(is.null(parClust))
-    crpsByRegion = lapply(1:nrow(p.est), function(i) {mean(unlist(rowFun(i)))})
+    crpsByRegion = lapply(1:length(trueProportion), function(i) {rowFun(i)})
   else
-    crpsByRegion = parLapply(parClust, 1:nrow(p.est), function(i) {mean(unlist(rowFun(i)))})
+    crpsByRegion = parLapply(parClust, 1:length(trueProportion), function(i) {rowFun(i)})
   
   if(empiricalProportion)
-    sum(unlist(crpsByRegion) / n)
+    mean(unlist(crpsByRegion) / n) # multiply by delta p for the discrete integral
   else
-    sum(unlist(crpsByRegion))
+    mean(unlist(crpsByRegion))
 }
 
 # for a discrete random variable, determine the CRPS. 
@@ -265,12 +340,12 @@ dss = function(truth, my.est, my.var){
 # nsim: the number of draws from the distribution of p in the case that the logit estimates and variance are provided
 #       to estimate the probability mass function
 coverage = function(truth, lower=NULL, upper=NULL, doLogit = TRUE, bVar=FALSE, numChildren=NULL, probMat=NULL, logitEst=NULL, logitVar=NULL, 
-                    nsim=10, significance=.8, returnIntervalWidth=FALSE){
+                    nsim=10, significance=.8, returnIntervalWidth=FALSE, returnPMFs=FALSE){
   
   if(any(is.null(lower)) || any(is.null(upper))) {
     # if the user did not supply their own credible intervals, we must get them ourselves given the other information
     
-    if(is.null(probMat) || (is.null(logitEst) || is.null(logitVar)))
+    if(is.null(probMat) && (is.null(logitEst) || is.null(logitVar)))
       stop("either include both lower and upper, probMat, or both logitEst and logitVar")
     
     if(!is.null(logitEst) && !is.null(logitVar) && bVar) {
@@ -279,14 +354,22 @@ coverage = function(truth, lower=NULL, upper=NULL, doLogit = TRUE, bVar=FALSE, n
       
       ## first we estimate the probability mass function
       # get the probabilities over which we will integrate to get the probability mass function
-      quantiles = matrix(rep(seq(0, 1, l=nsim + 2)[c(-1, -(nsim + 2))], length(logitEst)), ncol=nsim, byrow=TRUE)
+      # quantiles = matrix(rep(seq(0, 1, l=nsim + 2)[c(-1, -(nsim + 2))], length(logitEst)), ncol=nsim, byrow=TRUE)
+      quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(logitEst)), ncol=nsim, byrow=TRUE)
       logitP = matrix(qnorm(quantiles, logitEst, sd=sqrt(logitVar)), ncol=nsim)
       probMat = expit(logitP)
-    } else if(!is.null(logitEst) && !is.null(logitVar) && !bVar) {
+    }
+    else if(!is.null(logitEst) && !is.null(logitVar) && !bVar) {
+      # We don't want to include binomial variation, and we have the gaussian distribution parameters on the logit scale. 
+      # Use those parameters to generate the credible intervals
+      
       lower = qnorm((1 - significance) / 2, logitEst, sqrt(logitVar))
       upper = qnorm(1 - (1 - significance) / 2, logitEst, sqrt(logitVar))
-      doLogit = TRUE
-    } else {
+    }
+    else {
+      # we don't have information about the predictive distribution on the logit scale, and don't assume normality. 
+      # Instead, use the user supplied to probability matrix probMat
+      
       if(!bVar) {
         # we aren't accounting for binomial variation, so just take the quantiles of the probability draws
         CIs = logit(apply(probMat, 1, function(ps) {quantile(ps, probs=c((1 - significance) / 2, 1 - (1 - significance) / 2))}))
@@ -302,17 +385,18 @@ coverage = function(truth, lower=NULL, upper=NULL, doLogit = TRUE, bVar=FALSE, n
       # for each region, take the average binomial probability mass, averaging over that drawn probabilities (integrate)
       # do this for all possible count values to get the probability mass for each count
       getPMF = function(rowI) {
-        ps = pMat[rowI,]
+        ps = probMat[rowI,]
         n = numChildren[rowI]
         
-        probMass = apply(sapply(ps, function(p) {dbinom(0:n, n, p)}), 1, mean)
+        rowMeans(sapply(ps, function(p) {dbinom(0:n, n, p)}))
       }
-      pmfs = lapply(1:nrow(pMat), getPMF)
+      pmfs = lapply(1:nrow(probMat), getPMF)
       
       ## now that we have the pmfs, we can calculate the credible intervals (on the logit rather than count scale)
       # NOTE: it is fine if we have a 0 or 1 interval boundary, since if we take the logit and get infinite results, 
       #       comparisons still work
-      intervals = sapply(pmfs, getHDI, significance=significance)
+      # intervals = sapply(pmfs, getHDI, significance=significance)
+      intervals = sapply(pmfs, getQuantileInterval, significance=significance)
       lower = logit(intervals[1,] / numChildren)
       upper = logit(intervals[2,] / numChildren)
       lowerRejectProb = intervals[3,]
@@ -320,11 +404,11 @@ coverage = function(truth, lower=NULL, upper=NULL, doLogit = TRUE, bVar=FALSE, n
     }
   }
   
-  if(!doLogit && !discreteInterval){
-    lower = expit(lower)
-    upper = expit(upper)
-    # truth = expit(truth)
-  }
+  # if(!doLogit){
+  lower = expit(lower)
+  upper = expit(upper)
+  # truth = expit(truth)
+  # }
   
   if(any(lower >= upper)) {
     warning("lower >= upper, reordering")
@@ -355,10 +439,13 @@ coverage = function(truth, lower=NULL, upper=NULL, doLogit = TRUE, bVar=FALSE, n
     }
   }
   
-  if(!returnIntervalWidth)
-    return(mean(res))
-  else
-    c(coverage=mean(res), width=mean(width))
+  allResults = c(coverage=mean(res))
+  if(returnIntervalWidth)
+    allResults = c(allResults, width=mean(width))
+  if(returnPMFs)
+    allResults = list(intervalInfo=allResults, pmfs=pmfs)
+  
+  allResults
 }
 
 intervalWidth = function(lower, upper, logit = TRUE) {
@@ -547,6 +634,33 @@ getHDI = function(probs, significance = .80) {
     rightRejectProb = extraProb
     leftRejectProb = 0
   }
+  
+  # return results (subtract one to the index to get the count)
+  c(lower=leftI - 1, upper=rightI - 1, leftRejectProb=leftRejectProb, rightRejectProb=rightRejectProb)
+}
+
+# generate a credible interval with at least the significance requested by including utmost (1 - significance) / 2
+# probability mass on each side
+# NOTE: the returned confidence interval is on counts, not the index of the probs vector
+getQuantileInterval = function(probs, significance = .80) {
+  if(any(is.na(probs)))
+    return(list(lower=NA, upper=NA, leftRejectProb=NA, rightRejectProb=NA))
+  
+  # get the cdf
+  n = length(probs) - 1
+  cumulativeProbs = cumsum(probs)
+  
+  # get left and right endpoints
+  leftI = max(binarySearchMatch(1, cumulativeProbs >= (1 - significance) / 2) - 1, 1)
+  probLeft = cumulativeProbs[leftI] - probs[leftI]
+  extraProbLeft = (1 - significance) / 2 - probLeft
+  rightI = max(binarySearchMatch(1, cumulativeProbs >= 1 - (1 - significance) / 2), 1)
+  probRight = 1 - cumulativeProbs[leftI]
+  extraProbRight = (1 - significance) / 2 - probRight
+  
+  # determine probability of rejection at boundaries
+  leftRejectProb = extraProbLeft
+  rightRejectProb = extraProbRight
   
   # return results (subtract one to the index to get the count)
   c(lower=leftI - 1, upper=rightI - 1, leftRejectProb=leftRejectProb, rightRejectProb=rightRejectProb)

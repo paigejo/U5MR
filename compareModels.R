@@ -1,7 +1,9 @@
 library(xtable)
 source("scores.R")
 
-# This model produces an xtable summarizing the scoring rules aggregated at the given level of interest
+# This model produces an xtable summarizing the scoring rules aggregated at the given level of interest. 
+# Same as runCompareModels, except uses the updated scoring rule function getScores, so it produces 
+# scoring rules based on the predictive distribution with and without binomial variation.
 # test: whether or not to use the test data set based results or the true
 #       simulation study results. The test data set results are based on fewer
 #       observations, requiring fewer computations and should be used to test the code
@@ -15,20 +17,22 @@ source("scores.R")
 #          so the default value of this argument is to include results for the naive, 
 #          direct, and mercer models. 1:7 is all models
 # produceFigures: whether or not to produce figures based on the results
-# logitScale: whether or not to produce scoring rule results at the logit or count scale. 
-#           By default this is to use loaded scale results unless the resultType is EA or pixel
 # printIEvery: how often to print progress
-runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixel", "EA"), 
+# maxDataSets: if not null, set this to a small integer to only score this many datasets 
+#              for testing purposes
+# nsim: the number of points with which to approximate the distribution of probability on the logit scale
+# saveResults: whether or not to save a disk image of the results
+runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixel", "EA"), 
                             sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:3, 
-                            produceFigures=FALSE, logitScale=NULL, big=FALSE, printIEvery=50) {
+                            produceFigures=FALSE, big=FALSE, printIEvery=50, 
+                            maxDataSets=NULL, nsim=10, saveResults=TRUE) {
   
   # match the arguments with their correct values
   resultType = match.arg(resultType)
   sampling = match.arg(sampling)
-  useLogit = logitScale
   
   # test to make sure only the naive and direct models are included if big is set to TRUE
-  if(!all(modelsI == 1:2) && big)
+  if(!identical(modelsI, 1:2) && big)
     stop("if big is set to TRUE, only naive and direct results can be included")
   
   testText = ifelse(test, "Test", "")
@@ -88,6 +92,510 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   
   ## Now pick which models to include in the results
   allModels = c("naive", "direct", "mercer", "bym", "bymNoUrb", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
+  allNames = c("Naive", "Direct estimates", "Mercer et al.", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
+  models = allModels[modelsI]
+  
+  # load data
+  tauText = ifelse(tausq == 0, "0", "0.01")
+  testText = ifelse(test, "Test", "")
+  if("naive" %in% models || "direct" %in% models) {
+    out = load(paste0("resultsDirectNaiveTausq", tauText, testText, bigText, ".RData")) # this is the only case that uses the big dataset
+    if(sampling == "SRS") {
+      directEst = directEstSRS
+      naive = naiveSRS
+    }
+    else {
+      directEst = directEstoverSamp
+      naive = naiveoverSamp
+    }
+  }
+  if("mercer" %in% models) {
+    out = load(paste0("resultsMercerTausq", tauText, tolower(testText), ".RData"))
+    if(sampling == "SRS")
+      mercer = mercerSRS
+    else
+      mercer = merceroverSamp
+  }
+  if("bymNoUrb" %in% models) {
+    out = load(paste0("KenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterTRUE", testText, ".RData"))
+    if(sampling == "SRS")
+      designRes$overSampDat = NULL
+    else
+      designRes$SRSdat = NULL
+    designResNoUrb = designRes
+  }
+  if("bymNoUrbClust" %in% models) {
+    out = load(paste0("KenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterFALSE", testText, ".RData"))
+    if(sampling == "SRS")
+      designRes$overSampDat = NULL
+    else
+      designRes$SRSdat = NULL
+    designResNoUrbClust = designRes
+  }
+  if("bymNoClust" %in% models) {
+    out = load(paste0("KenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterFALSE", testText, ".RData"))
+    if(sampling == "SRS")
+      designRes$overSampDat = NULL
+    else
+      designRes$SRSdat = NULL
+    designResNoClust = designRes
+  }
+  if("bym" %in% models) {
+    out = load(paste0("KenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterTRUE", testText, ".RData"))
+    if(sampling == "SRS")
+      designRes$overSampDat = NULL
+    else
+      designRes$SRSdat = NULL
+  }
+  if("spdeNoUrb" %in% models) {
+    out = load(paste0("resultsSPDETausq", tauText, "urbanEffectFALSE", testText, ".RData"))
+    if(sampling == "SRS")
+      spdeNoUrb = spdeSRS
+    else
+      spdeNoUrb = spdeOverSamp
+  }
+  if("spde" %in% models) {
+    out = load(paste0("resultsSPDETausq", tauText, "urbanEffectTRUE", testText, ".RData"))
+    if(sampling == "SRS")
+      spde = spdeSRS
+    else
+      spde = spdeOverSamp
+  }
+  
+  # commented out the below code, since it's not clear within strata predictions are necessary
+  # # modify discrete estimates stratified by urban/rural if resultType is at finer scale than county
+  # # (currently, further resolving discrete estimates is only supported for the direct estimates)
+  # if(resultType == "EA") {
+  #   filterByUrban = function(i) {
+  #     urbanI = 1:nrow(directEstSRS[[i]])
+  #   }
+  #   directEstSRS = lapply(1:100, )
+  # }
+  
+  # function for generating discrete model pixel and EA level predictions 
+  # given the county level predictions
+  getSubLevelResults = function(resultTable) {
+    # get the order of the counties that resultTable is in
+    counties = sort(unique(eaDat$admin1))
+    
+    # convert results to the desired aggregation level if necessary for discrete models:
+    if(resultType == "pixel") {
+      # compute pixel results
+      pixelToAdmin = match(popGrid$admin1, counties)
+      resultTable = resultTable[pixelToAdmin,]
+    }
+    else if(resultType == "EA") {
+      # compute EA level results
+      eaToAdmin = match(eaDat$admin1, counties)
+      resultTable = resultTable[eaToAdmin,]
+    }
+    
+    # modify result row and column table names according to aggregation level
+    whichName = which(names(resultTable) == "admin1")
+    names(resultTable)[whichName] = resultType
+    if((resultType == "EA") && (is.data.frame(resultTable))) {
+      # resultTable[[resultType]] = resultTable$eaI
+      resultTable[[resultType]] = 1:nrow(resultTable)
+    } else if((resultType == "pixel") && (is.data.frame(resultTable))) {
+      # resultTable[[resultType]] = resultTable$eaI
+      resultTable[[resultType]] = 1:nrow(resultTable)
+    }
+    
+    if(resultType == "pixel")
+      resultTable = resultTable[as.numeric(as.character(truth$pixel)),]
+    
+    resultTable
+  }
+  
+  # convert the truth to the desired aggregation level
+  if(resultType == "county")
+    truth = getSubLevelResults(truth)
+  
+  # calculate the binomial n (number of children) for each prediction unit
+  numChildren = truth$numChildren
+  
+  # compute scores
+  scoresDirect = scoresNaive = scoresMercer = scoresBYMNoUrb = scoresBYM = scoresBYMNoUrbClust = scoresBYMNoClust = scoresSPDENoUrb = scoresSPDE = data.frame()
+  
+  # convert results to the desired aggregation level
+  # not including urban effect
+  if("bymNoUrb" %in% models) {
+    designResNoUrb[[1]]$Q10 = getSubLevelResults(designResNoUrb[[1]]$Q10)
+    designResNoUrb[[1]]$Q50 = getSubLevelResults(designResNoUrb[[1]]$Q50)
+    designResNoUrb[[1]]$Q90 = getSubLevelResults(designResNoUrb[[1]]$Q90)
+    designResNoUrb[[1]]$mean = getSubLevelResults(designResNoUrb[[1]]$mean)
+    designResNoUrb[[1]]$stddev = getSubLevelResults(designResNoUrb[[1]]$stddev)
+  }
+  
+  # including urban effect
+  if("bym" %in% models) {
+    designRes[[1]]$Q10 = getSubLevelResults(designRes[[1]]$Q10)
+    designRes[[1]]$Q50 = getSubLevelResults(designRes[[1]]$Q50)
+    designRes[[1]]$Q90 = getSubLevelResults(designRes[[1]]$Q90)
+    designRes[[1]]$mean = getSubLevelResults(designRes[[1]]$mean)
+    designRes[[1]]$stddev = getSubLevelResults(designRes[[1]]$stddev)
+  }
+  
+  maxDataSets = ifelse(is.null(maxDataSets), length(clustDat$clustDat), maxDataSets)
+  for(i in c(1:maxDataSets)) { # for problem fitting mercerSRS for SRS sampling, tausq=0
+    # for(i in 1:100) {
+    if((i %% printIEvery == 0) || (i == 1))
+      print(i)
+    resultName = paste0(resultType, "Results")
+    if(resultType == "EA")
+      resultName = "eaResults"
+    
+    # convert results to the desired aggregation level
+      if("direct" %in% models)
+        directEsti = getSubLevelResults(directEst[[i]])
+      if("naive" %in% models)
+        naivei = getSubLevelResults(naive[[i]])
+      if("mercer" %in% models)
+        merceri = getSubLevelResults(mercer[[i]])
+      if(resultType != "county") {
+        if("spdeNoUrb" %in% models)
+          spdeNoUrbi = spdeNoUrb[[resultName]][[i]][as.numeric(as.character(truth[[resultType]])),]
+        if("spde" %in% models)
+          spdei = spde[[resultName]][[i]][as.numeric(as.character(truth[[resultType]])),]
+        if("direct" %in% models)
+          directEsti = getSubLevelResults(directEst[[i]])
+      } else {
+        if("spdeNoUrb" %in% models)
+          spdeNoUrbi = spdeNoUrb[[resultName]][[i]]
+        if("spde" %in% models)
+          spdei = spde[[resultName]][[i]]
+      }
+    
+    if(resultType == "EA") {
+      # set first row of spde results to be the EA index
+      if("spdeNoUrb" %in% models) {
+        spdeNoUrbi[[resultType]] = 1:nrow(spdeNoUrbi)
+        
+        whichName = which(names(spdeNoUrbi) == "EA")
+        spdeNoUrbi = cbind(spdeNoUrbi[,whichName], spdeNoUrbi[,-whichName])
+        
+        names(spdeNoUrbi)[1] = "EA"
+      }
+      if("spde" %in% models) {
+        spdei[[resultType]] = 1:nrow(spdei)
+        
+        whichName = which(names(spdei) == "EA")
+        spdei = cbind(spdei[,whichName], spdei[,-whichName])
+        
+        names(spdei)[1] = "EA"
+      }
+    }
+    
+    # for spde results, modify the name of the results
+    # modify result row and column table names according to aggregation level
+    if(resultType == "county") {
+      # without urban effect:
+      if("spdeNoUrb" %in% models) {
+          whichName = which(names(spdeNoUrbi) == "admin1")
+          names(spdeNoUrbi)[whichName] = resultType
+      }
+      
+      if("spde" %in% models) {
+        # with urban effect:
+          whichName = which(names(spdei) == "admin1")
+          names(spdei)[whichName] = resultType
+      }
+    }
+    
+    if(resultType == "pixel") {
+      # set first row of spde results to be the pixel index
+      if("spdeNoUrb" %in% models) {
+        spdeNoUrbi[[resultType]] = truth$pixel
+        
+        whichName = which(names(spdeNoUrbi) == "pixel")
+        spdeNoUrbi = cbind(spdeNoUrbi[,whichName], spdeNoUrbi[,-whichName])
+        
+        names(spdeNoUrbi)[1] = "pixel"
+      }
+      if("spde" %in% models) {
+        spdei[[resultType]] = truth$pixel
+        
+        whichName = which(names(spdei) == "pixel")
+        spdei = cbind(spdei[,whichName], spdei[,-whichName])
+        
+        names(spdei)[1] = "pixel"
+      }
+    }
+    
+    # change names of table variables in spde model with no urban effect to reflect that
+    if("spdeNoUrb" %in% models)
+      names(spdeNoUrbi)[2:6] = paste0(names(spdeNoUrbi)[2:6], "NoUrb")
+    
+    if("direct" %in% models) {
+      allres = merge(truth, directEsti, by=resultType)
+      colnames(allres) = c(resultType, "truth", paste(colnames(allres)[3:8], "direct", sep=""))
+    } else {
+      stop("direct estimates must be included at this point in order to name the estimate table columns")
+    }
+    if("naive" %in% models)
+      allres = merge(allres, naivei, by=resultType)
+    if("mercer" %in% models)
+      allres = merge(allres, merceri, by=resultType)
+    if("spdeNoUrb" %in% models)
+      allres = merge(allres, spdeNoUrbi, by=resultType)
+    if("spde" %in% models)
+      allres = merge(allres, spdei, by=resultType)
+    
+    # set whether or not to calculate scores on logit scale depending on result type
+    thisTruth = allres$truth
+    
+    # if(is.null(useLogit)) {
+    #   useLogit = FALSE
+    #   if(resultType != "EA" && resultType != "pixel") {
+    #     thisTruth = logit(thisTruth)
+    #     useLogit=TRUE
+    #   }
+    # } else if(useLogit == TRUE) {
+    #   thisTruth = logit(thisTruth)
+    # }
+    
+    if("direct" %in% models) {
+      my.scoresdirect = getScores(thisTruth, numChildren, allres$logit.estdirect, allres$var.estdirect, nsim=nsim)
+      scoresDirect <- rbind(scoresDirect,
+                            cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresdirect))
+    }
+    if("naive" %in% models) {
+      my.scoresnaive = getScores(thisTruth, numChildren, allres$logit.est, allres$var.est, nsim=nsim)
+      scoresNaive <- rbind(scoresNaive,
+                           cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresnaive))
+    }
+    if("mercer" %in% models) {
+      my.scoresmercer = getScores(thisTruth, numChildren, allres$logit.est.mercer, allres$var.est.mercer, nsim=nsim)
+      scoresMercer <- rbind(scoresMercer,
+                            cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresmercer))
+    }
+    if("bymNoUrbClust" %in% models) {
+      my.scoresbymNoUrbClust = getScores(thisTruth, numChildren, designResNoUrbClust[[1]]$mean[,i], (designResNoUrbClust[[1]]$stddev[,i])^2, nsim=nsim)
+      scoresBYMNoUrbClust <- rbind(scoresBYMNoUrbClust,
+                                   cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbClust))
+    }
+    if("bymNoUrb" %in% models) {
+      my.scoresbymNoUrb = getScores(thisTruth, numChildren, designResNoUrb[[1]]$mean[,i], (designResNoUrb[[1]]$stddev[,i])^2, nsim=nsim)
+      scoresBYMNoUrb <- rbind(scoresBYMNoUrb,
+                              cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrb))
+    }
+    if("bymNoClust" %in% models) {
+      my.scoresbymNoClust = getScores(thisTruth, numChildren, designResNoClust[[1]]$mean[,i], (designResNoClust[[1]]$stddev[,i])^2, nsim=nsim)
+      scoresBYMNoClust <- rbind(scoresBYMNoClust,
+                                cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoClust))
+    }
+    if("bym" %in% models) {
+      my.scoresbym = getScores(thisTruth, numChildren, designRes[[1]]$mean[,i], (designRes[[1]]$stddev[,i])^2, nsim=nsim)
+      scoresBYM <- rbind(scoresBYM,
+                         cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbym))
+    }
+    if("spdeNoUrb" %in% models) {
+      stop("determine if the spde code should compute all of these directly")
+      my.biasspdeNoUrb = bias(thisTruth, allres$logit.est.spdeNoUrb, logit=useLogit, my.var=allres$var.est.spdeNoUrb)
+      my.msespdeNoUrb = mse(thisTruth, allres$logit.est.spdeNoUrb, logit=useLogit, my.var=allres$var.est.spdeNoUrb)
+      my.dssspdeNoUrb = dss(thisTruth, allres$logit.est.spdeNoUrb, allres$var.est.spdeNoUrb)
+      # the below line used to be commented for some reason
+      my.crpsspdeNoUrb = crpsNormal(thisTruth, allres$logit.est.spdeNoUrb, allres$var.est.spdeNoUrb, logit=useLogit, n=numChildren)
+      my.crpsspdeNoUrb = allres$crps.spdeNoUrb
+      my.coveragespdeNoUrb = coverage(thisTruth, allres$lower.spdeNoUrb, allres$upper.spdeNoUrb, logit=useLogit)
+      my.lengthspdeNoUrb = intervalWidth(allres$lower.spdeNoUrb, allres$upper.spdeNoUrb, logit=useLogit)
+      scoresSPDENoUrb <- rbind(scoresSPDENoUrb,
+                               cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresspdeNoUrb))
+    }
+    if("spde" %in% models) {
+      stop("determine if the spde code should compute all of these directly")
+      my.biasspde = bias(thisTruth, allres$logit.est.spde, logit=useLogit, my.var=allres$var.est.spde)
+      my.msespde = mse(thisTruth, allres$logit.est.spde, logit=useLogit, my.var=allres$var.est.spde)
+      my.dssspde = dss(thisTruth, allres$logit.est.spde, allres$var.est.spde)
+      # the below line needs to be commented for some reason
+      my.crpsspde = crpsNormal(thisTruth, allres$logit.est.spde, allres$var.est.spde, logit=useLogit, n=numChildren)
+      my.crpsspde = allres$crps.spde
+      my.coveragespde = coverage(thisTruth, allres$lower.spde, allres$upper.spde, logit=useLogit)
+      my.lengthspde = intervalWidth(allres$lower.spde, allres$upper.spde, logit=useLogit)
+      scoresSPDE <- rbind(scoresSPDE,
+                          cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresspde))
+    }
+  }
+  
+  # final table: 
+  if("naive" %in% models)
+    naive = apply(scoresNaive[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("direct" %in% models)
+    direct = apply(scoresDirect[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("mercer" %in% models)
+    mercer = apply(scoresMercer[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("bymNoUrbClust" %in% models)
+    bymNoUrbClust = apply(scoresBYMNoUrbClust[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("bymNoUrb" %in% models)
+    bymNoUrb = apply(scoresBYMNoUrb[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("bymNoClust" %in% models)
+    bym = apply(scoresBYMNoClust[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("bym" %in% models)
+    bym = apply(scoresBYM[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("spdeNoUrb" %in% models)
+    spdeNoUrb = apply(scoresSPDENoUrb[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("spde" %in% models)
+    spde = apply(scoresSPDE[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  idx = 1:9
+  tab = c()
+  if("naive" %in% models)
+    tab = rbind(tab, c(naive[idx]))
+  if("direct" %in% models)
+    tab = rbind(tab, c(direct[idx]))
+  if("mercer" %in% models)
+    tab = rbind(tab, c(mercer[idx]))
+  if("bymNoUrbClust" %in% models)
+    tab = rbind(tab, c(bymNoUrbClust[idx]))
+  if("bymNoUrb" %in% models)
+    tab = rbind(tab, c(bymNoUrb[idx]))
+  if("bymNoClust" %in% models)
+    tab = rbind(tab, c(bymNoClust[idx]))
+  if("bym" %in% models)
+    tab = rbind(tab, c(bym[idx]))
+  if("spdeNoUrb" %in% models)
+    tab = rbind(tab, c(spdeNoUrb[idx]))
+  if("spde" %in% models)
+    tab = rbind(tab, c(spde[idx]))
+  rownames(tab) = allNames[modelsI]
+  
+  print(xtable(tab, digits=3), 
+        only.contents=TRUE, 
+        include.colnames=TRUE,
+        hline.after=NULL)
+  
+  runId = paste0("Tausq", round(tausq, 3), testText, bigText, sampling, 
+                 "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
+  if(saveResults) {
+    # first collect all the results
+    save.image(paste0("scores", runId, ".RData"))
+  }
+  
+  if(produceFigures) {
+    # compare all five
+    pdf(paste0("figures/biasbyregion", runId, ".pdf"), width=20, height=12)
+    par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
+    boxplot(bias~region, data=scoresDirect, at=seq(-1, 275, by=6), 
+            col="yellow", xlim=c(0,279), names=FALSE, xaxt="n")
+    boxplot(bias~region, data=scoresNaive, at=seq(0, 276, by=6), col="orange", xlim=c(0,230), add=TRUE)
+    boxplot(bias~region, data=scoresMercer, at=seq(1, 277, by=6), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
+    boxplot(bias~region, data=scoresBYM, at=seq(2, 278, by=6), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
+    boxplot(bias~region, data=scoresSPDE, at=seq(3, 279, by=6), col="purple", xlim=c(0,230), add=TRUE, xaxt="n")
+    # axis(2, at=seq(0.5, 276.5, by=6), labels=scoresDirect$region[1:47])
+    # axis(1, at=seq(0.5, 276.5, by=6), labels=scoresDirect$region[1:47])
+    legend("top", c("Direct estimates", "Naive", "Mercer", "BYM", "SPDE"),
+           fill = c("yellow", "orange", "green", "lightblue", "purple"), ncol=4, cex=2)
+    abline(h=0, lwd=2, col=2)
+    dev.off()
+    
+    pdf(paste0("figures/crpsbyregion", runId, ".pdf"), width=20, height=12)
+    par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
+    boxplot(crps~region, data=scoresDirect, at=seq(-1, 275, by=6), 
+            col="yellow", xlim=c(0,279), names=FALSE, xaxt="n")
+    if("naive" %in% models)
+      boxplot(crps~region, data=scoresNaive, at=seq(0, 276, by=6), col="orange", xlim=c(0,230), add=TRUE)
+    if("mercer" %in% models)
+      boxplot(crps~region, data=scoresMercer, at=seq(1, 277, by=6), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
+    if("BYM" %in% models)
+      boxplot(crps~region, data=scoresBYM, at=seq(2, 278, by=6), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
+    if("spde" %in% models)
+      boxplot(crps~region, data=scoresSPDE, at=seq(3, 279, by=6), col="purple", xlim=c(0,230), add=TRUE, xaxt="n")
+    # axis(2, at=seq(0.5, 276.5, by=6), labels=scoresDirect$region[1:47])
+    legend("top", c("Direct estimates", "Naive", "Mercer", "BYM", "SPDE"),
+           fill = c("yellow", "orange", "green", "lightblue", "purple"), ncol=4, cex=2)
+    dev.off()
+  }
+  
+  tab
+}
+
+# This model produces an xtable summarizing the scoring rules aggregated at the given level of interest
+# test: whether or not to use the test data set based results or the true
+#       simulation study results. The test data set results are based on fewer
+#       observations, requiring fewer computations and should be used to test the code
+# tausq: the spatial nugget in the simulated data, can only be the default or 0
+# resultType: the level of aggregation over which scoring rules should be computed
+# sampling: whether or not to use the simple random sample or urban over sampled results
+# recomputeTruth: by default the should be set to TRUE, unless the user calls this function 
+#                 twice in a row with the same set of inputs
+# modelsI: which model results should be included. Models come in the order:
+#          c("naive", "direct", "mercer", "bym", "bymNoUrb", "spde", "spdeNoUrb"), 
+#          so the default value of this argument is to include results for the naive, 
+#          direct, and mercer models. 1:7 is all models
+# produceFigures: whether or not to produce figures based on the results
+# logitScale: whether or not to produce scoring rule results at the logit or count scale. 
+#           By default this is to use loaded scale results unless the resultType is EA or pixel
+# printIEvery: how often to print progress
+runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixel", "EA"), 
+                            sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:3, 
+                            produceFigures=FALSE, logitScale=NULL, big=FALSE, printIEvery=50) {
+  
+  # match the arguments with their correct values
+  resultType = match.arg(resultType)
+  sampling = match.arg(sampling)
+  useLogit = logitScale
+  
+  # test to make sure only the naive and direct models are included if big is set to TRUE
+  if(!identical(modelsI, 1:2) && big)
+    stop("if big is set to TRUE, only naive and direct results can be included")
+  
+  testText = ifelse(test, "Test", "")
+  bigText = ifelse(big, "Big", "")
+  if(tausq == .1^2 || tausq == .01) {
+    out = load(paste0("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0", testText, bigText, ".RData"))
+  }
+  else {
+    if(tausq != 0)
+      stop("tausq can only be equal to .1^2 or 0")
+    
+    out = load(paste0("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0", testText, bigText, ".RData"))
+  }
+  eaDat = SRSDat$eaDat
+  
+  if(sampling == "SRS") {
+    clustDat = SRSDat
+  } else {
+    clustDat = overSampDat
+  }
+  
+  ## generate the true values at the county level for the 
+  ## given settings if these are new settings
+  if(recomputeTruth){
+    if(resultType == "county") {
+      # compute truth based on superpopulation
+      regions = sort(unique(eaDat$admin1))
+      truthbycounty <- rep(NA, 47)
+      childrenPerCounty = truthbycounty
+      
+      for(i in 1:47){
+        super = eaDat[eaDat$admin1 == regions[i],]
+        childrenPerCounty[i] = sum(super$numChildren)
+        truthbycounty[i] <- sum(super$died)/childrenPerCounty[i]
+      }
+      truth = data.frame(admin1=regions, truth=truthbycounty, numChildren=childrenPerCounty)
+      save(truth, file="truthbycounty.RData")
+    } else if(resultType == "pixel") {
+      counties = sort(unique(eaDat$admin1))
+      eaToPixel = eaDat$pixelI
+      childrenPerPixel = tapply(eaDat$numChildren, list(pixel=eaDat$pixelI), sum)
+      urbanPixel = tapply(eaDat$urban, list(pixel=eaDat$pixelI), function(x) {mean(x[1])})
+      deathsPerPixel = tapply(eaDat$died, list(pixel=eaDat$pixelI), sum)
+      regions = names(childrenPerPixel) # these are the pixels with enumeration areas in them
+      pixelToAdmin = match(popGrid$admin1[as.numeric(regions)], counties)
+      
+      truth = data.frame(pixel=regions, truth=deathsPerPixel / childrenPerPixel, countyI=pixelToAdmin, urban=urbanPixel, numChildren=childrenPerPixel)
+      save(truth, file="truthbyPixel.RData")
+    } else if(resultType == "EA") {
+      truth = data.frame(EA = 1:nrow(eaDat), truth = eaDat$died/25, urban=eaDat$urban, numChildren=eaDat$numChildren)
+      save(truth, file="truthbyEA.RData")
+    }
+  } else {
+    # load the truth
+    load(paste0("truthby", resultType, ".RData"))
+  }
+  
+  ## Now pick which models to include in the results
+  allModels = c("naive", "direct", "mercer", "bym", "bymNoUrb", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
+  allNames = c("Naive", "Direct estimates", "Mercer et al.", "Model-based BYM", "Model-based BYM (no urban effect)", "Model-based BYM (no cluster effect)", "Model-based BYM (no urban or cluster effect)", "SPDE", "SPDE (no urban effect)")
   models = allModels[modelsI]
   
   # load data
@@ -242,11 +750,11 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   # convert results to the desired aggregation level
   # not including urban effect
   if("bymNoUrb" %in% models) {
-    designResNoUrb$SRSdat$Q10 = getSubLevelResults(designResNoUrb$SRSdat$Q10)
-    designResNoUrb$SRSdat$Q50 = getSubLevelResults(designResNoUrb$SRSdat$Q50)
-    designResNoUrb$SRSdat$Q90 = getSubLevelResults(designResNoUrb$SRSdat$Q90)
-    designResNoUrb$SRSdat$mean = getSubLevelResults(designResNoUrb$SRSdat$mean)
-    designResNoUrb$SRSdat$stddev = getSubLevelResults(designResNoUrb$SRSdat$stddev)
+    designResNoUrb[[1]]$Q10 = getSubLevelResults(designResNoUrb[[1]]$Q10)
+    designResNoUrb[[1]]$Q50 = getSubLevelResults(designResNoUrb[[1]]$Q50)
+    designResNoUrb[[1]]$Q90 = getSubLevelResults(designResNoUrb[[1]]$Q90)
+    designResNoUrb[[1]]$mean = getSubLevelResults(designResNoUrb[[1]]$mean)
+    designResNoUrb[[1]]$stddev = getSubLevelResults(designResNoUrb[[1]]$stddev)
     designResNoUrb$overSampDat$Q10 = getSubLevelResults(designResNoUrb$overSampDat$Q10)
     designResNoUrb$overSampDat$Q50 = getSubLevelResults(designResNoUrb$overSampDat$Q50)
     designResNoUrb$overSampDat$Q90 = getSubLevelResults(designResNoUrb$overSampDat$Q90)
@@ -256,11 +764,11 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   
   # including urban effect
   if("bym" %in% models) {
-    designRes$SRSdat$Q10 = getSubLevelResults(designRes$SRSdat$Q10)
-    designRes$SRSdat$Q50 = getSubLevelResults(designRes$SRSdat$Q50)
-    designRes$SRSdat$Q90 = getSubLevelResults(designRes$SRSdat$Q90)
-    designRes$SRSdat$mean = getSubLevelResults(designRes$SRSdat$mean)
-    designRes$SRSdat$stddev = getSubLevelResults(designRes$SRSdat$stddev)
+    designRes[[1]]$Q10 = getSubLevelResults(designRes[[1]]$Q10)
+    designRes[[1]]$Q50 = getSubLevelResults(designRes[[1]]$Q50)
+    designRes[[1]]$Q90 = getSubLevelResults(designRes[[1]]$Q90)
+    designRes[[1]]$mean = getSubLevelResults(designRes[[1]]$mean)
+    designRes[[1]]$stddev = getSubLevelResults(designRes[[1]]$stddev)
     designRes$overSampDat$Q10 = getSubLevelResults(designRes$overSampDat$Q10)
     designRes$overSampDat$Q50 = getSubLevelResults(designRes$overSampDat$Q50)
     designRes$overSampDat$Q90 = getSubLevelResults(designRes$overSampDat$Q90)
@@ -490,7 +998,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.mseSRSdirect = mse(thisTruth, allresSRS$logit.estdirect, logit=useLogit, my.var=allresSRS$var.estdirect)
         my.dssSRSdirect = dss(thisTruth, allresSRS$logit.estdirect, allresSRS$var.estdirect)
         my.crpsSRSdirect = crpsNormal(thisTruth, allresSRS$logit.estdirect, allresSRS$var.estdirect, logit=useLogit, n=numChildren)
-        my.coverageSRSdirect = coverage(thisTruth, allresSRS$lowerdirect, allresSRS$upperdirect, logit=useLogit)
+        my.coverageSRSdirect = coverage(thisTruth, allresSRS$lowerdirect, allresSRS$upperdirect, doLogit=useLogit)
         my.lengthSRSdirect = intervalWidth(allresSRS$lowerdirect, allresSRS$upperdirect, logit=useLogit)
       }
       
@@ -499,7 +1007,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.mseSRSnaive = mse(thisTruth, allresSRS$logit.est, logit=useLogit, my.var=allresSRS$var.est)
         my.dssSRSnaive = dss(thisTruth, allresSRS$logit.est, allresSRS$var.est)
         my.crpsSRSnaive = crpsNormal(thisTruth, allresSRS$logit.est, allresSRS$var.est, logit=useLogit, n=numChildren)
-        my.coverageSRSnaive = coverage(thisTruth, allresSRS$lower, allresSRS$upper, logit=useLogit)
+        my.coverageSRSnaive = coverage(thisTruth, allresSRS$lower, allresSRS$upper, doLogit=useLogit)
         my.lengthSRSnaive = intervalWidth(allresSRS$lower, allresSRS$upper, logit=useLogit)
       }
       
@@ -508,26 +1016,26 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.mseSRSmercer = mse(thisTruth, allresSRS$logit.est.mercer, logit=useLogit, my.var=allresSRS$var.est.mercer)
         my.dssSRSmercer = dss(thisTruth, allresSRS$logit.est.mercer, allresSRS$var.est.mercer)
         my.crpsSRSmercer = crpsNormal(thisTruth, allresSRS$logit.est.mercer, allresSRS$var.est.mercer, logit=useLogit, n=numChildren)
-        my.coverageSRSmercer = coverage(thisTruth, allresSRS$lower.mercer, allresSRS$upper.mercer, logit=useLogit)
+        my.coverageSRSmercer = coverage(thisTruth, allresSRS$lower.mercer, allresSRS$upper.mercer, doLogit=useLogit)
         my.lengthSRSmercer = intervalWidth(allresSRS$lower.mercer, allresSRS$upper.mercer, logit=useLogit)
       }
       
       if("bymNoUrb" %in% models) {
-        my.biasSRSbymNoUrb = bias(thisTruth, designResNoUrb$SRSdat$mean[,i], logit=useLogit, my.var=(designResNoUrb$SRSdat$stddev[,i])^2)
-        my.mseSRSbymNoUrb = mse(thisTruth, designResNoUrb$SRSdat$mean[,i], logit=useLogit, my.var=(designResNoUrb$SRSdat$stddev[,i])^2)
-        my.dssSRSbymNoUrb = dss(thisTruth, designResNoUrb$SRSdat$mean[,i], (designResNoUrb$SRSdat$stddev[,i])^2)
-        my.crpsSRSbymNoUrb = crpsNormal(thisTruth, designResNoUrb$SRSdat$mean[,i], (designResNoUrb$SRSdat$stddev[,i])^2, logit=useLogit, n=numChildren)
-        my.coverageSRSbymNoUrb = coverage(thisTruth, designResNoUrb$SRSdat$Q10[,i],designResNoUrb$SRSdat$Q90[,i], logit=useLogit)
-        my.lengthSRSbymNoUrb = intervalWidth(designResNoUrb$SRSdat$Q10[,i], designResNoUrb$SRSdat$Q90[,i], logit=useLogit)
+        my.biasSRSbymNoUrb = bias(thisTruth, designResNoUrb[[1]]$mean[,i], logit=useLogit, my.var=(designResNoUrb[[1]]$stddev[,i])^2)
+        my.mseSRSbymNoUrb = mse(thisTruth, designResNoUrb[[1]]$mean[,i], logit=useLogit, my.var=(designResNoUrb[[1]]$stddev[,i])^2)
+        my.dssSRSbymNoUrb = dss(thisTruth, designResNoUrb[[1]]$mean[,i], (designResNoUrb[[1]]$stddev[,i])^2)
+        my.crpsSRSbymNoUrb = crpsNormal(thisTruth, designResNoUrb[[1]]$mean[,i], (designResNoUrb[[1]]$stddev[,i])^2, logit=useLogit, n=numChildren)
+        my.coverageSRSbymNoUrb = coverage(thisTruth, designResNoUrb[[1]]$Q10[,i],designResNoUrb[[1]]$Q90[,i], doLogit=useLogit)
+        my.lengthSRSbymNoUrb = intervalWidth(designResNoUrb[[1]]$Q10[,i], designResNoUrb[[1]]$Q90[,i], logit=useLogit)
       }
       
       if("bym" %in% models) {
-        my.biasSRSbym = bias(thisTruth, designRes$SRSdat$mean[,i], logit=useLogit, my.var=(designRes$SRSdat$stddev[,i])^2)
-        my.mseSRSbym = mse(thisTruth, designRes$SRSdat$mean[,i], logit=useLogit, my.var=(designRes$SRSdat$stddev[,i])^2)
-        my.dssSRSbym = dss(thisTruth, designRes$SRSdat$mean[,i], (designRes$SRSdat$stddev[,i])^2)
-        my.crpsSRSbym = crpsNormal(thisTruth, designRes$SRSdat$mean[,i], (designRes$SRSdat$stddev[,i])^2, logit=useLogit, n=numChildren)
-        my.coverageSRSbym = coverage(thisTruth, designRes$SRSdat$Q10[,i],designRes$SRSdat$Q90[,i], logit=useLogit)
-        my.lengthSRSbym = intervalWidth(designRes$SRSdat$Q10[,i], designRes$SRSdat$Q90[,i], logit=useLogit)
+        my.biasSRSbym = bias(thisTruth, designRes[[1]]$mean[,i], logit=useLogit, my.var=(designRes[[1]]$stddev[,i])^2)
+        my.mseSRSbym = mse(thisTruth, designRes[[1]]$mean[,i], logit=useLogit, my.var=(designRes[[1]]$stddev[,i])^2)
+        my.dssSRSbym = dss(thisTruth, designRes[[1]]$mean[,i], (designRes[[1]]$stddev[,i])^2)
+        my.crpsSRSbym = crpsNormal(thisTruth, designRes[[1]]$mean[,i], (designRes[[1]]$stddev[,i])^2, logit=useLogit, n=numChildren)
+        my.coverageSRSbym = coverage(thisTruth, designRes[[1]]$Q10[,i],designRes[[1]]$Q90[,i], doLogit=useLogit)
+        my.lengthSRSbym = intervalWidth(designRes[[1]]$Q10[,i], designRes[[1]]$Q90[,i], logit=useLogit)
       }
       
       if("spdeNoUrb" %in% models) {
@@ -537,7 +1045,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         # the below line used to be commented for some reason
         my.crpsSRSspdeNoUrb = crpsNormal(thisTruth, allresSRS$logit.est.spdeNoUrb, allresSRS$var.est.spdeNoUrb, logit=useLogit, n=numChildren)
         my.crpsSRSspdeNoUrb = allresSRS$crps.spdeNoUrb
-        my.coverageSRSspdeNoUrb = coverage(thisTruth, allresSRS$lower.spdeNoUrb, allresSRS$upper.spdeNoUrb, logit=useLogit)
+        my.coverageSRSspdeNoUrb = coverage(thisTruth, allresSRS$lower.spdeNoUrb, allresSRS$upper.spdeNoUrb, doLogit=useLogit)
         my.lengthSRSspdeNoUrb = intervalWidth(allresSRS$lower.spdeNoUrb, allresSRS$upper.spdeNoUrb, logit=useLogit)
       }
       
@@ -548,7 +1056,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         # the below line needs to be commented for some reason
         my.crpsSRSspde = crpsNormal(thisTruth, allresSRS$logit.est.spde, allresSRS$var.est.spde, logit=useLogit, n=numChildren)
         my.crpsSRSspde = allresSRS$crps.spde
-        my.coverageSRSspde = coverage(thisTruth, allresSRS$lower.spde, allresSRS$upper.spde, logit=useLogit)
+        my.coverageSRSspde = coverage(thisTruth, allresSRS$lower.spde, allresSRS$upper.spde, doLogit=useLogit)
         my.lengthSRSspde = intervalWidth(allresSRS$lower.spde, allresSRS$upper.spde, logit=useLogit)
       }
       
@@ -595,7 +1103,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
                                               mse=my.mseSRSbymNoUrb,
                                               dss=my.dssSRSbymNoUrb,
                                               coverage=my.coverageSRSbymNoUrb,
-                                              var=mean((designResNoUrb$SRSdat$stddev[,i])^2),
+                                              var=mean((designResNoUrb[[1]]$stddev[,i])^2),
                                               crps=my.crpsSRSbymNoUrb, 
                                               length=my.lengthSRSbymNoUrb))
       }
@@ -607,7 +1115,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
                                          mse=my.mseSRSbym,
                                          dss=my.dssSRSbym,
                                          coverage=my.coverageSRSbym,
-                                         var=mean((designRes$SRSdat$stddev[,i])^2),
+                                         var=mean((designRes[[1]]$stddev[,i])^2),
                                          crps=my.crpsSRSbym, 
                                          length=my.lengthSRSbym))
       }
@@ -643,7 +1151,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.mseoverSampdirect = mse(thisTruth, allresoverSamp$logit.estdirect, logit=useLogit, my.var=allresoverSamp$var.estdirect)
         my.dssoverSampdirect = dss(thisTruth, allresoverSamp$logit.estdirect, allresoverSamp$var.estdirect)
         my.crpsoverSampdirect = crpsNormal(thisTruth, allresoverSamp$logit.estdirect, allresoverSamp$var.estdirect, logit=useLogit, n=numChildren)
-        my.coverageoverSampdirect = coverage(thisTruth, allresoverSamp$upperdirect, allresoverSamp$lowerdirect, logit=useLogit)
+        my.coverageoverSampdirect = coverage(thisTruth, allresoverSamp$upperdirect, allresoverSamp$lowerdirect, doLogit=useLogit)
         my.lengthoverSampdirect = intervalWidth(allresoverSamp$lowerdirect, allresoverSamp$upperdirect, logit=useLogit)
       }
       
@@ -652,7 +1160,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.mseoverSampnaive = mse(thisTruth, allresoverSamp$logit.est, logit=useLogit, my.var=allresoverSamp$var.est)
         my.dssoverSampnaive = dss(thisTruth, allresoverSamp$logit.est, allresoverSamp$var.est)
         my.crpsoverSampnaive = crpsNormal(thisTruth, allresoverSamp$logit.est, allresoverSamp$var.est, logit=useLogit, n=numChildren)
-        my.coverageoverSampnaive = coverage(thisTruth, allresoverSamp$upper, allresoverSamp$lower, logit=useLogit)
+        my.coverageoverSampnaive = coverage(thisTruth, allresoverSamp$upper, allresoverSamp$lower, doLogit=useLogit)
         my.lengthoverSampnaive = intervalWidth(allresoverSamp$lower, allresoverSamp$upper, logit=useLogit)
       }
       
@@ -661,7 +1169,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.mseoverSampmercer = mse(thisTruth, allresoverSamp$logit.est.mercer, logit=useLogit, my.var=allresoverSamp$var.est.mercer)
         my.dssoverSampmercer = dss(thisTruth, allresoverSamp$logit.est.mercer, allresoverSamp$var.est.mercer)
         my.crpsoverSampmercer = crpsNormal(thisTruth, allresoverSamp$logit.est.mercer, allresoverSamp$var.est.mercer, logit=useLogit, n=numChildren)
-        my.coverageoverSampmercer = coverage(thisTruth, allresoverSamp$lower.mercer, allresoverSamp$upper.mercer, logit=useLogit)
+        my.coverageoverSampmercer = coverage(thisTruth, allresoverSamp$lower.mercer, allresoverSamp$upper.mercer, doLogit=useLogit)
         my.lengthoverSampmercer = intervalWidth(allresoverSamp$lower.mercer, allresoverSamp$upper.mercer, logit=useLogit)
       }
       
@@ -670,7 +1178,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.mseoverSampbymNoUrb = mse(thisTruth, designResNoUrb$overSampDat$mean[,i], logit=useLogit, my.var=(designResNoUrb$overSampDat$stddev[,i])^2)
         my.dssoverSampbymNoUrb = dss(thisTruth, designResNoUrb$overSampDat$mean[,i], (designResNoUrb$overSampDat$stddev[,i])^2)
         my.crpsoverSampbymNoUrb = crpsNormal(thisTruth, designResNoUrb$overSampDat$mean[,i], (designResNoUrb$overSampDat$stddev[,i])^2, logit=useLogit, n=numChildren)
-        my.coverageoverSampbymNoUrb = coverage(thisTruth, designResNoUrb$overSampDat$Q10[,i],designResNoUrb$overSampDat$Q90[,i], logit=useLogit)
+        my.coverageoverSampbymNoUrb = coverage(thisTruth, designResNoUrb$overSampDat$Q10[,i],designResNoUrb$overSampDat$Q90[,i], doLogit=useLogit)
         my.lengthoverSampbymNoUrb = intervalWidth(designResNoUrb$overSampDat$Q10[,i], designResNoUrb$overSampDat$Q90[,i], logit=useLogit)
       }
       
@@ -679,7 +1187,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.mseoverSampbym = mse(thisTruth, designRes$overSampDat$mean[,i], logit=useLogit, my.var=(designRes$overSampDat$stddev[,i])^2)
         my.dssoverSampbym = dss(thisTruth, designRes$overSampDat$mean[,i], (designRes$overSampDat$stddev[,i])^2)
         my.crpsoverSampbym = crpsNormal(thisTruth, designRes$overSampDat$mean[,i], (designRes$overSampDat$stddev[,i])^2, logit=useLogit, n=numChildren)
-        my.coverageoverSampbym = coverage(thisTruth, designRes$overSampDat$Q10[,i],designRes$overSampDat$Q90[,i], logit=useLogit)
+        my.coverageoverSampbym = coverage(thisTruth, designRes$overSampDat$Q10[,i],designRes$overSampDat$Q90[,i], doLogit=useLogit)
         my.lengthoverSampbym = intervalWidth(designRes$overSampDat$Q10[,i], designRes$overSampDat$Q90[,i], logit=useLogit)
       }
       
@@ -688,7 +1196,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.mseoverSampspdeNoUrb = mse(thisTruth, allresoverSamp$logit.est.spdeNoUrb, logit=useLogit, my.var=allresoverSamp$var.est.spdeNoUrb)
         my.dssoverSampspdeNoUrb = dss(thisTruth, allresoverSamp$logit.est.spdeNoUrb, allresoverSamp$var.est.spdeNoUrb)
         my.crpsoverSampspdeNoUrb = crpsNormal(thisTruth, allresoverSamp$logit.est.spdeNoUrb, allresoverSamp$var.est.spdeNoUrb, logit=useLogit, n=numChildren)
-        my.coverageoverSampspdeNoUrb = coverage(thisTruth, allresoverSamp$lower.spdeNoUrb, allresoverSamp$upper.spdeNoUrb, logit=useLogit)
+        my.coverageoverSampspdeNoUrb = coverage(thisTruth, allresoverSamp$lower.spdeNoUrb, allresoverSamp$upper.spdeNoUrb, doLogit=useLogit)
         my.lengthoverSampspdeNoUrb = intervalWidth(allresoverSamp$lower.spdeNoUrb, allresoverSamp$upper.spdeNoUrb, logit=useLogit)
       }
       
@@ -697,7 +1205,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
         my.mseoverSampspde = mse(thisTruth, allresoverSamp$logit.est.spde, logit=useLogit, my.var=allresoverSamp$var.est.spde)
         my.dssoverSampspde = dss(thisTruth, allresoverSamp$logit.est.spde, allresoverSamp$var.est.spde)
         my.crpsoverSampspde = crpsNormal(thisTruth, allresoverSamp$logit.est.spde, allresoverSamp$var.est.spde, logit=useLogit, n=numChildren)
-        my.coverageoverSampspde = coverage(thisTruth, allresoverSamp$lower.spde, allresoverSamp$upper.spde, logit=useLogit)
+        my.coverageoverSampspde = coverage(thisTruth, allresoverSamp$lower.spde, allresoverSamp$upper.spde, doLogit=useLogit)
         my.lengthoverSampspde = intervalWidth(allresoverSamp$lower.spde, allresoverSamp$upper.spde, logit=useLogit)
       }
       
@@ -812,164 +1320,75 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   #   }
   # }
   
-  # final table (SRS):
-  if(sampling == "SRS") {
-    if("naive" %in% models)
-      naive = apply(scoresNaiveSRS[, c("bias", "mse", "dss", "crps", "var", "coverage", "length")], 2, mean)
-    if("direct" %in% models)
-      direct = apply(scoresDirectSRS[, c("bias", "mse", "dss", "crps", "var","coverage", "length")], 2, mean)
-    if("mercer" %in% models)
-      mercer = apply(scoresMercerSRS[, c("bias", "mse", "dss", "crps", "var","coverage", "length")], 2, mean)
-    if("bymNoUrb" %in% models)
-      bymNoUrb = apply(scoresBYMNoUrbSRS[, c("bias", "mse", "dss", "crps","var", "coverage", "length")], 2, mean)
-    if("bym" %in% models)
-      bym = apply(scoresBYMSRS[, c("bias", "mse", "dss", "crps","var", "coverage", "length")], 2, mean)
-    if("spdeNoUrb" %in% models)
-      spdeNoUrb = apply(scoresSPDENoUrbSRS[, c("bias", "mse", "dss", "crps","var", "coverage", "length")], 2, mean)
-    if("spde" %in% models)
-      spde = apply(scoresSPDESRS[, c("bias", "mse", "dss", "crps","var", "coverage", "length")], 2, mean)
-    idx = c(1,2,5,4,6,7)
-    tab = c()
-    if("naive" %in% models)
-      tab = rbind(tab, c(naive[idx]))
-    if("direct" %in% models)
-      tab = rbind(tab, c(direct[idx]))
-    if("mercer" %in% models)
-      tab = rbind(tab, c(mercer[idx]))
-    if("bym" %in% models)
-      tab = rbind(tab, c(bym[idx]))
-    if("bymNoUrb" %in% models)
-      tab = rbind(tab, c(bymNoUrb[idx]))
-    if("spde" %in% models)
-      tab = rbind(tab, c(spde[idx]))
-    if("spdeNoUrb" %in% models)
-      tab = rbind(tab, c(spdeNoUrb[idx]))
-    allNames = c("Naive", "Direct estimates", "Mercer et al.", "Model-based BYM", "Model-based BYM (no urban effect)", "SPDE", "SPDE (no urban effect)")
-    rownames(tab) = allNames[modelsI]
-    
-    print(xtable(tab, digits=3), 
-          only.contents=TRUE, 
-          include.colnames=TRUE,
-          hline.after=NULL)
-  } else if(sampling == "oversamp") {
-    # final table (oversampled):
-    if("naive" %in% models)
-      naive = apply(scoresNaiveoverSamp[, c("bias", "mse", "dss", "crps", "var", "coverage", "length")], 2, mean)
-    if("direct" %in% models)
-      direct = apply(scoresDirectoverSamp[, c("bias", "mse", "dss", "crps", "var","coverage", "length")], 2, mean)
-    if("mercer" %in% models)
-      mercer = apply(scoresMerceroverSamp[, c("bias", "mse", "dss", "crps", "var","coverage", "length")], 2, mean)
-    if("bymNoUrb" %in% models)
-      bymNoUrb = apply(scoresBYMNoUrboverSamp[, c("bias", "mse", "dss", "crps","var", "coverage", "length")], 2, mean)
-    if("bym" %in% models)
-      bym = apply(scoresBYMoverSamp[, c("bias", "mse", "dss", "crps","var", "coverage", "length")], 2, mean)
-    if("spdeNoUrb" %in% models)
-      spdeNoUrb = apply(scoresSPDENoUrboverSamp[, c("bias", "mse", "dss", "crps","var", "coverage", "length")], 2, mean)
-    if("spde" %in% models)
-      spde = apply(scoresSPDEoverSamp[, c("bias", "mse", "dss", "crps","var", "coverage", "length")], 2, mean)
-    idx = c(1,2,5,4,6,7)
-    tab = c()
-    if("naive" %in% models)
-      tab = rbind(tab, c(naive[idx]))
-    if("direct" %in% models)
-      tab = rbind(tab, c(direct[idx]))
-    if("mercer" %in% models)
-      tab = rbind(tab, c(mercer[idx]))
-    if("bym" %in% models)
-      tab = rbind(tab, c(bym[idx]))
-    if("bymNoUrb" %in% models)
-      tab = rbind(tab, c(bymNoUrb[idx]))
-    if("spde" %in% models)
-      tab = rbind(tab, c(spde[idx]))
-    if("spdeNoUrb" %in% models)
-      tab = rbind(tab, c(spdeNoUrb[idx]))
-    allNames = c("Naive", "Direct estimates", "Mercer et al.", "Model-based BYM", "Model-based BYM (no urban effect)", "SPDE", "SPDE (no urban effect)")
-    rownames(tab) = allNames[modelsI]
-    
-    print(xtable(tab, digits=3), 
-          only.contents=TRUE, 
-          include.colnames=TRUE,
-          hline.after=NULL)
-    
-    
-    # the below code was phased out after including optional models
-    # naive = apply(scoresNaiveoverSamp[, c("bias", "mse", "dss", "crps", "var", "coverage")], 2, mean)
-    # direct = apply(scoresDirectoverSamp[, c("bias", "mse", "dss", "crps", "var","coverage")], 2, mean)
-    # mercer = apply(scoresMerceroverSamp[, c("bias", "mse", "dss", "crps", "var","coverage")], 2, mean)
-    # bymNoUrb = apply(scoresBYMNoUrboverSamp[, c("bias", "mse", "dss", "crps","var", "coverage")], 2, mean)
-    # bym = apply(scoresBYMoverSamp[, c("bias", "mse", "dss", "crps","var", "coverage")], 2, mean)
-    # spdeNoUrb = apply(scoresSPDENoUrboverSamp[, c("bias", "mse", "dss", "crps","var", "coverage")], 2, mean)
-    # spde = apply(scoresSPDEoverSamp[, c("bias", "mse", "dss", "crps","var", "coverage")], 2, mean)
-    # idx = c(1,2,5,4,6)
-    # tab = rbind(c( naive[idx]),
-    #             c( direct[idx]),
-    #             c( mercer[idx]),
-    #             c( bym[idx]), 
-    #             c( bymNoUrb[idx]), 
-    #             c( spde[idx]), 
-    #             c( spdeNoUrb[idx]))
-    # rownames(tab) = c("Naive", "Direct estimates", "Mercer et al.", "Model-based BYM", "Model-based BYM (no urban effect)", "SPDE", "SPDE (no urban effect)")
-    # library(xtable)
-    # print(xtable(tab, digits=3), 
-    #       only.contents=TRUE, 
-    #       include.colnames=TRUE,
-    #       hline.after=NULL)
-  }
+  # final table: 
+  if("naive" %in% models)
+    naive = apply(scoresNaiveSRS[, c("bias", "mse", "dss", "crps", "var", "coverage", "length")], 2, mean)
+  if("direct" %in% models)
+    direct = apply(scoresDirectSRS[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("mercer" %in% models)
+    mercer = apply(scoresMercerSRS[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("bymNoUrb" %in% models)
+    bymNoUrb = apply(scoresBYMNoUrbSRS[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("bym" %in% models)
+    bym = apply(scoresBYMSRS[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("spdeNoUrb" %in% models)
+    spdeNoUrb = apply(scoresSPDENoUrbSRS[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("spde" %in% models)
+    spde = apply(scoresSPDESRS[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  idx = 1:9
+  tab = c()
+  if("naive" %in% models)
+    tab = rbind(tab, c(naive[idx]))
+  if("direct" %in% models)
+    tab = rbind(tab, c(direct[idx]))
+  if("mercer" %in% models)
+    tab = rbind(tab, c(mercer[idx]))
+  if("bym" %in% models)
+    tab = rbind(tab, c(bym[idx]))
+  if("bymNoUrb" %in% models)
+    tab = rbind(tab, c(bymNoUrb[idx]))
+  if("bymNoClust" %in% models)
+    tab = rbind(tab, c(bymNoClust[idx]))
+  if("bymNoUrbClust" %in% models)
+    tab = rbind(tab, c(bymNoUrbClust[idx]))
+  if("spde" %in% models)
+    tab = rbind(tab, c(spde[idx]))
+  if("spdeNoUrb" %in% models)
+    tab = rbind(tab, c(spdeNoUrb[idx]))
+  
+  rownames(tab) = allNames[modelsI]
+  
+  print(xtable(tab, digits=3), 
+        only.contents=TRUE, 
+        include.colnames=TRUE,
+        hline.after=NULL)
   
   if(produceFigures) {
     # compare all five
-    pdf("figures/biasbyregionoverSamp.pdf", width=20, height=12)
+    pdf(paste0("figures/biasbyregion", sampling, ".pdf"), width=20, height=12)
     par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-    boxplot(bias~region, data=scoresDirectoverSamp, at=seq(-1, 275, by=6), 
+    boxplot(bias~region, data=scoresDirect, at=seq(-1, 275, by=6), 
             col="yellow", xlim=c(0,279), names=FALSE, xaxt="n")
-    boxplot(bias~region, data=scoresNaiveoverSamp, at=seq(0, 276, by=6), col="orange", xlim=c(0,230), add=TRUE)
-    boxplot(bias~region, data=scoresMerceroverSamp, at=seq(1, 277, by=6), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
-    boxplot(bias~region, data=scoresBYMoverSamp, at=seq(2, 278, by=6), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
-    boxplot(bias~region, data=scoresSPDEoverSamp, at=seq(3, 279, by=6), col="purple", xlim=c(0,230), add=TRUE, xaxt="n")
-    # axis(2, at=seq(0.5, 276.5, by=6), labels=scoresDirectoverSamp$region[1:47])
-    # axis(1, at=seq(0.5, 276.5, by=6), labels=scoresDirectoverSamp$region[1:47])
+    boxplot(bias~region, data=scoresNaive, at=seq(0, 276, by=6), col="orange", xlim=c(0,230), add=TRUE)
+    boxplot(bias~region, data=scoresMercer, at=seq(1, 277, by=6), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
+    boxplot(bias~region, data=scoresBYM, at=seq(2, 278, by=6), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
+    boxplot(bias~region, data=scoresSPDE, at=seq(3, 279, by=6), col="purple", xlim=c(0,230), add=TRUE, xaxt="n")
+    # axis(2, at=seq(0.5, 276.5, by=6), labels=scoresDirect$region[1:47])
+    # axis(1, at=seq(0.5, 276.5, by=6), labels=scoresDirect$region[1:47])
     legend("top", c("Direct estimates", "Naive", "Mercer", "BYM", "SPDE"),
            fill = c("yellow", "orange", "green", "lightblue", "purple"), ncol=4, cex=2)
     abline(h=0, lwd=2, col=2)
     dev.off()
     
-    pdf("figures/biasbyregionSRS.pdf", width=20, height=12)
+    pdf(paste0("figures/crpsbyregion", sampling, ".pdf"), width=20, height=12)
     par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-    boxplot(bias~region, data=scoresDirectoverSamp, at=seq(-1, 275, by=6), 
+    boxplot(crps~region, data=scoresDirect, at=seq(-1, 275, by=6), 
             col="yellow", xlim=c(0,279), names=FALSE, xaxt="n")
-    boxplot(bias~region, data=scoresNaiveSRS, at=seq(0, 276, by=6), col="orange", xlim=c(0,230), add=TRUE)
-    boxplot(bias~region, data=scoresMercerSRS, at=seq(1, 277, by=6), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
-    boxplot(bias~region, data=scoresBYMSRS, at=seq(2, 278, by=6), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
-    boxplot(bias~region, data=scoresSPDESRS, at=seq(3, 279, by=6), col="purple", xlim=c(0,230), add=TRUE, xaxt="n")
-    # axis(2, at=seq(0.5, 276.5, by=6), labels=scoresDirectSRS$region[1:47])
-    # axis(1, at=seq(0.5, 276.5, by=6), labels=scoresDirectSRS$region[1:47])
-    legend("top", c("Direct estimates", "Naive", "Mercer", "BYM", "SPDE"),
-           fill = c("yellow", "orange", "green", "lightblue", "purple"), ncol=4, cex=2)
-    abline(h=0, lwd=2, col=2)
-    dev.off()
-    
-    pdf("figures/crpsbyregionoverSamp.pdf", width=20, height=12)
-    par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-    boxplot(crps~region, data=scoresDirectoverSamp, at=seq(-1, 275, by=6), 
-            col="yellow", xlim=c(0,279), names=FALSE, xaxt="n")
-    boxplot(crps~region, data=scoresNaiveoverSamp, at=seq(0, 276, by=6), col="orange", xlim=c(0,230), add=TRUE)
-    boxplot(crps~region, data=scoresMerceroverSamp, at=seq(1, 277, by=6), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
-    boxplot(crps~region, data=scoresBYMoverSamp, at=seq(2, 278, by=6), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
-    boxplot(crps~region, data=scoresSPDEoverSamp, at=seq(3, 279, by=6), col="purple", xlim=c(0,230), add=TRUE, xaxt="n")
-    # axis(2, at=seq(0.5, 276.5, by=6), labels=scoresDirectoverSamp$region[1:47])
-    legend("top", c("Direct estimates", "Naive", "Mercer", "BYM", "SPDE"),
-           fill = c("yellow", "orange", "green", "lightblue", "purple"), ncol=4, cex=2)
-    dev.off()
-    
-    pdf("figures/crpsbyregionSRS.pdf", width=20, height=12)
-    par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-    boxplot(crps~region, data=scoresDirectoverSamp, at=seq(-1, 275, by=6), 
-            col="yellow", xlim=c(0,279), names=FALSE, xaxt="n")
-    boxplot(crps~region, data=scoresNaiveSRS, at=seq(0, 276, by=6), col="orange", xlim=c(0,230), add=TRUE)
-    boxplot(crps~region, data=scoresMercerSRS, at=seq(1, 277, by=6), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
-    boxplot(crps~region, data=scoresBYMSRS, at=seq(2, 278, by=6), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
-    boxplot(crps~region, data=scoresSPDESRS, at=seq(3, 279, by=6), col="purple", xlim=c(0,230), add=TRUE, xaxt="n")
-    # axis(2, at=seq(0.5, 276.5, by=6), labels=scoresDirectSRS$region[1:47])
+    boxplot(crps~region, data=scoresNaive, at=seq(0, 276, by=6), col="orange", xlim=c(0,230), add=TRUE)
+    boxplot(crps~region, data=scoresMercer, at=seq(1, 277, by=6), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
+    boxplot(crps~region, data=scoresBYM, at=seq(2, 278, by=6), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
+    boxplot(crps~region, data=scoresSPDE, at=seq(3, 279, by=6), col="purple", xlim=c(0,230), add=TRUE, xaxt="n")
+    # axis(2, at=seq(0.5, 276.5, by=6), labels=scoresDirect$region[1:47])
     legend("top", c("Direct estimates", "Naive", "Mercer", "BYM", "SPDE"),
            fill = c("yellow", "orange", "green", "lightblue", "purple"), ncol=4, cex=2)
     dev.off()
@@ -977,234 +1396,3 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   
   tab
 }
-
-
-
-
-
-
-
-##### Now run the rest of the script (except possibly for the plotting, depending 
-##### on the result aggregation level).
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# naive = round(apply(scoresNaiveoverSamp[, c("bias","mse", "dss",  "crps", "var","coverage")], 2, mean),3)
-# direct = round(apply(scoresDirectoverSamp[, c("bias","mse", "dss",  "crps","var","coverage")], 2, mean),3)
-# mercer = round(apply(scoresMerceroverSamp[, c("bias", "mse", "dss", "crps","var", "coverage")], 2, mean),3)
-# bym = round(apply(scoresBYMoverSamp[, c("bias", "mse", "dss", "crps","var", "coverage")], 2, mean),3)
-# spde = round(apply(scoresSPDEoverSamp[, c("bias", "mse", "dss", "crps","var", "coverage")], 2, mean),3)
-# tab = rbind(c( naive[idx]),
-#             c( direct[idx]),
-#             c( mercer[idx]),
-#             c( bym[idx]), 
-#             c( spde[idx]))
-# rownames(tab) = c("Naive", "Direct estimates", "Mercer et al.", "Model-based BYM", "SPDE")
-# library(xtable)
-# print(xtable(tab, digits=3), only.contents=TRUE, 
-#       include.rownames=FALSE,
-#       include.colnames=FALSE,
-#       hline.after=NULL)
-# 
-# 
-# 
-# 
-# naive = apply(scoresNaiveSRS[, c("bias", "mse",  "coverage")], 2, mean)
-# direct = apply(scoresDirectSRS[, c("bias", "mse", "coverage")], 2, mean)
-# mercer = apply(scoresMercerSRS[, c("bias", "mse", "coverage")], 2, mean)
-# bym = apply(scoresBYMSRS[, c("bias", "mse", "coverage")], 2, mean)
-# spde = apply(scoresSPDESRS[, c("bias", "mse", "coverage")], 2, mean)
-# idx = c(1,2)
-# tab = rbind(c( naive[idx]),
-#             c( direct[idx]),
-#             c( mercer[idx]),
-#             c( bym[idx]), 
-#             c( spde[idx]))
-# rownames(tab) = c("Naive", "Direct estimates", "Mercer et al.", "Model-based BYM", "SPDE")
-# library(xtable)
-# print(xtable(tab, digits=3), 
-#       only.contents=TRUE, 
-#       include.colnames=TRUE,
-#       hline.after=NULL)
-# 
-# naive = round(apply(scoresNaiveoverSamp[, c("bias","mse", "coverage")], 2, mean),3)
-# direct = round(apply(scoresDirectoverSamp[, c("bias","mse", "coverage")], 2, mean),3)
-# mercer = round(apply(scoresMerceroverSamp[, c("bias", "mse", "coverage")], 2, mean),3)
-# bym = round(apply(scoresBYMoverSamp[, c("bias", "mse", "coverage")], 2, mean),3)
-# spde = round(apply(scoresSPDEoverSamp[, c("bias", "mse", "coverage")], 2, mean),3)
-# 
-# tab = rbind(c( naive[idx]),
-#             c( direct[idx]),
-#             c( mercer[idx]),
-#             c( bym[idx]), 
-#             c( spde[idx]))
-# rownames(tab) = c("Naive", "Direct estimates", "Mercer et al.", "Model-based BYM", "SPDE")
-# library(xtable)
-# print(xtable(tab, digits=3), only.contents=TRUE, 
-#       include.rownames=TRUE,
-#       include.colnames=TRUE,
-#       hline.after=NULL)
-
-
-# compare all four 
-# pdf("Figures/biasbyregionoverSamp.pdf", width=20, height=12)
-# par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-# boxplot(bias~region, data=scoresDirectoverSamp, at=seq(-1, 229, by=5),
-#         col="yellow", xlim=c(0,232), names=FALSE, xaxt="n")
-# boxplot(bias~region, data=scoresNaiveoverSamp, at=seq(0, 230, by=5), col="orange", xlim=c(0,230), add=TRUE)
-# boxplot(bias~region, data=scoresMerceroverSamp, at=seq(1, 231, by=5), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
-# boxplot(bias~region, data=scoresBYMoverSamp, at=seq(2, 232, by=5), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
-# axis(2, at=seq(0.5, 230.5, by=5), labels=scoresDirectoverSamp$region[1:47])
-# legend("top", c("Direct estimates", "Naive", "Mercer", "BYM"),
-#        fill = c("yellow", "orange", "green", "lightblue"), ncol=4, cex=2)
-# abline(h=0, lwd=2, col=2)
-# dev.off()
-# 
-# pdf("Figures/biasbyregionSRS.pdf", width=20, height=12)
-# par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-# boxplot(bias~region, data=scoresDirectoverSamp, at=seq(-1, 229, by=5), 
-#         col="yellow", xlim=c(0,232), names=FALSE, xaxt="n")
-# boxplot(bias~region, data=scoresNaiveSRS, at=seq(0, 230, by=5), col="orange", xlim=c(0,230), add=TRUE)
-# boxplot(bias~region, data=scoresMercerSRS, at=seq(1, 231, by=5), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
-# boxplot(bias~region, data=scoresBYMSRS, at=seq(2, 232, by=5), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
-# axis(2, at=seq(0.5, 230.5, by=5), labels=scoresDirectSRS$region[1:47])
-# legend("top", c("Direct estimates", "Naive", "Mercer", "BYM"),
-#        fill = c("yellow", "orange", "green", "lightblue"), ncol=4, cex=2)
-# abline(h=0, lwd=2, col=2)
-# dev.off()
-# 
-# pdf("Figures/crpsbyregionoverSamp.pdf", width=20, height=12)
-# par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-# boxplot(crps~region, data=scoresDirectoverSamp, at=seq(-1, 229, by=5), 
-#         col="yellow", xlim=c(0,232), names=FALSE, xaxt="n")
-# boxplot(crps~region, data=scoresNaiveoverSamp, at=seq(0, 230, by=5), col="orange", xlim=c(0,230), add=TRUE)
-# boxplot(crps~region, data=scoresMerceroverSamp, at=seq(1, 231, by=5), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
-# boxplot(crps~region, data=scoresBYMoverSamp, at=seq(2, 232, by=5), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
-# axis(2, at=seq(0.5, 230.5, by=5), labels=scoresDirectoversamp$region[1:47])
-# legend("top", c("Direct estimates", "Naive", "Mercer", "BYM"),
-#        fill = c("yellow", "orange", "green", "lightblue"), ncol=4, cex=2)
-# dev.off()
-# 
-# pdf("Figures/crpsbyregionSRS.pdf", width=20, height=12)
-# par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-# boxplot(crps~region, data=scoresDirectoverSamp, at=seq(-1, 229, by=5), 
-#         col="yellow", xlim=c(0,232), names=FALSE, xaxt="n")
-# boxplot(crps~region, data=scoresNaiveSRS, at=seq(0, 230, by=5), col="orange", xlim=c(0,230), add=TRUE)
-# boxplot(crps~region, data=scoresMercerSRS, at=seq(1, 231, by=5), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
-# boxplot(crps~region, data=scoresBYMSRS, at=seq(2, 232, by=5), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
-# axis(2, at=seq(0.5, 230.5, by=5), labels=scoresDirectSRS$region[1:47])
-# legend("top", c("Direct estimates", "Naive", "Mercer", "BYM"),
-#        fill = c("yellow", "orange", "green", "lightblue"), ncol=4, cex=2)
-# dev.off()
-
-
-
-# 
-# 
-# # compare naive, direct and mercer
-# pdf("Figures/biasbyregionoverSamp.pdf", width=20, height=12)
-# par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-# boxplot(bias~region, data=scoresDirectoverSamp, at=seq(-1, 183, by=4), 
-#         col="yellow", xlim=c(0,188), names=FALSE, xaxt="n")
-# boxplot(bias~region, data=scoresNaiveoverSamp, at=seq(0, 184, by=4), col="orange", xlim=c(0,138), add=TRUE)
-# boxplot(bias~region, data=scoresMerceroverSamp, at=seq(1, 185, by=4), col="green", xlim=c(0,138), add=TRUE, xaxt="n")
-# axis(2, at=seq(0, 184, by=4), labels=scoresDirectoversamp$region[1:47])
-# legend("top", c("Direct estimates", "Naive", "Mercer"),
-#        fill = c("yellow", "orange", "green"), ncol=3, cex=2)
-# abline(h=0, lwd=2, col=2)
-# dev.off()
-# 
-# 
-# pdf("Figures/biasbyregionSRS.pdf", width=20, height=12)
-# par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-# boxplot(bias~region, data=scoresDirectSRS, at=seq(-1, 183, by=4), 
-#         col="yellow", xlim=c(0,188), names=FALSE, xaxt="n")
-# boxplot(bias~region, data=scoresNaiveSRS, at=seq(0, 184, by=4), col="orange", xlim=c(0,138), add=TRUE)
-# boxplot(bias~region, data=scoresMercerSRS, at=seq(1, 185, by=4), col="green", xlim=c(0,138), add=TRUE, xaxt="n")
-# axis(2, at=seq(0, 184, by=4), labels=scoresDirectoversamp$region[1:47])
-# legend("top", c("Direct estimates", "Naive", "Mercer"),
-#        fill = c("yellow", "orange", "green"), ncol=3, cex=2)
-# abline(h=0, lwd=2, col=2)
-# dev.off()
-# 
-# 
-# pdf("Figures/crpsbyregionoverSamp.pdf", width=20, height=12)
-# par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-# boxplot(crps~region, data=scoresDirectoverSamp, at=seq(-1, 183, by=4), 
-#         col="yellow", xlim=c(0,188), names=FALSE, xaxt="n")
-# boxplot(crps~region, data=scoresNaiveoverSamp, at=seq(0, 184, by=4), col="orange", xlim=c(0,138), add=TRUE)
-# boxplot(crps~region, data=scoresMerceroverSamp, at=seq(1, 185, by=4), col="green", xlim=c(0,138), add=TRUE, xaxt="n")
-# axis(2, at=seq(0, 184, by=4), labels=scoresDirectoversamp$region[1:47])
-# legend("top", c("Direct estimates", "Naive", "Mercer"),
-#        fill = c("yellow", "orange", "green"), ncol=3, cex=2)
-# dev.off()
-# 
-# 
-# pdf("Figures/crpsbyregionSRS.pdf", width=20, height=12)
-# par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-# boxplot(crps~region, data=scoresDirectSRS, at=seq(-1, 183, by=4), 
-#         col="yellow", xlim=c(0,188), names=FALSE, xaxt="n")
-# boxplot(crps~region, data=scoresNaiveSRS, at=seq(0, 184, by=4), col="orange", xlim=c(0,138), add=TRUE)
-# boxplot(crps~region, data=scoresMercerSRS, at=seq(1, 185, by=4), col="green", xlim=c(0,138), add=TRUE, xaxt="n")
-# axis(2, at=seq(0, 184, by=4), labels=scoresDirectoversamp$region[1:47])
-# legend("top", c("Direct estimates", "Naive", "Mercer"),
-#        fill = c("yellow", "orange", "green"), ncol=3, cex=2)
-# dev.off()
-
-# comparing only naive to direct
-# 
-# pdf("Figures/biasbyregionoverSamp.pdf", width=20, height=12)
-# par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-# boxplot(bias~region, data=scoresDirectoverSamp, at=seq(-1, 137, by=3), 
-#         col="yellow", xlim=c(0,138), names=FALSE, xaxt="n")
-# boxplot(bias~region, data=scoresNaiveoverSamp, at=seq(0, 138, by=3), col="orange", xlim=c(0,138), add=TRUE)
-# axis(2, at=seq(-0.5, 137.5, by=3), labels=scoresDirectoversamp$region[1:47])
-# legend("top", c("Direct estimates", "Naive"),
-#        fill = c("yellow", "orange"), ncol=2, cex=2)
-# abline(h=0, lwd=2, col=2)
-# dev.off()
-
-# pdf("Figures/biasbyregionSRS.pdf", width=20, height=12)
-# par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-# boxplot(bias~region, data=scoresDirectSRS, at=seq(-1, 137, by=3), 
-#         col="yellow", xlim=c(0,138), names=FALSE, xaxt="n")
-# boxplot(bias~region, data=scoresNaiveSRS, at=seq(0, 138, by=3), col="orange", xlim=c(0,138), add=TRUE)
-# axis(2, at=seq(-0.5, 137.5, by=3), labels=scoresDirectSRS$region[1:47])
-# legend("top", c("Direct estimates", "Naive"),
-#        fill = c("yellow", "orange"), ncol=2, cex=2)
-# abline(h=0, lwd=2, col=2)
-# dev.off()
-
-# 
-# pdf("Figures/crpsbyregionoverSamp.pdf", width=20, height=12)
-# par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-# boxplot(crps~region, data=scoresDirectoverSamp, at=seq(-1, 137, by=3), 
-#         col="yellow", xlim=c(0,138), names=FALSE, xaxt="n")
-# boxplot(crps~region, data=scoresNaiveoverSamp, at=seq(0, 138, by=3), col="orange", xlim=c(0,138), add=TRUE)
-# axis(2, at=seq(-0.5, 137.5, by=3), labels=scoresDirectoversamp$region[1:47])
-# legend("top", c("Direct estimates", "Naive"),
-#        fill = c("yellow", "orange"), ncol=2, cex=2)
-# dev.off()
-# 
-# 
-# pdf("Figures/crpsbyregionSRS.pdf", width=20, height=12)
-# par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
-# boxplot(crps~region, data=scoresDirectSRS, at=seq(-1, 137, by=3), 
-#         col="yellow", xlim=c(0,138), names=FALSE, xaxt="n")
-# boxplot(crps~region, data=scoresNaiveSRS, at=seq(0, 138, by=3), col="orange", xlim=c(0,138), add=TRUE)
-# axis(2, at=seq(-0.5, 137.5, by=3), labels=scoresDirectSRS$region[1:47])
-# legend("top", c("Direct estimates", "Naive"),
-#        fill = c("yellow", "orange"), ncol=2, cex=2)
-# dev.off()
