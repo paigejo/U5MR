@@ -117,7 +117,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
       mercer = merceroverSamp
   }
   if("bymNoUrb" %in% models) {
-    out = load(paste0("KenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterTRUE", testText, ".RData"))
+    out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterTRUE", testText, ".RData"))
     if(sampling == "SRS")
       designRes$overSampDat = NULL
     else
@@ -125,7 +125,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
     designResNoUrb = designRes
   }
   if("bymNoUrbClust" %in% models) {
-    out = load(paste0("KenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterFALSE", testText, ".RData"))
+    out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterFALSE", testText, ".RData"))
     if(sampling == "SRS")
       designRes$overSampDat = NULL
     else
@@ -133,7 +133,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
     designResNoUrbClust = designRes
   }
   if("bymNoClust" %in% models) {
-    out = load(paste0("KenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterFALSE", testText, ".RData"))
+    out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterFALSE", testText, ".RData"))
     if(sampling == "SRS")
       designRes$overSampDat = NULL
     else
@@ -141,7 +141,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
     designResNoClust = designRes
   }
   if("bym" %in% models) {
-    out = load(paste0("KenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterTRUE", testText, ".RData"))
+    out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterTRUE", testText, ".RData"))
     if(sampling == "SRS")
       designRes$overSampDat = NULL
     else
@@ -606,17 +606,17 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
       if("mercer" %in% models)
         out = load("resultsMercerTausq0.01test.RData")
       if("bymNoUrb" %in% models) {
-        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurFALSEClusterTRUETest.RData")
+        out = load("kenyaSpatialDesignResultNewTausq0.01UrbRurFALSEClusterTRUETest.RData")
         designResNoUrb = designRes
       }
       if("bym" %in% models)
-        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurTRUEClusterTRUETest.RData")
+        out = load("kenyaSpatialDesignResultNewTausq0.01UrbRurTRUEClusterTRUETest.RData")
       if("bymNoUrbClust" %in% models) {
-        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurFALSEClusterFALSETest.RData")
+        out = load("kenyaSpatialDesignResultNewTausq0.01UrbRurFALSEClusterFALSETest.RData")
         designResNoUrb = designRes
       }
       if("bymNoClust" %in% models)
-        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurTRUEClusterFALSETest.RData")
+        out = load("kenyaSpatialDesignResultNewTausq0.01UrbRurTRUEClusterFALSETest.RData")
       if("spdeNoUrb" %in% models) {
         out = load("resultsSPDETausq0.01urbanEffectFALSETest.RData")
         spdeSRSNoUrb = spdeSRS
@@ -630,17 +630,17 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
       if("mercer" %in% models)
         out = load("resultsMercerTausq0.01.RData")
       if("bymNoUrb" %in% models) {
-        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurFALSEClusterTRUE.RData")
+        out = load("kenyaSpatialDesignResultNewTausq0.01UrbRurFALSEClusterTRUE.RData")
         designResNoUrb = designRes
       }
       if("bym" %in% models)
-        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurTRUEClusterTRUE.RData")
+        out = load("kenyaSpatialDesignResultNewTausq0.01UrbRurTRUEClusterTRUE.RData")
       if("bymNoUrbClust" %in% models) {
-        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurFALSEClusterFALSE.RData")
+        out = load("kenyaSpatialDesignResultNewTausq0.01UrbRurFALSEClusterFALSE.RData")
         designResNoUrb = designRes
       }
       if("bymNoClust" %in% models)
-        out = load("KenyaSpatialDesignResultNewTausq0.01UrbRurTRUEClusterFALSE.RData")
+        out = load("kenyaSpatialDesignResultNewTausq0.01UrbRurTRUEClusterFALSE.RData")
       if("spdeNoUrb" %in% models) {
         out = load("resultsSPDETausq0.01urbanEffectFALSE.RData")
         spdeSRSNoUrb = spdeSRS
@@ -656,11 +656,11 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
       if("mercer" %in% models)
         out = load("resultsMercerTausq0test.RData")
       if("bymNoUrb" %in% models) {
-        out = load("KenyaSpatialDesignResultNewTausq0UrbRurFATestLSE.RData")
+        out = load("kenyaSpatialDesignResultNewTausq0UrbRurFATestLSE.RData")
         designResNoUrb = designRes
       }
       if("bym" %in% models)
-        out = load("KenyaSpatialDesignResultNewTausq0UrbRurTRUETest.RData")
+        out = load("kenyaSpatialDesignResultNewTausq0UrbRurTRUETest.RData")
       if("spdeNoUrb" %in% models) {
         out = load("resultsSPDETausq0urbanEffectFALSETest.RData")
         spdeSRSNoUrb = spdeSRS
@@ -674,11 +674,11 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
       if("mercer" %in% models)
         out = load("resultsMercerTausq0.RData")
       if("bymNoUrb" %in% models) {
-        out = load("KenyaSpatialDesignResultNewTausq0UrbRurFALSE.RData")
+        out = load("kenyaSpatialDesignResultNewTausq0UrbRurFALSE.RData")
         designResNoUrb = designRes
       }
       if("bym" %in% models)
-        out = load("KenyaSpatialDesignResultNewTausq0UrbRurTRUE.RData")
+        out = load("kenyaSpatialDesignResultNewTausq0UrbRurTRUE.RData")
       if("spdeNoUrb" %in% models) {
         out = load("resultsSPDETausq0urbanEffectFALSE.RData")
         spdeSRSNoUrb = spdeSRS
