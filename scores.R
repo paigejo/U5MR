@@ -190,7 +190,7 @@ crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, n=25, bVar=TR
       # no binomial variation is included. Integrate numerically on the proportion scale
       
       # compute the crps for this row of truth
-      crpsRow = function(rowI) {6
+      crpsRow = function(rowI) {
         thisTruth = truth[rowI]
         
         # either build the predictive cdf assuming normality on the logit scale or from the 
@@ -208,7 +208,12 @@ crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, n=25, bVar=TR
         }
         
         if(is.null(probMat)) {
-          integrate(intFun, 0, 1)$value
+          # when integrating we will set bounds on the integral to be reasonable to avoid 
+          # faulty "divergent integral" error. The bounds will be 20 standard errors out 
+          # of the estimate, making sure to include the truth.
+          lowerBound = max(0, min(thisTruth - .01, expit(thisEst - 20 * sqrt(thisVar))))
+          upperBound = min(1, max(thisTruth + .01, expit(thisEst + 20 * sqrt(thisVar))))
+          integrate(intFun, lowerBound, upperBound)$value
         }
         else {
           # since we are using the empirical distribution, there is a closed form for the integral
@@ -427,8 +432,8 @@ coverage = function(truth, lower=NULL, upper=NULL, doLogit = TRUE, bVar=FALSE, n
     # in the case of discrete credible intervals, reject if the truth is at the boundary with some probability
     atLower = truth == lower
     atUpper = truth == upper
-    rejectLower = runif(sum(atLower)) < lowerRejectProb
-    rejectUpper = runif(sum(atUpper)) < upperRejectProb
+    rejectLower = runif(sum(atLower)) < lowerRejectProb[atLower]
+    rejectUpper = runif(sum(atUpper)) < upperRejectProb[atUpper]
     res[atLower] = res[atLower] - rejectLower
     res[atUpper] = res[atUpper] - rejectUpper
     

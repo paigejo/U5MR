@@ -429,7 +429,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
   if("bymNoUrb" %in% models)
     bymNoUrb = apply(scoresBYMNoUrb[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
   if("bymNoClust" %in% models)
-    bym = apply(scoresBYMNoClust[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+    bymNoClust = apply(scoresBYMNoClust[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
   if("bym" %in% models)
     bym = apply(scoresBYM[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
   if("spdeNoUrb" %in% models)
