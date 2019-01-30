@@ -36,27 +36,26 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
           hyper = list(prec = list(prior = 'loggamma', param = c(1,0.01))))
     } else {
       formula = y ~ rural + 
+        f(idx, model="iid", 
+          hyper=list(prec=list(param=c(0.5, 0.001488), prior="loggamma"))) + 
         f(idx2, model="besag",
           graph="Kenyaadm1.graph", 
-          hyper=list(prec=list(param=c(0.5, 0.00360), prior="loggamma"))) +
-        f(idxEps, model = "iid",
-          hyper = list(prec = list(prior = 'loggamma', param = c(1,0.01))))
+          hyper=list(prec=list(param=c(0.5, 0.00360), prior="loggamma")))
     }
   } else {
     if(includeCluster) {
       formula = y ~ f(idx, model="iid", 
                       hyper=list(prec=list(param=c(0.5, 0.001488), prior="loggamma"))) + 
-        f(idx2, model="besag",
-          graph="Kenyaadm1.graph", 
+        f(idx2, model="besag", graph="Kenyaadm1.graph", 
           hyper=list(prec=list(param=c(0.5, 0.00360), prior="loggamma"))) +
         f(idxEps, model = "iid",
           hyper = list(prec = list(prior = 'loggamma', param = c(1,0.01))))
     } else {
-      formula = y ~ f(idx2, model="besag",
-          graph="Kenyaadm1.graph", 
-          hyper=list(prec=list(param=c(0.5, 0.00360), prior="loggamma"))) +
-        f(idxEps, model = "iid",
-          hyper = list(prec = list(prior = 'loggamma', param = c(1,0.01))))
+      formula = y ~ 
+        f(idx, model="iid", 
+          hyper=list(prec=list(param=c(0.5, 0.001488), prior="loggamma"))) + 
+        f(idx2, model="besag", graph="Kenyaadm1.graph", 
+          hyper=list(prec=list(param=c(0.5, 0.00360), prior="loggamma")))
     }
   }
   
@@ -114,11 +113,11 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
       sampCountySRSDat[,,i] = logit(expit(sampUrban)*urbRatio + expit(sampRural)*(1-urbRatio))
     } else {
       samp = inla.posterior.sample(n = Nsim, result = result)
-      result = matrix(NA, nrow = 47, ncol = Nsim)
+      SampCounty = matrix(NA, nrow = 47, ncol = Nsim)
       for(j in 1:Nsim){
-        result[, j] = samp[[j]]$latent[1:47]
+        SampCounty[, j] = samp[[j]]$latent[1:47]
       }
-      sampCountySRSDat[,,i] = result
+      sampCountySRSDat[,,i] = SampCounty
     }
   }
   
@@ -164,11 +163,11 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
       sampCountyOverSampDat[,,i] = logit(expit(sampUrban)*urbRatio + expit(sampRural)*(1-urbRatio))
     } else {
       samp = inla.posterior.sample(n = Nsim, result = result)
-      result = matrix(NA, nrow = 47, ncol = Nsim)
+      SampCounty = matrix(NA, nrow = 47, ncol = Nsim)
       for(j in 1:Nsim){
-        result[, j] = samp[[j]]$latent[1:47]
+        SampCounty[, j] = samp[[j]]$latent[1:47]
       }
-      sampCountyOverSampDat[,,i] = result
+      sampCountyOverSampDat[,,i] = SampCounty
     }
   }
   
