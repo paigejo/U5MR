@@ -9,7 +9,10 @@ logit <- function(x) {
 }
 
 expit <- function(x) {
-  exp(x)/(1+exp(x))
+  res = exp(x)/(1+exp(x))
+  res[x > 100] = 1
+  res[x < -100] = 0
+  res
 }
 
 # this function computes all scoring rules, with and without binomial variation
