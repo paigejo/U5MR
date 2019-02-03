@@ -22,10 +22,11 @@ source("scores.R")
 #              for testing purposes
 # nsim: the number of points with which to approximate the distribution of probability on the logit scale
 # saveResults: whether or not to save a disk image of the results
+# loadResults: if TRUE loads the saved disk image rather than recomputing results
 runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixel", "EA"), 
                             sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:3, 
                             produceFigures=FALSE, big=FALSE, printIEvery=50, 
-                            maxDataSets=NULL, nsim=10, saveResults=TRUE) {
+                            maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=FALSE) {
   
   # match the arguments with their correct values
   resultType = match.arg(resultType)
@@ -35,6 +36,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
   if(!identical(modelsI, 1:2) && big)
     stop("if big is set to TRUE, only naive and direct results can be included")
   
+  # load the true superpopulation
   testText = ifelse(test, "Test", "")
   bigText = ifelse(big, "Big", "")
   if(tausq == .1^2 || tausq == .01) {
@@ -53,199 +55,187 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
   } else {
     clustDat = overSampDat
   }
-  
-  ## generate the true values at the county level for the 
-  ## given settings if these are new settings
-  if(recomputeTruth){
-    if(resultType == "county") {
-      # compute truth based on superpopulation
-      regions = sort(unique(eaDat$admin1))
-      truthbycounty <- rep(NA, 47)
-      childrenPerCounty = truthbycounty
-      
-      for(i in 1:47){
-        super = eaDat[eaDat$admin1 == regions[i],]
-        childrenPerCounty[i] = sum(super$numChildren)
-        truthbycounty[i] <- sum(super$died)/childrenPerCounty[i]
-      }
-      truth = data.frame(admin1=regions, truth=truthbycounty, numChildren=childrenPerCounty)
-      save(truth, file="truthbycounty.RData")
-    } else if(resultType == "pixel") {
-      counties = sort(unique(eaDat$admin1))
-      eaToPixel = eaDat$pixelI
-      childrenPerPixel = tapply(eaDat$numChildren, list(pixel=eaDat$pixelI), sum)
-      urbanPixel = tapply(eaDat$urban, list(pixel=eaDat$pixelI), function(x) {mean(x[1])})
-      deathsPerPixel = tapply(eaDat$died, list(pixel=eaDat$pixelI), sum)
-      regions = names(childrenPerPixel) # these are the pixels with enumeration areas in them
-      pixelToAdmin = match(popGrid$admin1[as.numeric(regions)], counties)
-      
-      truth = data.frame(pixel=regions, truth=deathsPerPixel / childrenPerPixel, countyI=pixelToAdmin, urban=urbanPixel, numChildren=childrenPerPixel)
-      save(truth, file="truthbyPixel.RData")
-    } else if(resultType == "EA") {
-      truth = data.frame(EA = 1:nrow(eaDat), truth = eaDat$died/25, urban=eaDat$urban, numChildren=eaDat$numChildren)
-      save(truth, file="truthbyEA.RData")
-    }
-  } else {
-    # load the truth
-    load(paste0("truthby", resultType, ".RData"))
-  }
-  
-  ## Now pick which models to include in the results
-  allModels = c("naive", "direct", "mercer", "bym", "bymNoUrb", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
-  allNames = c("Naive", "Direct estimates", "Mercer et al.", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
-  models = allModels[modelsI]
-  
-  # load data
-  tauText = ifelse(tausq == 0, "0", "0.01")
-  testText = ifelse(test, "Test", "")
-  if("naive" %in% models || "direct" %in% models) {
-    out = load(paste0("resultsDirectNaiveTausq", tauText, testText, bigText, ".RData")) # this is the only case that uses the big dataset
-    if(sampling == "SRS") {
-      directEst = directEstSRS
-      naive = naiveSRS
-    }
-    else {
-      directEst = directEstoverSamp
-      naive = naiveoverSamp
-    }
-  }
-  if("mercer" %in% models) {
-    out = load(paste0("resultsMercerTausq", tauText, tolower(testText), ".RData"))
-    if(sampling == "SRS")
-      mercer = mercerSRS
-    else
-      mercer = merceroverSamp
-  }
-  if("bymNoUrb" %in% models) {
-    out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterTRUE", testText, ".RData"))
-    if(sampling == "SRS")
-      designRes$overSampDat = NULL
-    else
-      designRes$SRSdat = NULL
-    designResNoUrb = designRes
-  }
-  if("bymNoUrbClust" %in% models) {
-    out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterFALSE", testText, ".RData"))
-    if(sampling == "SRS")
-      designRes$overSampDat = NULL
-    else
-      designRes$SRSdat = NULL
-    designResNoUrbClust = designRes
-  }
-  if("bymNoClust" %in% models) {
-    out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterFALSE", testText, ".RData"))
-    if(sampling == "SRS")
-      designRes$overSampDat = NULL
-    else
-      designRes$SRSdat = NULL
-    designResNoClust = designRes
-  }
-  if("bym" %in% models) {
-    out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterTRUE", testText, ".RData"))
-    if(sampling == "SRS")
-      designRes$overSampDat = NULL
-    else
-      designRes$SRSdat = NULL
-  }
-  if("spdeNoUrb" %in% models) {
-    out = load(paste0("resultsSPDETausq", tauText, "urbanEffectFALSE", testText, ".RData"))
-    if(sampling == "SRS")
-      spdeNoUrb = spdeSRS
-    else
-      spdeNoUrb = spdeOverSamp
-  }
-  if("spde" %in% models) {
-    out = load(paste0("resultsSPDETausq", tauText, "urbanEffectTRUE", testText, ".RData"))
-    if(sampling == "SRS")
-      spde = spdeSRS
-    else
-      spde = spdeOverSamp
-  }
-  
-  # commented out the below code, since it's not clear within strata predictions are necessary
-  # # modify discrete estimates stratified by urban/rural if resultType is at finer scale than county
-  # # (currently, further resolving discrete estimates is only supported for the direct estimates)
-  # if(resultType == "EA") {
-  #   filterByUrban = function(i) {
-  #     urbanI = 1:nrow(directEstSRS[[i]])
-  #   }
-  #   directEstSRS = lapply(1:100, )
-  # }
-  
-  # function for generating discrete model pixel and EA level predictions 
-  # given the county level predictions
-  getSubLevelResults = function(resultTable) {
-    # get the order of the counties that resultTable is in
-    counties = sort(unique(eaDat$admin1))
-    
-    # convert results to the desired aggregation level if necessary for discrete models:
-    if(resultType == "pixel") {
-      # compute pixel results
-      pixelToAdmin = match(popGrid$admin1, counties)
-      resultTable = resultTable[pixelToAdmin,]
-    }
-    else if(resultType == "EA") {
-      # compute EA level results
-      eaToAdmin = match(eaDat$admin1, counties)
-      resultTable = resultTable[eaToAdmin,]
-    }
-    
-    # modify result row and column table names according to aggregation level
-    whichName = which(names(resultTable) == "admin1")
-    names(resultTable)[whichName] = resultType
-    if((resultType == "EA") && (is.data.frame(resultTable))) {
-      # resultTable[[resultType]] = resultTable$eaI
-      resultTable[[resultType]] = 1:nrow(resultTable)
-    } else if((resultType == "pixel") && (is.data.frame(resultTable))) {
-      # resultTable[[resultType]] = resultTable$eaI
-      resultTable[[resultType]] = 1:nrow(resultTable)
-    }
-    
-    if(resultType == "pixel")
-      resultTable = resultTable[as.numeric(as.character(truth$pixel)),]
-    
-    resultTable
-  }
-  
-  # convert the truth to the desired aggregation level
-  if(resultType == "county")
-    truth = getSubLevelResults(truth)
-  
-  # calculate the binomial n (number of children) for each prediction unit
-  numChildren = truth$numChildren
-  
-  # compute scores
-  scoresDirect = scoresNaive = scoresMercer = scoresBYMNoUrb = scoresBYM = scoresBYMNoUrbClust = scoresBYMNoClust = scoresSPDENoUrb = scoresSPDE = data.frame()
-  
-  # convert results to the desired aggregation level
-  # not including urban effect
-  if("bymNoUrb" %in% models) {
-    designResNoUrb[[1]]$Q10 = getSubLevelResults(designResNoUrb[[1]]$Q10)
-    designResNoUrb[[1]]$Q50 = getSubLevelResults(designResNoUrb[[1]]$Q50)
-    designResNoUrb[[1]]$Q90 = getSubLevelResults(designResNoUrb[[1]]$Q90)
-    designResNoUrb[[1]]$mean = getSubLevelResults(designResNoUrb[[1]]$mean)
-    designResNoUrb[[1]]$stddev = getSubLevelResults(designResNoUrb[[1]]$stddev)
-  }
-  
-  # including urban effect
-  if("bym" %in% models) {
-    designRes[[1]]$Q10 = getSubLevelResults(designRes[[1]]$Q10)
-    designRes[[1]]$Q50 = getSubLevelResults(designRes[[1]]$Q50)
-    designRes[[1]]$Q90 = getSubLevelResults(designRes[[1]]$Q90)
-    designRes[[1]]$mean = getSubLevelResults(designRes[[1]]$mean)
-    designRes[[1]]$stddev = getSubLevelResults(designRes[[1]]$stddev)
-  }
-  
   maxDataSets = ifelse(is.null(maxDataSets), length(clustDat$clustDat), maxDataSets)
-  for(i in c(1:maxDataSets)) { # for problem fitting mercerSRS for SRS sampling, tausq=0
-    # for(i in 1:100) {
-    if((i %% printIEvery == 0) || (i == 1))
-      print(i)
-    resultName = paste0(resultType, "Results")
-    if(resultType == "EA")
-      resultName = "eaResults"
+  
+  # this string carries all the information about the run
+  runId = paste0("Tausq", round(tausq, 3), testText, bigText, sampling, 
+                 "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
+  
+  # compute the results if necessary
+  if(!loadResults) {
+    
+    ## generate the true values at the county level for the 
+    ## given settings if these are new settings
+    counties = sort(unique(eaDat$admin1))
+    if(recomputeTruth){
+      truth = getTruth(resultType, eaDat)
+      if(resultType == "county") {
+        save(truth, file="truthbycounty.RData")
+      } else if(resultType == "pixel") {
+        save(truth, file="truthbyPixel.RData")
+      } else if(resultType == "EA") {
+        save(truth, file="truthbyEA.RData")
+      }
+    } else {
+      # load the truth
+      load(paste0("truthby", resultType, ".RData"))
+    }
+    
+    ## Now pick which models to include in the results
+    allModels = c("naive", "direct", "mercer", "bym", "bymNoUrb", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
+    allNames = c("Naive", "Direct estimates", "Mercer et al.", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
+    models = allModels[modelsI]
+    
+    # load data
+    tauText = ifelse(tausq == 0, "0", "0.01")
+    testText = ifelse(test, "Test", "")
+    if("naive" %in% models || "direct" %in% models) {
+      out = load(paste0("resultsDirectNaiveTausq", tauText, testText, bigText, ".RData")) # this is the only case that uses the big dataset
+      if(sampling == "SRS") {
+        directEst = directEstSRS
+        naive = naiveSRS
+      }
+      else {
+        directEst = directEstoverSamp
+        naive = naiveoverSamp
+      }
+    }
+    if("mercer" %in% models) {
+      out = load(paste0("resultsMercerTausq", tauText, tolower(testText), ".RData"))
+      if(sampling == "SRS")
+        mercer = mercerSRS
+      else
+        mercer = merceroverSamp
+    }
+    if("bymNoUrb" %in% models) {
+      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterTRUE", testText, ".RData"))
+      if(sampling == "SRS")
+        designRes$overSampDat = NULL
+      else
+        designRes$SRSdat = NULL
+      designResNoUrb = designRes
+    }
+    if("bymNoUrbClust" %in% models) {
+      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterFALSE", testText, ".RData"))
+      if(sampling == "SRS")
+        designRes$overSampDat = NULL
+      else
+        designRes$SRSdat = NULL
+      designResNoUrbClust = designRes
+    }
+    if("bymNoClust" %in% models) {
+      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterFALSE", testText, ".RData"))
+      if(sampling == "SRS")
+        designRes$overSampDat = NULL
+      else
+        designRes$SRSdat = NULL
+      designResNoClust = designRes
+    }
+    if("bym" %in% models) {
+      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterTRUE", testText, ".RData"))
+      if(sampling == "SRS")
+        designRes$overSampDat = NULL
+      else
+        designRes$SRSdat = NULL
+    }
+    if("spdeNoUrb" %in% models) {
+      out = load(paste0("resultsSPDETausq", tauText, "urbanEffectFALSE", testText, ".RData"))
+      if(sampling == "SRS")
+        spdeNoUrb = spdeSRS
+      else
+        spdeNoUrb = spdeOverSamp
+    }
+    if("spde" %in% models) {
+      out = load(paste0("resultsSPDETausq", tauText, "urbanEffectTRUE", testText, ".RData"))
+      if(sampling == "SRS")
+        spde = spdeSRS
+      else
+        spde = spdeOverSamp
+    }
+    
+    # commented out the below code, since it's not clear within strata predictions are necessary
+    # # modify discrete estimates stratified by urban/rural if resultType is at finer scale than county
+    # # (currently, further resolving discrete estimates is only supported for the direct estimates)
+    # if(resultType == "EA") {
+    #   filterByUrban = function(i) {
+    #     urbanI = 1:nrow(directEstSRS[[i]])
+    #   }
+    #   directEstSRS = lapply(1:100, )
+    # }
+    
+    # function for generating discrete model pixel and EA level predictions 
+    # given the county level predictions
+    getSubLevelResults = function(resultTable) {
+      # get the order of the counties that resultTable is in
+      counties = sort(unique(eaDat$admin1))
+      
+      # convert results to the desired aggregation level if necessary for discrete models:
+      if(resultType == "pixel") {
+        # compute pixel results
+        pixelToAdmin = match(popGrid$admin1, counties)
+        resultTable = resultTable[pixelToAdmin,]
+      }
+      else if(resultType == "EA") {
+        # compute EA level results
+        eaToAdmin = match(eaDat$admin1, counties)
+        resultTable = resultTable[eaToAdmin,]
+      }
+      
+      # modify result row and column table names according to aggregation level
+      whichName = which(names(resultTable) == "admin1")
+      names(resultTable)[whichName] = resultType
+      if((resultType == "EA") && (is.data.frame(resultTable))) {
+        # resultTable[[resultType]] = resultTable$eaI
+        resultTable[[resultType]] = 1:nrow(resultTable)
+      } else if((resultType == "pixel") && (is.data.frame(resultTable))) {
+        # resultTable[[resultType]] = resultTable$eaI
+        resultTable[[resultType]] = 1:nrow(resultTable)
+      }
+      
+      if(resultType == "pixel")
+        resultTable = resultTable[as.numeric(as.character(truth$pixel)),]
+      
+      resultTable
+    }
+    
+    # convert the truth to the desired aggregation level
+    if(resultType == "county")
+      truth = getSubLevelResults(truth)
+    
+    # calculate the binomial n (number of children) for each prediction unit
+    numChildren = truth$numChildren
+    
+    # compute scores
+    scoresDirect = scoresNaive = scoresMercer = scoresBYMNoUrb = scoresBYM = scoresBYMNoUrbClust = scoresBYMNoClust = scoresSPDENoUrb = scoresSPDE = data.frame()
     
     # convert results to the desired aggregation level
+    # not including urban effect
+    if("bymNoUrb" %in% models) {
+      designResNoUrb[[1]]$Q10 = getSubLevelResults(designResNoUrb[[1]]$Q10)
+      designResNoUrb[[1]]$Q50 = getSubLevelResults(designResNoUrb[[1]]$Q50)
+      designResNoUrb[[1]]$Q90 = getSubLevelResults(designResNoUrb[[1]]$Q90)
+      designResNoUrb[[1]]$mean = getSubLevelResults(designResNoUrb[[1]]$mean)
+      designResNoUrb[[1]]$stddev = getSubLevelResults(designResNoUrb[[1]]$stddev)
+    }
+    
+    # including urban effect
+    if("bym" %in% models) {
+      designRes[[1]]$Q10 = getSubLevelResults(designRes[[1]]$Q10)
+      designRes[[1]]$Q50 = getSubLevelResults(designRes[[1]]$Q50)
+      designRes[[1]]$Q90 = getSubLevelResults(designRes[[1]]$Q90)
+      designRes[[1]]$mean = getSubLevelResults(designRes[[1]]$mean)
+      designRes[[1]]$stddev = getSubLevelResults(designRes[[1]]$stddev)
+    }
+    
+    for(i in c(1:maxDataSets)) { # for problem fitting mercerSRS for SRS sampling, tausq=0
+      # for(i in 1:100) {
+      if((i %% printIEvery == 0) || (i == 1))
+        print(i)
+      resultName = paste0(resultType, "Results")
+      if(resultType == "EA")
+        resultName = "eaResults"
+      
+      # convert results to the desired aggregation level
       if("direct" %in% models)
         directEsti = getSubLevelResults(directEst[[i]])
       if("naive" %in% models)
@@ -265,156 +255,161 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
         if("spde" %in% models)
           spdei = spde[[resultName]][[i]]
       }
-    
-    if(resultType == "EA") {
-      # set first row of spde results to be the EA index
-      if("spdeNoUrb" %in% models) {
-        spdeNoUrbi[[resultType]] = 1:nrow(spdeNoUrbi)
-        
-        whichName = which(names(spdeNoUrbi) == "EA")
-        spdeNoUrbi = cbind(spdeNoUrbi[,whichName], spdeNoUrbi[,-whichName])
-        
-        names(spdeNoUrbi)[1] = "EA"
-      }
-      if("spde" %in% models) {
-        spdei[[resultType]] = 1:nrow(spdei)
-        
-        whichName = which(names(spdei) == "EA")
-        spdei = cbind(spdei[,whichName], spdei[,-whichName])
-        
-        names(spdei)[1] = "EA"
-      }
-    }
-    
-    # for spde results, modify the name of the results
-    # modify result row and column table names according to aggregation level
-    if(resultType == "county") {
-      # without urban effect:
-      if("spdeNoUrb" %in% models) {
-          whichName = which(names(spdeNoUrbi) == "admin1")
-          names(spdeNoUrbi)[whichName] = resultType
+      
+      if(resultType == "EA") {
+        # set first row of spde results to be the EA index
+        if("spdeNoUrb" %in% models) {
+          spdeNoUrbi[[resultType]] = 1:nrow(spdeNoUrbi)
+          
+          whichName = which(names(spdeNoUrbi) == "EA")
+          spdeNoUrbi = cbind(spdeNoUrbi[,whichName], spdeNoUrbi[,-whichName])
+          
+          names(spdeNoUrbi)[1] = "EA"
+        }
+        if("spde" %in% models) {
+          spdei[[resultType]] = 1:nrow(spdei)
+          
+          whichName = which(names(spdei) == "EA")
+          spdei = cbind(spdei[,whichName], spdei[,-whichName])
+          
+          names(spdei)[1] = "EA"
+        }
       }
       
-      if("spde" %in% models) {
-        # with urban effect:
+      # for spde results, modify the name of the results
+      # modify result row and column table names according to aggregation level
+      if(resultType == "county") {
+        # without urban effect:
+        if("spdeNoUrb" %in% models) {
+          whichName = which(names(spdeNoUrbi) == "admin1")
+          names(spdeNoUrbi)[whichName] = resultType
+        }
+        
+        if("spde" %in% models) {
+          # with urban effect:
           whichName = which(names(spdei) == "admin1")
           names(spdei)[whichName] = resultType
+        }
       }
-    }
-    
-    if(resultType == "pixel") {
-      # set first row of spde results to be the pixel index
+      
+      if(resultType == "pixel") {
+        # set first row of spde results to be the pixel index
+        if("spdeNoUrb" %in% models) {
+          spdeNoUrbi[[resultType]] = truth$pixel
+          
+          whichName = which(names(spdeNoUrbi) == "pixel")
+          spdeNoUrbi = cbind(spdeNoUrbi[,whichName], spdeNoUrbi[,-whichName])
+          
+          names(spdeNoUrbi)[1] = "pixel"
+        }
+        if("spde" %in% models) {
+          spdei[[resultType]] = truth$pixel
+          
+          whichName = which(names(spdei) == "pixel")
+          spdei = cbind(spdei[,whichName], spdei[,-whichName])
+          
+          names(spdei)[1] = "pixel"
+        }
+      }
+      
+      # change names of table variables in spde model with no urban effect to reflect that
+      if("spdeNoUrb" %in% models)
+        names(spdeNoUrbi)[2:6] = paste0(names(spdeNoUrbi)[2:6], "NoUrb")
+      
+      if("direct" %in% models) {
+        allres = merge(truth, directEsti, by=resultType)
+        colnames(allres) = c(resultType, "truth", paste(colnames(allres)[3:8], "direct", sep=""))
+      } else {
+        stop("direct estimates must be included at this point in order to name the estimate table columns")
+      }
+      if("naive" %in% models)
+        allres = merge(allres, naivei, by=resultType)
+      if("mercer" %in% models)
+        allres = merge(allres, merceri, by=resultType)
+      if("spdeNoUrb" %in% models)
+        allres = merge(allres, spdeNoUrbi, by=resultType)
+      if("spde" %in% models)
+        allres = merge(allres, spdei, by=resultType)
+      
+      # set whether or not to calculate scores on logit scale depending on result type
+      thisTruth = allres$truth
+      
+      # if(is.null(useLogit)) {
+      #   useLogit = FALSE
+      #   if(resultType != "EA" && resultType != "pixel") {
+      #     thisTruth = logit(thisTruth)
+      #     useLogit=TRUE
+      #   }
+      # } else if(useLogit == TRUE) {
+      #   thisTruth = logit(thisTruth)
+      # }
+      
+      if("direct" %in% models) {
+        my.scoresdirect = getScores(thisTruth, numChildren, allres$logit.estdirect, allres$var.estdirect, nsim=nsim)
+        scoresDirect <- rbind(scoresDirect,
+                              cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresdirect))
+      }
+      if("naive" %in% models) {
+        my.scoresnaive = getScores(thisTruth, numChildren, allres$logit.est, allres$var.est, nsim=nsim)
+        scoresNaive <- rbind(scoresNaive,
+                             cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresnaive))
+      }
+      if("mercer" %in% models) {
+        my.scoresmercer = getScores(thisTruth, numChildren, allres$logit.est.mercer, allres$var.est.mercer, nsim=nsim)
+        scoresMercer <- rbind(scoresMercer,
+                              cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresmercer))
+      }
+      if("bymNoUrbClust" %in% models) {
+        my.scoresbymNoUrbClust = getScores(thisTruth, numChildren, designResNoUrbClust[[1]]$mean[,i], (designResNoUrbClust[[1]]$stddev[,i])^2, nsim=nsim)
+        scoresBYMNoUrbClust <- rbind(scoresBYMNoUrbClust,
+                                     cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbClust))
+      }
+      if("bymNoUrb" %in% models) {
+        my.scoresbymNoUrb = getScores(thisTruth, numChildren, designResNoUrb[[1]]$mean[,i], (designResNoUrb[[1]]$stddev[,i])^2, nsim=nsim)
+        scoresBYMNoUrb <- rbind(scoresBYMNoUrb,
+                                cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrb))
+      }
+      if("bymNoClust" %in% models) {
+        my.scoresbymNoClust = getScores(thisTruth, numChildren, designResNoClust[[1]]$mean[,i], (designResNoClust[[1]]$stddev[,i])^2, nsim=nsim)
+        scoresBYMNoClust <- rbind(scoresBYMNoClust,
+                                  cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoClust))
+      }
+      if("bym" %in% models) {
+        my.scoresbym = getScores(thisTruth, numChildren, designRes[[1]]$mean[,i], (designRes[[1]]$stddev[,i])^2, nsim=nsim)
+        scoresBYM <- rbind(scoresBYM,
+                           cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbym))
+      }
       if("spdeNoUrb" %in% models) {
-        spdeNoUrbi[[resultType]] = truth$pixel
-        
-        whichName = which(names(spdeNoUrbi) == "pixel")
-        spdeNoUrbi = cbind(spdeNoUrbi[,whichName], spdeNoUrbi[,-whichName])
-        
-        names(spdeNoUrbi)[1] = "pixel"
+        stop("determine if the spde code should compute all of these directly")
+        my.biasspdeNoUrb = bias(thisTruth, allres$logit.est.spdeNoUrb, logit=useLogit, my.var=allres$var.est.spdeNoUrb)
+        my.msespdeNoUrb = mse(thisTruth, allres$logit.est.spdeNoUrb, logit=useLogit, my.var=allres$var.est.spdeNoUrb)
+        my.dssspdeNoUrb = dss(thisTruth, allres$logit.est.spdeNoUrb, allres$var.est.spdeNoUrb)
+        # the below line used to be commented for some reason
+        my.crpsspdeNoUrb = crpsNormal(thisTruth, allres$logit.est.spdeNoUrb, allres$var.est.spdeNoUrb, logit=useLogit, n=numChildren)
+        my.crpsspdeNoUrb = allres$crps.spdeNoUrb
+        my.coveragespdeNoUrb = coverage(thisTruth, allres$lower.spdeNoUrb, allres$upper.spdeNoUrb, logit=useLogit)
+        my.lengthspdeNoUrb = intervalWidth(allres$lower.spdeNoUrb, allres$upper.spdeNoUrb, logit=useLogit)
+        scoresSPDENoUrb <- rbind(scoresSPDENoUrb,
+                                 cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresspdeNoUrb))
       }
       if("spde" %in% models) {
-        spdei[[resultType]] = truth$pixel
-        
-        whichName = which(names(spdei) == "pixel")
-        spdei = cbind(spdei[,whichName], spdei[,-whichName])
-        
-        names(spdei)[1] = "pixel"
+        stop("determine if the spde code should compute all of these directly")
+        my.biasspde = bias(thisTruth, allres$logit.est.spde, logit=useLogit, my.var=allres$var.est.spde)
+        my.msespde = mse(thisTruth, allres$logit.est.spde, logit=useLogit, my.var=allres$var.est.spde)
+        my.dssspde = dss(thisTruth, allres$logit.est.spde, allres$var.est.spde)
+        # the below line needs to be commented for some reason
+        my.crpsspde = crpsNormal(thisTruth, allres$logit.est.spde, allres$var.est.spde, logit=useLogit, n=numChildren)
+        my.crpsspde = allres$crps.spde
+        my.coveragespde = coverage(thisTruth, allres$lower.spde, allres$upper.spde, logit=useLogit)
+        my.lengthspde = intervalWidth(allres$lower.spde, allres$upper.spde, logit=useLogit)
+        scoresSPDE <- rbind(scoresSPDE,
+                            cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresspde))
       }
     }
-    
-    # change names of table variables in spde model with no urban effect to reflect that
-    if("spdeNoUrb" %in% models)
-      names(spdeNoUrbi)[2:6] = paste0(names(spdeNoUrbi)[2:6], "NoUrb")
-    
-    if("direct" %in% models) {
-      allres = merge(truth, directEsti, by=resultType)
-      colnames(allres) = c(resultType, "truth", paste(colnames(allres)[3:8], "direct", sep=""))
-    } else {
-      stop("direct estimates must be included at this point in order to name the estimate table columns")
-    }
-    if("naive" %in% models)
-      allres = merge(allres, naivei, by=resultType)
-    if("mercer" %in% models)
-      allres = merge(allres, merceri, by=resultType)
-    if("spdeNoUrb" %in% models)
-      allres = merge(allres, spdeNoUrbi, by=resultType)
-    if("spde" %in% models)
-      allres = merge(allres, spdei, by=resultType)
-    
-    # set whether or not to calculate scores on logit scale depending on result type
-    thisTruth = allres$truth
-    
-    # if(is.null(useLogit)) {
-    #   useLogit = FALSE
-    #   if(resultType != "EA" && resultType != "pixel") {
-    #     thisTruth = logit(thisTruth)
-    #     useLogit=TRUE
-    #   }
-    # } else if(useLogit == TRUE) {
-    #   thisTruth = logit(thisTruth)
-    # }
-    
-    if("direct" %in% models) {
-      my.scoresdirect = getScores(thisTruth, numChildren, allres$logit.estdirect, allres$var.estdirect, nsim=nsim)
-      scoresDirect <- rbind(scoresDirect,
-                            cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresdirect))
-    }
-    if("naive" %in% models) {
-      my.scoresnaive = getScores(thisTruth, numChildren, allres$logit.est, allres$var.est, nsim=nsim)
-      scoresNaive <- rbind(scoresNaive,
-                           cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresnaive))
-    }
-    if("mercer" %in% models) {
-      my.scoresmercer = getScores(thisTruth, numChildren, allres$logit.est.mercer, allres$var.est.mercer, nsim=nsim)
-      scoresMercer <- rbind(scoresMercer,
-                            cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresmercer))
-    }
-    if("bymNoUrbClust" %in% models) {
-      my.scoresbymNoUrbClust = getScores(thisTruth, numChildren, designResNoUrbClust[[1]]$mean[,i], (designResNoUrbClust[[1]]$stddev[,i])^2, nsim=nsim)
-      scoresBYMNoUrbClust <- rbind(scoresBYMNoUrbClust,
-                                   cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbClust))
-    }
-    if("bymNoUrb" %in% models) {
-      my.scoresbymNoUrb = getScores(thisTruth, numChildren, designResNoUrb[[1]]$mean[,i], (designResNoUrb[[1]]$stddev[,i])^2, nsim=nsim)
-      scoresBYMNoUrb <- rbind(scoresBYMNoUrb,
-                              cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrb))
-    }
-    if("bymNoClust" %in% models) {
-      my.scoresbymNoClust = getScores(thisTruth, numChildren, designResNoClust[[1]]$mean[,i], (designResNoClust[[1]]$stddev[,i])^2, nsim=nsim)
-      scoresBYMNoClust <- rbind(scoresBYMNoClust,
-                                cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoClust))
-    }
-    if("bym" %in% models) {
-      my.scoresbym = getScores(thisTruth, numChildren, designRes[[1]]$mean[,i], (designRes[[1]]$stddev[,i])^2, nsim=nsim)
-      scoresBYM <- rbind(scoresBYM,
-                         cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbym))
-    }
-    if("spdeNoUrb" %in% models) {
-      stop("determine if the spde code should compute all of these directly")
-      my.biasspdeNoUrb = bias(thisTruth, allres$logit.est.spdeNoUrb, logit=useLogit, my.var=allres$var.est.spdeNoUrb)
-      my.msespdeNoUrb = mse(thisTruth, allres$logit.est.spdeNoUrb, logit=useLogit, my.var=allres$var.est.spdeNoUrb)
-      my.dssspdeNoUrb = dss(thisTruth, allres$logit.est.spdeNoUrb, allres$var.est.spdeNoUrb)
-      # the below line used to be commented for some reason
-      my.crpsspdeNoUrb = crpsNormal(thisTruth, allres$logit.est.spdeNoUrb, allres$var.est.spdeNoUrb, logit=useLogit, n=numChildren)
-      my.crpsspdeNoUrb = allres$crps.spdeNoUrb
-      my.coveragespdeNoUrb = coverage(thisTruth, allres$lower.spdeNoUrb, allres$upper.spdeNoUrb, logit=useLogit)
-      my.lengthspdeNoUrb = intervalWidth(allres$lower.spdeNoUrb, allres$upper.spdeNoUrb, logit=useLogit)
-      scoresSPDENoUrb <- rbind(scoresSPDENoUrb,
-                               cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresspdeNoUrb))
-    }
-    if("spde" %in% models) {
-      stop("determine if the spde code should compute all of these directly")
-      my.biasspde = bias(thisTruth, allres$logit.est.spde, logit=useLogit, my.var=allres$var.est.spde)
-      my.msespde = mse(thisTruth, allres$logit.est.spde, logit=useLogit, my.var=allres$var.est.spde)
-      my.dssspde = dss(thisTruth, allres$logit.est.spde, allres$var.est.spde)
-      # the below line needs to be commented for some reason
-      my.crpsspde = crpsNormal(thisTruth, allres$logit.est.spde, allres$var.est.spde, logit=useLogit, n=numChildren)
-      my.crpsspde = allres$crps.spde
-      my.coveragespde = coverage(thisTruth, allres$lower.spde, allres$upper.spde, logit=useLogit)
-      my.lengthspde = intervalWidth(allres$lower.spde, allres$upper.spde, logit=useLogit)
-      scoresSPDE <- rbind(scoresSPDE,
-                          cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresspde))
-    }
+  }
+  else {
+    # in this case, we have already computed the results so just load them into the environment
+    load(paste0("scores", runId, ".RData"))
   }
   
   # final table: 
@@ -458,8 +453,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
     tab = rbind(tab, c(spde[idx]))
   rownames(tab) = allNames[modelsI]
   
-  print(xtable(tab, digits=3), 
-        only.contents=TRUE, 
+  print(xtable(tab, digits=8), 
         include.colnames=TRUE,
         hline.after=NULL)
   
@@ -467,7 +461,8 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
                  "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
   if(saveResults) {
     # first collect all the results
-    save.image(paste0("scores", runId, ".RData"))
+    objectNames = ls()
+    save(list=objectNames, file=paste0("scores", runId, ".RData"))
   }
   
   if(produceFigures) {
@@ -1395,4 +1390,47 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   }
   
   tab
+}
+
+getTruth = function(resultType = c("county", "region", "EA", "pixel"), eaDat) {
+  resultType = match.arg(resultType)
+  
+  if(resultType == "county") {
+    # compute truth based on superpopulation
+    regions = sort(unique(eaDat$admin1))
+    truthbycounty <- rep(NA, 47)
+    childrenPerCounty = truthbycounty
+    
+    for(i in 1:47){
+      super = eaDat[eaDat$admin1 == regions[i],]
+      childrenPerCounty[i] = sum(super$numChildren)
+      truthbycounty[i] <- sum(super$died)/childrenPerCounty[i]
+    }
+    truth = data.frame(admin1=regions, truth=truthbycounty, numChildren=childrenPerCounty)
+  } else if(resultType == "pixel") {
+    counties = sort(unique(eaDat$admin1))
+    eaToPixel = eaDat$pixelI
+    childrenPerPixel = tapply(eaDat$numChildren, list(pixel=eaDat$pixelI), sum)
+    urbanPixel = tapply(eaDat$urban, list(pixel=eaDat$pixelI), function(x) {mean(x[1])})
+    deathsPerPixel = tapply(eaDat$died, list(pixel=eaDat$pixelI), sum)
+    regions = names(childrenPerPixel) # these are the pixels with enumeration areas in them
+    pixelToAdmin = match(popGrid$admin1[as.numeric(regions)], counties)
+    
+    truth = data.frame(pixel=regions, truth=deathsPerPixel / childrenPerPixel, countyI=pixelToAdmin, urban=urbanPixel, numChildren=childrenPerPixel)
+  } else if(resultType == "EA") {
+    truth = data.frame(EA = 1:nrow(eaDat), truth = eaDat$died/eaDat$numChildren, urban=eaDat$urban, numChildren=eaDat$numChildren)
+  } else if(resultType == "region") {
+    regions = sort(unique(eaDat$region))
+    truthbyregion <- rep(NA, 8)
+    childrenPerRegion = truthbyregion
+    
+    for(i in 1:8){
+      super = eaDat[eaDat$region == regions[i],]
+      childrenPerRegion[i] = sum(super$numChildren)
+      truthbycounty[i] <- sum(super$died)/childrenPerRegion[i]
+    }
+    truth = data.frame(admin1=regions, truth=truthbyregion, numChildren=childrenPerRegion)
+  }
+  
+  truth
 }
