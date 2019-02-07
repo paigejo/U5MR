@@ -331,8 +331,8 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
   
   # include the debiased results if cluster effect is included
   if(includeCluster) {
-    designRes = list(SRSdat = resSRSdat,
-                     overSampDat = resOverSampDat)
+    designRes = list(SRSdat = resSRSdatMod,
+                     overSampDat = resOverSampDatMod)
     
     save(file = paste0('kenyaSpatialDesignResultNewTausq', round(tausq, 4), 'UrbRur',
                        includeUrbanRural, 'Cluster', includeCluster, 'debiased', testText, '.RData'), 

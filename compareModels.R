@@ -66,11 +66,11 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
   }
   maxDataSets = ifelse(is.null(maxDataSets), length(clustDat$clustDat), maxDataSets)
   
-  allModels = c("naive", "direct", "mercer", "bym", "bymNoUrb", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
+  allModels = c("naive", "direct", "mercer", "bym", "bymMod", "bymNoUrb", "bymNoUrbMod", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
   # allNames = c("Naive", "Direct ", "Mercer et al.", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
   # allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer et al. Binom.", "BYM Binom. (no urb/clust)", "BYM Binom. (no urb)", "BYM Binom. (no clust)", "BYM Binom.", "SPDE Binom. (no urb)", "SPDE Binom.")
-  allNames = c("Naive", "Direct", "Mercer", "BYM 1", "BYM 2", "BYM 3", "BYM 4", "SPDE 1", "SPDE 2")
-  allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer Binom.", "BYM 1 Binom.", "BYM 2 Binom.", "BYM 3 Binom.", "BYM 4 Binom.", "SPDE 1 Binom.", "SPDE 2 Binom.")
+  allNames = c("Naive", "Direct", "Mercer", "BYM 1", "BYM 2", "BYM 2 Mod", "BYM 3", "BYM 4", "BYM 4 Mod", "SPDE 1", "SPDE 2")
+  allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer Binom.", "BYM 1 Binom.", "BYM 2 Binom.", "BYM 2 Mod Binom.", "BYM 3 Binom.", "BYM 4 Binom.", "BYM 4 Mod Binom.", "SPDE 1 Binom.", "SPDE 2 Binom.")
   models = allModels[modelsI]
   
   # this string carries all the information about the run
@@ -128,6 +128,14 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
         designRes$SRSdat = NULL
       designResNoUrb = designRes
     }
+    if("bymNoUrbMod" %in% models) {
+      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterTRUEdebiased", testText, ".RData"))
+      if(sampling == "SRS")
+        designRes$overSampDat = NULL
+      else
+        designRes$SRSdat = NULL
+      designResNoUrbMod = designRes
+    }
     if("bymNoUrbClust" %in% models) {
       out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterFALSE", testText, ".RData"))
       if(sampling == "SRS")
@@ -143,6 +151,14 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
       else
         designRes$SRSdat = NULL
       designResNoClust = designRes
+    }
+    if("bymMod" %in% models) {
+      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterTRUEdebiased", testText, ".RData"))
+      if(sampling == "SRS")
+        designRes$overSampDat = NULL
+      else
+        designRes$SRSdat = NULL
+      designResMod = designRes
     }
     if("bym" %in% models) {
       out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterTRUE", testText, ".RData"))
@@ -219,7 +235,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
     numChildren = truth$numChildren
     
     # compute scores
-    scoresDirect = scoresNaive = scoresMercer = scoresBYMNoUrb = scoresBYM = scoresBYMNoUrbClust = scoresBYMNoClust = scoresSPDENoUrb = scoresSPDE = data.frame()
+    scoresDirect = scoresNaive = scoresMercer = scoresBYMNoUrb = scoresBYM = scoresBYMNoUrbMod = scoresBYMMod = scoresBYMNoUrbClust = scoresBYMNoClust = scoresSPDENoUrb = scoresSPDE = data.frame()
     
     # convert results to the desired aggregation level
     # not including urban effect
@@ -238,6 +254,42 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
       designRes[[1]]$Q90 = getSubLevelResults(designRes[[1]]$Q90)
       designRes[[1]]$mean = getSubLevelResults(designRes[[1]]$mean)
       designRes[[1]]$stddev = getSubLevelResults(designRes[[1]]$stddev)
+    }
+    
+    # not including urban effect
+    if("bymNoUrbClust" %in% models) {
+      designResNoUrbClust[[1]]$Q10 = getSubLevelResults(designResNoUrbClust[[1]]$Q10)
+      designResNoUrbClust[[1]]$Q50 = getSubLevelResults(designResNoUrbClust[[1]]$Q50)
+      designResNoUrbClust[[1]]$Q90 = getSubLevelResults(designResNoUrbClust[[1]]$Q90)
+      designResNoUrbClust[[1]]$mean = getSubLevelResults(designResNoUrbClust[[1]]$mean)
+      designResNoUrbClust[[1]]$stddev = getSubLevelResults(designResNoUrbClust[[1]]$stddev)
+    }
+    
+    # including urban effect
+    if("bymNoClust" %in% models) {
+      designResNoClust[[1]]$Q10 = getSubLevelResults(designResNoClust[[1]]$Q10)
+      designResNoClust[[1]]$Q50 = getSubLevelResults(designResNoClust[[1]]$Q50)
+      designResNoClust[[1]]$Q90 = getSubLevelResults(designResNoClust[[1]]$Q90)
+      designResNoClust[[1]]$mean = getSubLevelResults(designResNoClust[[1]]$mean)
+      designResNoClust[[1]]$stddev = getSubLevelResults(designResNoClust[[1]]$stddev)
+    }
+    
+    # not including urban effect, modified to be debiased using marginal rather than conditional effect as prediction
+    if("bymNoUrbMod" %in% models) {
+      designResNoUrbMod[[1]]$Q10 = getSubLevelResults(designResNoUrbMod[[1]]$Q10)
+      designResNoUrbMod[[1]]$Q50 = getSubLevelResults(designResNoUrbMod[[1]]$Q50)
+      designResNoUrbMod[[1]]$Q90 = getSubLevelResults(designResNoUrbMod[[1]]$Q90)
+      designResNoUrbMod[[1]]$mean = getSubLevelResults(designResNoUrbMod[[1]]$mean)
+      designResNoUrbMod[[1]]$stddev = getSubLevelResults(designResNoUrbMod[[1]]$stddev)
+    }
+    
+    # including urban effect, modified to be debiased using marginal rather than conditional effect as prediction
+    if("bymMod" %in% models) {
+      designResMod[[1]]$Q10 = getSubLevelResults(designResMod[[1]]$Q10)
+      designResMod[[1]]$Q50 = getSubLevelResults(designResMod[[1]]$Q50)
+      designResMod[[1]]$Q90 = getSubLevelResults(designResMod[[1]]$Q90)
+      designResMod[[1]]$mean = getSubLevelResults(designResMod[[1]]$mean)
+      designResMod[[1]]$stddev = getSubLevelResults(designResMod[[1]]$stddev)
     }
     
     for(i in c(1:maxDataSets)) { # for problem fitting mercerSRS for SRS sampling, tausq=0
@@ -382,6 +434,11 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
         scoresBYMNoUrb <- rbind(scoresBYMNoUrb,
                                 cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrb))
       }
+      if("bymNoUrbMod" %in% models) {
+        my.scoresbymNoUrbMod = getScores(thisTruth, numChildren, designResNoUrbMod[[1]]$mean[,i], (designResNoUrbMod[[1]]$stddev[,i])^2, nsim=nsim)
+        scoresBYMNoUrbMod <- rbind(scoresBYMNoUrbMod,
+                                cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbMod))
+      }
       if("bymNoClust" %in% models) {
         my.scoresbymNoClust = getScores(thisTruth, numChildren, designResNoClust[[1]]$mean[,i], (designResNoClust[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoClust <- rbind(scoresBYMNoClust,
@@ -391,6 +448,11 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
         my.scoresbym = getScores(thisTruth, numChildren, designRes[[1]]$mean[,i], (designRes[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYM <- rbind(scoresBYM,
                            cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbym))
+      }
+      if("bymMod" %in% models) {
+        my.scoresbymMod = getScores(thisTruth, numChildren, designResMod[[1]]$mean[,i], (designResMod[[1]]$stddev[,i])^2, nsim=nsim)
+        scoresBYMMod <- rbind(scoresBYMMod,
+                           cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymMod))
       }
       if("spdeNoUrb" %in% models) {
         stop("determine if the spde code should compute all of these directly")
@@ -439,10 +501,14 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
     bymNoUrbClust = apply(scoresBYMNoUrbClust[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
   if("bymNoUrb" %in% models)
     bymNoUrb = apply(scoresBYMNoUrb[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("bymNoUrbMod" %in% models)
+    bymNoUrbMod = apply(scoresBYMNoUrbMod[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
   if("bymNoClust" %in% models)
     bymNoClust = apply(scoresBYMNoClust[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
   if("bym" %in% models)
     bym = apply(scoresBYM[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("bymMod" %in% models)
+    bymMod = apply(scoresBYMMod[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
   if("spdeNoUrb" %in% models)
     spdeNoUrb = apply(scoresSPDENoUrb[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
   if("spde" %in% models)
@@ -459,10 +525,14 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
     tab = rbind(tab, c(bymNoUrbClust[idx]))
   if("bymNoUrb" %in% models)
     tab = rbind(tab, c(bymNoUrb[idx]))
+  if("bymNoUrbMod" %in% models)
+    tab = rbind(tab, c(bymNoUrbMod[idx]))
   if("bymNoClust" %in% models)
     tab = rbind(tab, c(bymNoClust[idx]))
   if("bym" %in% models)
     tab = rbind(tab, c(bym[idx]))
+  if("bymMod" %in% models)
+    tab = rbind(tab, c(bymMod[idx]))
   if("spdeNoUrb" %in% models)
     tab = rbind(tab, c(spdeNoUrb[idx]))
   if("spde" %in% models)
