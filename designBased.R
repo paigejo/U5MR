@@ -148,11 +148,6 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
   # Go through datasets for overSampDat
   sampCountyOverSampDat = array(NA, dim = c(47, Nsim, length(overSampDat$clustDat)))
   sampCountyOverSampDatMod = array(NA, dim = c(47, Nsim, length(overSampDat$clustDat)))
-  if(includeCluster) {
-    logitMuCountyOverSampDat = array(NA, dim = c(47, Nsim, length(overSampDat$clustDat)))
-    logitVarCountyOverSampDat
-  }
-    muSigmaCountyOverSampDat = array(NA, dim = c(47, 2, length(overSampDat$clustDat)))
   for(i in 1:length(overSampDat$clustDat)) {
     # Extract data
     currData = overSampDat$clustDat[[i]]
