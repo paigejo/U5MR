@@ -23,14 +23,23 @@ source("scores.R")
 # nsim: the number of points with which to approximate the distribution of probability on the logit scale
 # saveResults: whether or not to save a disk image of the results
 # loadResults: if TRUE loads the saved disk image rather than recomputing results
+# xtable.args: the arguments passed to xtable for printing results
+# tableFormat: If "1", binomial scores are considered the same model as non-binomial scores. 
+#              If "2", binomial scores are put on extra rows of the printed table
 runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixel", "EA"), 
                             sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:3, 
                             produceFigures=FALSE, big=FALSE, printIEvery=50, 
-                            maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=FALSE) {
+                            maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=FALSE, 
+                            xtable.args=list(digits=c(0, 2, 2, 2, 2, 1, 2), display=rep("f", 7), auto=TRUE), 
+                            tableFormat=c("2", "1"), colScale=c(10^4, 10^5, 100^2, 10^3, 100, 100), 
+                            colUnits=c(" ($\\times 10^{-4}$)", " ($\\times 10^{-5}$)", " ($\\times 10^{-4}$)", 
+                                       " ($\\times 10^{-3}$)", " ($\\times 10^{-2}$)", " ($\\times 10^{-2}$)"), 
+                            colDigits=c(2, 2, 2, 2, 1, 2)) {
   
   # match the arguments with their correct values
   resultType = match.arg(resultType)
   sampling = match.arg(sampling)
+  tableFormat = match.arg(tableFormat)
   
   # test to make sure only the naive and direct models are included if big is set to TRUE
   if(!identical(modelsI, 1:2) && big)
@@ -57,6 +66,13 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
   }
   maxDataSets = ifelse(is.null(maxDataSets), length(clustDat$clustDat), maxDataSets)
   
+  allModels = c("naive", "direct", "mercer", "bym", "bymNoUrb", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
+  # allNames = c("Naive", "Direct ", "Mercer et al.", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
+  # allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer et al. Binom.", "BYM Binom. (no urb/clust)", "BYM Binom. (no urb)", "BYM Binom. (no clust)", "BYM Binom.", "SPDE Binom. (no urb)", "SPDE Binom.")
+  allNames = c("Naive", "Direct", "Mercer", "BYM 1", "BYM 2", "BYM 3", "BYM 4", "SPDE 1", "SPDE 2")
+  allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer Binom.", "BYM 1 Binom.", "BYM 2 Binom.", "BYM 3 Binom.", "BYM 4 Binom.", "SPDE 1 Binom.", "SPDE 2 Binom.")
+  models = allModels[modelsI]
+  
   # this string carries all the information about the run
   runId = paste0("Tausq", round(tausq, 3), testText, bigText, sampling, 
                  "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
@@ -82,9 +98,6 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
     }
     
     ## Now pick which models to include in the results
-    allModels = c("naive", "direct", "mercer", "bym", "bymNoUrb", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
-    allNames = c("Naive", "Direct estimates", "Mercer et al.", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
-    models = allModels[modelsI]
     
     # load data
     tauText = ifelse(tausq == 0, "0", "0.01")
@@ -410,6 +423,9 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
   else {
     # in this case, we have already computed the results so just load them into the environment
     load(paste0("scores", runId, ".RData"))
+    
+    # also, don't resave these results that we've already saved
+    saveResults = FALSE
   }
   
   # final table: 
@@ -451,17 +467,50 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
     tab = rbind(tab, c(spdeNoUrb[idx]))
   if("spde" %in% models)
     tab = rbind(tab, c(spde[idx]))
-  rownames(tab) = allNames[modelsI]
+  colnames(tab) = c("Bias", "Var", "MSE", "CRPS", "CRPS Binom.", "80\\% Cvg", "80\\% Cvg Binom.", "CI Width", "CI Width Binom.")
+  finalNames = allNames[modelsI]
+  finalNamesBinomial = allNamesBinomial[modelsI]
   
-  print(xtable(tab, digits=8), 
+  if(tableFormat == "1")
+    rownames(tab) = finalNames
+  else {
+    # separate out the binomial and non-binomial models into separate rows
+    binomialColumns = c(1:3, 5, 7, 9)
+    otherColumns = c(1:3, 4, 6, 8)
+    binomialTable = tab[, binomialColumns]
+    otherTable = tab[, otherColumns]
+    tab = otherTable[numeric(0),]
+    thisFinalNames = c()
+    
+    for(i in 1:length(modelsI)) {
+      tab = rbind(tab, 
+                  otherTable[i,], 
+                  binomialTable[i,])
+      thisFinalNames = c(thisFinalNames, finalNames[i], finalNamesBinomial[i])
+    }
+    rownames(tab) = thisFinalNames
+  }
+  
+  # round the columns of tab and modify the column names to include the scale
+  for(i in 1:ncol(tab)) {
+    tab[,i] = as.numeric(print(round(tab[,i] * colScale[i], digits=colDigits[i])))
+    colnames(tab)[i] = paste0(colnames(tab)[i], colUnits[i])
+  }
+  
+  print(do.call("xtable", c(list(tab), xtable.args)), 
         include.colnames=TRUE,
-        hline.after=NULL)
+        hline.after=0, 
+        math.style.exponents=TRUE, 
+        sanitize.text.function=function(x){x})
   
   runId = paste0("Tausq", round(tausq, 3), testText, bigText, sampling, 
                  "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
   if(saveResults) {
-    # first collect all the results
+    # first collect all the results. Save everything except for the postprocessing arguments: 
+    # produceFigures, digits
     objectNames = ls()
+    objectNames = objectNames[-match(c("produceFigures", "xtable.args", "tableFormat", "colScale", 
+                                       "colUnits", "colDigits"), objectNames)]
     save(list=objectNames, file=paste0("scores", runId, ".RData"))
   }
   

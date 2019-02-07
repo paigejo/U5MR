@@ -486,6 +486,27 @@ logitNormMean = function(muSigmaMat, parClust=NULL, ...) {
   }
 }
 
+# calculate expectation and variance of the logit-normal distribution
+# code based on logitnorm package
+logitNormMoments = function(muSigmaMat, parClust=NULL, ...) {
+  if(length(muSigmaMat) > 2) {
+    if(is.null(parClust))
+      apply(muSigmaMat, 1, logitNormMoments, ...)
+    else
+      parApply(parClust, muSigmaMat, 1, logitNormMoments, ...)
+  }
+  else {
+    mu = muSigmaMat[1]
+    sigma = muSigmaMat[2]
+    fExp <- function(x) plogis(x) * dnorm(x, mean = mu, sd = sigma)
+    expectation = integrate(fExp, -Inf, Inf, abs.tol = 0, ...)$value
+    
+    fVar = function(x) (plogis(x) - .exp)^2 * dnorm(x, mean = mu, sd = sigma)
+    variance = integrate(fVar, -Inf, Inf, abs.tol = abs.tol, ...)$value
+    c(mean = expectation, var = variance)
+  }
+}
+
 # calculates the E[UV] for U and V bernoulli random variables with the given distribution
 # of p on the logit scale
 logitNormCrossExpectation = function(muSigmaMat=matrix(c(0, 1), ncol=2), ...) {
