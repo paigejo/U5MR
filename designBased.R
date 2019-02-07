@@ -212,7 +212,7 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
           # if cluster effect is included, must debias predictions in each modeled strata
           clusterSigma = sqrt(1/samp[[j]]$hyperpar[3])
           muSigmaMat = cbind(sampCounty[, j], clusterSigma)
-          sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMatUrban)
+          sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMat)
         }
       }
       sampCountyOverSampDat[,,i] = sampCounty
