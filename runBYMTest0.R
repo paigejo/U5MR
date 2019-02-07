@@ -1,6 +1,5 @@
 source("setup.R")
 source("designBased.R")
-INLA:::inla.dynload.workaround()
 runBYM(test=TRUE, tausq=0)
 runBYM(test=TRUE, tausq=0, includeUrbanRural=FALSE)
 # runBYM(test=TRUE, tausq=0, includeCluster=FALSE)
