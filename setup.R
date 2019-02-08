@@ -22,9 +22,9 @@ source('~/git/U5MR/spdeResults.R')
 source('~/git/LK-INLA/LKinla_rgeneric.R')
 source('~/git/LK-INLA/LKinla.R')
 
-# inf = sessionInfo()
-# if(inf$platform != "x86_64-apple-darwin15.6.0 (64-bit)")
-#   INLA:::inla.dynload.workaround()
+inf = sessionInfo()
+if(inf$platform != "x86_64-apple-darwin15.6.0 (64-bit)")
+  INLA:::inla.dynload.workaround()
 
 setwd("~/git/U5MR/")
 
