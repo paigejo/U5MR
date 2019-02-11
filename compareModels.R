@@ -13,9 +13,9 @@ source("scores.R")
 # recomputeTruth: by default the should be set to TRUE, unless the user calls this function 
 #                 twice in a row with the same set of inputs
 # modelsI: which model results should be included. Models come in the order:
-#          c("naive", "direct", "mercer", "bym", "bymNoUrb", "spde", "spdeNoUrb"), 
+#          c("naive", "direct", "mercer", "bym", "bymMod", "bymNoUrb", "bymNoUrbMod", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb"), 
 #          so the default value of this argument is to include results for the naive, 
-#          direct, and mercer models. 1:7 is all models
+#          direct, and mercer models. 1:11 is all models
 # produceFigures: whether or not to produce figures based on the results
 # printIEvery: how often to print progress
 # maxDataSets: if not null, set this to a small integer to only score this many datasets 
@@ -27,14 +27,14 @@ source("scores.R")
 # tableFormat: If "1", binomial scores are considered the same model as non-binomial scores. 
 #              If "2", binomial scores are put on extra rows of the printed table
 runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixel", "EA"), 
-                            sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:3, 
+                            sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:9, 
                             produceFigures=FALSE, big=FALSE, printIEvery=50, 
                             maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=FALSE, 
-                            xtable.args=list(digits=c(0, 2, 2, 2, 2, 1, 2), display=rep("f", 7), auto=TRUE), 
+                            xtable.args=list(digits=c(0, 1, 1, 1, 1, 0, 1), display=rep("f", 7), auto=TRUE), 
                             tableFormat=c("2", "1"), colScale=c(10^4, 10^5, 100^2, 10^3, 100, 100), 
                             colUnits=c(" ($\\times 10^{-4}$)", " ($\\times 10^{-5}$)", " ($\\times 10^{-4}$)", 
                                        " ($\\times 10^{-3}$)", " ($\\times 10^{-2}$)", " ($\\times 10^{-2}$)"), 
-                            colDigits=c(2, 2, 2, 2, 1, 2)) {
+                            colDigits=c(1, 1, 1, 1, 0, 1)) {
   
   # match the arguments with their correct values
   resultType = match.arg(resultType)

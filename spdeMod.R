@@ -61,7 +61,7 @@ getSPDEPrior = function(mesh, sigma0=1) {
 # obsNs: the binomial n of the observations
 # obsCounts: the response, mortality counts
 # obsUrban: whether the observations were urban or knot
-# predCoords: the spatial coordinates of the predictions
+# predCoords: the spatial coordinates of the predictions: first the EAs, then the pixels
 # predNs: the binomial n of the predictions
 # predUrban: whether the prediction locations are urban or knot
 # prior: the prior for the spde. Defaults to getSPDEPrior with the spatial mesh
@@ -73,13 +73,14 @@ getSPDEPrior = function(mesh, sigma0=1) {
 # nPostSamples: number of samples from the joint posterior to take
 # kmRes: the kilometers resolution of the pixels
 # counties: the county names, determining the order of the county predictions
-# includeClustEffect: whether or not to include a spatial nugget term
+# clusterEffect: whether or not to include an iid gaussian error term at the EA level
 # verbose: verbose argument to inla
 # genRegionLevel: whether or not to generate regional level predictions. Not currently supported
 # regions: the region names, determining the order of the region predictions
 # keepPixelPreds: whether or not to return the pixel level predictions
 # genEALevel: whether or not to generate ea level predictions
-# eaIndices: indices giving which of the prediction coordinates in predCoords are EAs
+# eaIndices: indices giving which of the prediction coordinates in predCoords are EAs. NOTE: 
+#            these must be the first indices of the predictions
 # urbanEffect: if in urban fixed effect is included
 # link: the link argument for inla. 1 means logit scale, 2 means probability scale (?)
 # predictionType: either median or mean predictions are returned
@@ -93,11 +94,11 @@ getSPDEPrior = function(mesh, sigma0=1) {
 fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, obsUrban, predCoords, predNs = rep(1, nrow(predCoords)), 
                         predUrban, prior=NULL, mesh=NULL, int.strategy="eb", strategy="gaussian", 
                         genCountyLevel=FALSE, popGrid=NULL, nPostSamples=100, kmRes=5, counties=sort(unique(eaDat$admin1)), 
-                        includeClustEffect=TRUE, verbose=TRUE, genRegionLevel=FALSE, regions=sort(unique(eaDat$region)), 
+                        verbose=TRUE, genRegionLevel=FALSE, regions=sort(unique(eaDat$region)), 
                         keepPixelPreds=FALSE, genEALevel=FALSE, eaIndices=1:nrow(kenyaEAs), 
                         urbanEffect=TRUE, link=1, predictionType=c("median", "mean"), eaDat=NULL, 
                         exactAggregation=FALSE, genCountLevel=FALSE, nSamplePixel=10, truthByPixel=NULL, 
-                        truthByCounty=NULL, truthByRegion=NULL, truthByEa=NULL) {
+                        truthByCounty=NULL, truthByRegion=NULL, truthByEa=NULL, clusterEffect=FALSE) {
   
   # match the prediction type
   predictionType = match.arg(predictionType)
@@ -145,29 +146,68 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
   nObs = length(ys) # number of observations
   nPreds = nrow(predCoords)
   latticeInds = 1:n
-  # clustIObs = (n+1):(n+nObs)
-  # clustIPreds = (n+1):(n+nPreds)
-  # clustIPreds = (n+nObs+1):(n+nObs+nPreds)
-  # stack.est = inla.stack(A =list(AEst, 1, 1), 
-  #                        effects =list(field=latticeInds, clust=clustIObs, X=X), 
-  #                        data =list(y=ys, Ntrials = obsNs, link=1), 
-  #                        tag ="est", 
-  #                        remove.unused=FALSE)
-  # stack.pred = inla.stack(A =list(APred, 1, 1),
-  #                         effects =list(field=latticeInds, clust=clustIPreds, X=XPred),
-  #                         data =list(y=NA, Ntrials = predNs, link=1),
-  #                         tag ="pred",
-  #                         remove.unused=FALSE)
-  stack.est = inla.stack(A =list(AEst, 1), 
-                         effects =list(field=latticeInds, X=X), 
-                         data =list(y=ys, Ntrials = obsNs, link=link), 
-                         tag ="est", 
-                         remove.unused=FALSE)
-  stack.pred = inla.stack(A =list(APred, 1),
-                          effects =list(field=latticeInds, X=XPred),
-                          data =list(y=NA, Ntrials = predNs, link=link),
+  
+  # do not include cluster effect at the pixel level
+  stack.pred = inla.stack(A =list(APred[,pixelIndices], 1),
+                          effects =list(field=pixelIndices, X=XPred[,pixelIndices]),
+                          data =list(y=NA, Ntrials = predNs[pixelIndices], link=1),
                           tag ="pred",
                           remove.unused=FALSE)
+  
+  if(clusterEffect) {
+    # clustIObs = (n+1):(n+nObs)
+    # clustIPreds = (n+1):(n+nPreds)
+    # clustIPreds = (n+nObs+1):(n+nObs+nPreds)
+    clustIObs = 1:nObs
+  }
+  
+  if(genEALevel) {
+    
+    if(clusterEffect) {
+      
+      # only include clusters in the enumeration area predictions
+      clustIPreds = 1:nrow(eaDat)
+      stack.predEA = inla.stack(A =list(APred[,eaIndices], 1, 1),
+                                effects =list(field=eaIndices, clust=clustIPreds, X=XPred[eaIndices,]),
+                                data =list(y=NA, Ntrials = predNs[eaIndices], link=1),
+                                tag ="pred",
+                                remove.unused=FALSE)
+    } else {
+      stack.predEA = inla.stack(A =list(APred[,eaIndices], 1),
+                                effects =list(field=eaIndices, X=XPred[eaIndices,]),
+                                data =list(y=NA, Ntrials = predNs[eaIndices], link=1),
+                                tag ="pred",
+                                remove.unused=FALSE)
+    }
+  }
+  
+  # construct the observation stack 
+  if(clusterEffect) {
+    stack.est = inla.stack(A =list(AEst, 1, 1),
+                           effects =list(field=latticeInds, clust=clustIObs, X=X),
+                           data =list(y=ys, Ntrials = obsNs, link=1),
+                           tag ="est",
+                           remove.unused=FALSE)
+    
+  } else {
+    stack.est = inla.stack(A =list(AEst, 1), 
+                           effects =list(field=latticeInds, X=X), 
+                           data =list(y=ys, Ntrials = obsNs, link=link), 
+                           tag ="est", 
+                           remove.unused=FALSE)
+  }
+  
+  # # whether or not cluster effect is included in the model, it should not be included in the pixel level predictions 
+  # stack.pred = inla.stack(A =list(APred, 1),
+  #                         effects =list(field=latticeInds, X=XPred),
+  #                         data =list(y=NA, Ntrials = predNs, link=link),
+  #                         tag ="pred",
+  #                         remove.unused=FALSE)
+  
+  # construct the full prediction stack if necessary
+  if(genEALevel) {
+    stack.pred = inla.stack(stack.pred, stack.predEA)
+  }
   
   # make mesh index
   mesh.index <- inla.spde.make.index(name = "field", n.spde = prior$n.spde)
@@ -177,16 +217,19 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
   allNs = c(obsNs, predNs)
   stack.full = inla.stack(stack.est, stack.pred, remove.unused=FALSE)
   stackDat = inla.stack.data(stack.full, spde=prior)
-  # mod = inla(y ~ - 1 + X + f(field, model=prior) + f(clust, model="iid"), 
-  #            data = stackDat, Ntrials=stackDat$Ntrials, 
-  #            control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link), 
-  #            family="binomial", verbose=TRUE, control.inla=control.inla, 
-  #            control.compute=list(config=TRUE))
-  mod = inla(y ~ - 1 + X + f(field, model=prior), 
-             data = stackDat, Ntrials=stackDat$Ntrials, 
-             control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link), 
-             family="binomial", verbose=verbose, control.inla=control.inla, 
-             control.compute=list(config=TRUE))
+  if(clusterEffect) {
+    mod = inla(y ~ - 1 + X + f(field, model=prior) + f(clust, model="iid"),
+               data = stackDat, Ntrials=stackDat$Ntrials,
+               control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link),
+               family="binomial", verbose=TRUE, control.inla=control.inla,
+               control.compute=list(config=TRUE))
+  } else {
+    mod = inla(y ~ - 1 + X + f(field, model=prior), 
+               data = stackDat, Ntrials=stackDat$Ntrials, 
+               control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link), 
+               family="binomial", verbose=verbose, control.inla=control.inla, 
+               control.compute=list(config=TRUE))
+  }
   
   # get predictive surface, SD, and data
   n = nrow(obsCoords)
