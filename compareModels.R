@@ -69,8 +69,8 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
   allModels = c("naive", "direct", "mercer", "bym", "bymMod", "bymNoUrb", "bymNoUrbMod", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
   # allNames = c("Naive", "Direct ", "Mercer et al.", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
   # allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer et al. Binom.", "BYM Binom. (no urb/clust)", "BYM Binom. (no urb)", "BYM Binom. (no clust)", "BYM Binom.", "SPDE Binom. (no urb)", "SPDE Binom.")
-  allNames = c("Naive", "Direct", "Mercer", "BYM 1", "BYM 2", "BYM 2 Mod", "BYM 3", "BYM 4", "BYM 4 Mod", "SPDE 1", "SPDE 2")
-  allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer Binom.", "BYM 1 Binom.", "BYM 2 Binom.", "BYM 2 Mod Binom.", "BYM 3 Binom.", "BYM 4 Binom.", "BYM 4 Mod Binom.", "SPDE 1 Binom.", "SPDE 2 Binom.")
+  allNames = c("Naive", "Direct", "Mercer", "BYM 1", "BYM 2", "BYM 2'", "BYM 3", "BYM 4", "BYM 4'", "SPDE 1", "SPDE 2")
+  allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer Binom.", "BYM 1 Binom.", "BYM 2 Binom.", "BYM 2' Binom.", "BYM 3 Binom.", "BYM 4 Binom.", "BYM 4' Binom.", "SPDE 1 Binom.", "SPDE 2 Binom.")
   models = allModels[modelsI]
   
   # this string carries all the information about the run

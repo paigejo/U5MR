@@ -1,0 +1,6 @@
+source("setup.R")
+source("designBased.R")
+runBYM2(test=TRUE, tausq=0)
+runBYM2(test=TRUE, tausq=0, includeUrbanRural=FALSE)
+runBYM2(test=TRUE, tausq=0, includeCluster=FALSE)
+runBYM2(test=TRUE, tausq=0, includeUrbanRural=FALSE, includeCluster=FALSE)
