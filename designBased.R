@@ -99,6 +99,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
     dat$idxEps = c(rep(NA, 47*2), dat$idxEps)
     
     # Run model
+    print(paste0("fitting SRS model for dataset ", i, "/", maxDataSets))
     result = inla(formula = formula,
                   family="binomial",
                   Ntrials = Ntrials,
@@ -190,6 +191,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
     dat$idxEps = c(rep(NA, 47*2), dat$idxEps)
     
     # Run model
+    print(paste0("fitting urban oversampled model for dataset ", i, "/", maxDataSets))
     result = inla(formula = formula,
                   family="binomial",
                   Ntrials = Ntrials,
