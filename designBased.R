@@ -100,10 +100,10 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
     
     # Run model
     print(paste0("fitting SRS model for dataset ", i, "/", maxDataSets))
-    result = inla(formula = formula,
+    result = inla(formula = formula, 
                   family="binomial",
                   Ntrials = Ntrials,
-                  data=dat,
+                  data=dat, 
                   control.compute = list(config = TRUE))
     
     ## include parameter estimates in the table
