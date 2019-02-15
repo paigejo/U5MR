@@ -43,6 +43,8 @@ getSPDEMeshGrid = function(locs=NULL, max.n=100, doPlot=TRUE,
 # generate default priors for SPDE model
 # from Lindgren Rue (2015) "Bayesian Spatial Modelling with R-INLA"
 # sigma0: field standard deviation
+# NOTE: by default, this constructs a spde prior with unit median marginal variance 
+#       and median effective range equal to a fifth of the spatial range
 getSPDEPrior = function(mesh, sigma0=1) {
   size <- min(c(diff(range(mesh$loc[, 1])), diff(range(mesh$loc[, 2])))) # 1277.237
   range0 <- size/5
@@ -218,7 +220,9 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
   stack.full = inla.stack(stack.est, stack.pred, remove.unused=FALSE)
   stackDat = inla.stack.data(stack.full, spde=prior)
   if(clusterEffect) {
-    mod = inla(y ~ - 1 + X + f(field, model=prior) + f(clust, model="iid"),
+    mod = inla(y ~ - 1 + X + f(field, model=prior) + 
+                 f(clust, model="iid", 
+                   hyper = list(prec = list(prior = "pc.prec", param = c(3,0.01)))),
                data = stackDat, Ntrials=stackDat$Ntrials,
                control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link),
                family="binomial", verbose=TRUE, control.inla=control.inla,
@@ -527,7 +531,8 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
 # obsUrban: whether the observations were urban or knot
 # predCoords: the spatial coordinates of the predictions: first the EAs, then the pixels
 # predNs: the binomial n of the predictions
-# predUrban: whether the prediction locations are urban or knot
+# predUrban: whether the prediction locations are urban or not
+# clusterIndices: the row indices in eaDat corresponding to the observations
 # prior: the prior for the spde. Defaults to getSPDEPrior with the spatial mesh
 # mesh: the spatial mesh. Defaults to something dat should be reasonable
 # int.strategy: the introduction strategy argument for inla
@@ -555,14 +560,16 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
 # genCountLevel: whether or not to generate predictions at the count level versus logistic. DEPRECATED
 # nSamplePixel: fewer samples are required for good approximation of the posterior at the pixel level 
 #               than county, so we only take this many of the posterior samples for pixel level estimation
-fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, obsUrban, predCoords, predNs = rep(1, nrow(predCoords)), 
-                        predUrban, prior=NULL, mesh=NULL, int.strategy="eb", strategy="gaussian", 
-                        genCountyLevel=FALSE, popGrid=NULL, nPostSamples=100, kmRes=5, counties=sort(unique(eaDat$admin1)), 
-                        verbose=TRUE, genRegionLevel=FALSE, regions=sort(unique(eaDat$region)), 
-                        keepPixelPreds=FALSE, genEALevel=FALSE, eaIndices=1:nrow(kenyaEAs), 
-                        urbanEffect=TRUE, link=1, predictionType=c("median", "mean"), eaDat=NULL, 
-                        nSamplePixel=10, truthByPixel=NULL, 
-                        truthByCounty=NULL, truthByRegion=NULL, truthByEa=NULL, clusterEffect=FALSE) {
+fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, obsUrban, predCoords, 
+                         predNs = rep(1, nrow(predCoords)), predUrban, clusterIndices, prior=NULL, 
+                         mesh=NULL, int.strategy="eb", strategy="gaussian", 
+                         genCountyLevel=FALSE, popGrid=NULL, nPostSamples=100, kmRes=5, 
+                         counties=sort(unique(eaDat$admin1)), verbose=TRUE, genRegionLevel=FALSE, 
+                         regions=sort(unique(eaDat$region)), keepPixelPreds=FALSE, genEALevel=FALSE, 
+                         eaIndices=1:nrow(kenyaEAs), urbanEffect=TRUE, link=1, 
+                         predictionType=c("median", "mean"), eaDat=NULL, nSamplePixel=10, 
+                         truthByPixel=NULL, truthByCounty=NULL, truthByRegion=NULL, 
+                         truthByEa=NULL, clusterEffect=FALSE) {
   
   # match the prediction type
   predictionType = match.arg(predictionType)
@@ -622,7 +629,7 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     # clustIObs = (n+1):(n+nObs)
     # clustIPreds = (n+1):(n+nPreds)
     # clustIPreds = (n+nObs+1):(n+nObs+nPreds)
-    clustIObs = 1:nObs
+    clustIObs = clusterIndices
   }
   
   if(genEALevel) {
@@ -682,7 +689,9 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   stack.full = inla.stack(stack.est, stack.pred, remove.unused=FALSE)
   stackDat = inla.stack.data(stack.full, spde=prior)
   if(clusterEffect) {
-    mod = inla(y ~ - 1 + X + f(field, model=prior) + f(clust, model="iid"),
+    mod = inla(y ~ - 1 + X + f(field, model=prior) + 
+                 f(clust, model="iid", 
+                   hyper = list(prec = list(prior = "pc.prec", param = c(3,0.01)))),
                data = stackDat, Ntrials=stackDat$Ntrials,
                control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link),
                family="binomial", verbose=TRUE, control.inla=control.inla,
@@ -741,21 +750,31 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   if(keepPixelPreds)
     pixelMarginals = mod$marginals.linear.predictor[pixelIndices]
   
-  # the below code is commented since we removed the cluster effect from the model. The commented code is not yet tested
-  # Also, if the cluster effect is included, it should only be included 4 the enumeration area predictions, 
-  # not the areal level predictions
-  # # remove cluster effect for integration
-  # nPreds = nrow(predCoords)
-  # clusterIndices = inla.stack.index(stack.full,tag="pred")$effects[(1 + mesh$n):(mesh$n + nPreds)]
-  # clusterEffects = latentMat[clusterIndices, ]
-  # noClustMat = predMat - clusterEffects
+  # The below code shouldn't be necessary since the matrix should already be produced:
+  # # generate samples from posterior to use for prediction and aggregation
+  # if(is.null(predMat)) {
+  #   postSamples = inla.posterior.sample(nPostSamples, mod)
+  #   latentMat = sapply(postSamples, function(x) x$latent)
+  #   
+  #   # get logit mortality rates at the prediction locations
+  #   index.pred <- inla.stack.index(stack.full,tag="pred")$data
+  #   predMat <- latentMat[index.pred,]
+  #   
+  #   if(genEALevel) {
+  #     # make sure to separate enumeration area and pixel level predictions
+  #     eaMat = expit(predMat[eaIndices, ])
+  #     predMat = predMat[pixelIndices, ]
+  #   }
+  # }
   
   pops = popGrid$popOrig
-  inexactIntegration = function(regionPixelI) {
+  
+  # regionPixelI: the pixel indices (from 1 to the number of pixels) over which to aggregate predictions
+  inexactIntegration = function(regionPixelI, nSample=nPostSamples) {
     ## aggregate predictions over the region by integrating with respect to population density
     
     # subset pixel predictions by region of interest
-    regionPredMat = expit(predMat[regionPixelI,])
+    regionPredMat = expit(predMat[regionPixelI,1:nSample])
     regionPops = pops[regionPixelI]
     
     # compute integrals of predictions with respect to population density
@@ -766,241 +785,196 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     integrals
   }
   
-  exactIntegration = function(regionEAI, withBinom) {
+  # regionEAI: the indices of enumeration areas (from 1 to ~96k) within the region to aggregate over
+  # withBinom: whether or not to include binomial variation
+  exactIntegration = function(regionEAI, withBinom, nSample=nPostSamples) {
     ## aggregate predictions over the region by integrating with respect to number of children per EA
     
     # subset data by county of interest
-    regionProbMat = matrix(eaMat[eaIndices[regionEAI],], nrow=sum(regionEAI))
+    regionProbMat = matrix(eaMat[regionEAI,], nrow=sum(regionEAI))
     
     # combine results by EA
     numChildren = eaDat$numChildren[regionEAI]
     if(!withBinom) {
       # same as the inexact aggregation, but integrate with respect to number of children per EA
       numChildren = numChildren/sum(numChildren)
-      integrals = t(regionPredMat) %*% numChildren
+      integrals = t(regionPredMat[,1:nSample]) %*% numChildren
       return(integrals)
     } else {
       # Use Pearson approximation to account for number of children per EA while accounting for binomial variation. 
       # Return the resulting discrete probability mass function
-      distribution = dSumBinomRandom(0:sum(numChildren), numChildren, regionProbMat)
+      distribution = dSumBinomRandom(0:sum(numChildren), numChildren, regionProbMat[,1:nSample])
       return(distribution)
     }
   }
   
-  countyPredMat = NULL
+  countyPreds = NULL
   if(genCountyLevel) {
     ### county level predictions
     
-    ## inexact aggregation
-    # for each county, integrate predictions with respect to population density
-    
-    predCounties = popGrid$admin1
-    integratePredsByCounty = function(countyName) {
-      # subset data by county of interest
-      countyI = predCounties == countyName
-      inexactIntegration(countyI)
-    }
-    countyPredMat <- t(sapply(counties, integratePredsByCounty))
-    
-    ## exact aggregation
-    # for each county, integrate predictions over EAs
-    if(is.null(eaDat))
-      stop("eaDat is null, but a non-null eaDat must be provided for account level predictions for EAs.")
-    predCounties = eaDat$admin1
-    
-    integratePredsByCounty = function(countyName) {
-      # subset data by county of interest
-      countyI = predCounties == countyName
-      countyProbMat = matrix(eaMat[eaIndices[countyI],], nrow=sum(countyI))
-      
-      # combine results by EA
-      # numClusters = sum(countyI)
-      numChildren = eaDat$numChildren[countyI]
-      distribution = dSumBinomRandom(0:sum(numChildren), numChildren, countyProbMat)
-      distribution
+    predCountiesPixel = popGrid$admin1
+    predCountiesEa = eaDat$admin1
+    integratePredsByCounty = function(countyName, exact, withBinom=NULL) {
+      if(exact) {
+        countyI = predCountiesEa == countyName
+        exactIntegration(countyI, withBinom)
+      }
+      else {
+        countyI = predCountiesPixel == countyName
+        inexactIntegration(countyI)
+      }
     }
     
-    # in this case, countyPredMat is a data frame with predictions and confidence intervals, with rejection probabilities
-    distributions <- lapply(counties, integratePredsByCounty)
-    countyPredMatExact <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1)))}), ncol=1)
-    countyVarMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1))^2) - sum(masses * (0:(length(masses) - 1)))^2}), ncol=1)
-    # intervals = matrix(as.numeric(sapply(distributions, generateBinomialInterval)), nrow=4)
-    intervals = matrix(as.numeric(sapply(distributions, getHDI)), nrow=4)
+    # integrate over the pixels to get aggregated predictions
+    countyPredMat <- t(sapply(counties, integratePredsByCounty, exact=FALSE))
     
-    # calculate crps
-    calcCrpsByI = function(i) {
-      crpsCounts(truthByCounty$truth[i] * (length(distributions[[i]]) - 1), distributions[[i]])
+    # integrate over the EAs to get aggregated predictions
+    if(genEALevel) {
+      # the following are respectively a matrix of probability draws from the county 
+      # distributions and a list of county probability distributions
+      if(is.null(eaDat))
+        stop("eaDat is null, but a non-null eaDat must be provided for account level predictions for EAs.")
+      countyPredMatExact = t(sapply(counties, integratePredsByCounty, exact=TRUE, withBinom=FALSE))
+      countyPredMatExactB <- lapply(counties, integratePredsByCounty, exact=TRUE, withBinom=TRUE)
+    } else {
+      countyPredMatExact = NULL
+      countyPredMatExactB = NULL
     }
-    countyCrps = sapply(1:nrow(truthByCounty), calcCrpsByI)
     
-    countyPredMatExact <- data.frame(preds=countyPredMatExact, vars=countyVarMat, 
-                                     lower=intervals[1,], upper=intervals[2,], 
-                                     leftRejectProb=intervals[3,], 
-                                     rightRejectProb=intervals[4,], 
-                                     crps=countyCrps)
+    countyPreds <- list(countyPredMat=countyPredMat, countyPredMatExact=countyPredMatExact, 
+                        countyPredMatExactB=countyPredMatExactB)
   }
   
-  regionPredMat = NULL
+  regionPreds = NULL
   if(genRegionLevel) {
     ## generate region level predictions
-    
-    # if not supplied, get grid of population densities for pop-weighted integration
-    if(is.null(popGrid))
-      popGrid = makeInterpPopGrid(kmRes=kmRes)
-    
-    # make sure prediction coordinates correspond to population density grid coordinates
-    if(length(pixelIndices) != nrow(popGrid)) {
-      stop("for county level predictions, prediction points must be on same grid as popGrid")
-    }
-    
-    # generate samples from posterior
-    if(is.null(predMat)) {
-      postSamples = inla.posterior.sample(nPostSamples, mod)
-      latentMat = sapply(postSamples, function(x) x$latent)
-      
-      # get logit mortality rates at the prediction locations
-      index.pred <- inla.stack.index(stack.full,tag="pred")$data
-      predMat <- latentMat[index.pred,]
-      
-      if(genEALevel) {
-        # make sure to separate enumeration area and pixel level predictions
-        eaMat = expit(predMat[eaIndices, ])
-        predMat = predMat[pixelIndices, ]
+    predCountiesPixel = popGrid$admin1
+    predCountiesEa = eaDat$admin1
+    predRegionsPixel = countyToRegion(predCountiesPixel)
+    predRegionsEa = countyToRegion(predCountiesEa)
+    integratePredsByRegion = function(regionName, exact, withBinom=NULL) {
+      if(exact) {
+        regionI = predRegionsEa == regionName
+        exactIntegration(regionI, withBinom)
+      }
+      else {
+        regionI = predRegionsPixel == regionName
+        inexactIntegration(regionI)
       }
     }
     
-    # the below code is commented since we removed the cluster effect from the model. The commented code is not yet tested
-    # # remove cluster effect for integration
-    # nPreds = nrow(predCoords)
-    # clusterIndices = inla.stack.index(stack.full,tag="pred")$effects[(1 + mesh$n):(mesh$n + nPreds)]
-    # clusterEffects = latentMat[clusterIndices, ]
-    # noClustMat = predMat - clusterEffects
+    # integrate over the pixels to get aggregated predictions
+    regionPredMat <- t(sapply(regions, integratePredsByRegion, exact=FALSE))
     
-    # for each region, integrate predictions with respect to population density
-    if(!exactAggregation) {
-      if(genCountLevel)
-        stop("not using exact aggregation is not supported if genCountLevel is set to TRUE")
-      
-      predCounties = popGrid$admin1
-      predRegions = countyToRegion(predCounties)
-      pops = popGrid$popOrig
-      integratePredsByRegion = function(regionName) {
-        # subset data by region of interest
-        regionI = predRegions == regionName
-        regionPredMat = expit(predMat[regionI,])
-        regionPops = pops[regionI]
-        
-        # compute average integral of predictions
-        regionPops = regionPops/sum(regionPops)
-        integrals = t(regionPredMat) %*% regionPops
-      }
-      regionPredMat <- t(sapply(regions, integratePredsByRegion))
+    # integrate over the EAs to get aggregated predictions
+    if(genEALevel) {
+      # the following are respectively a matrix of probability draws from the county 
+      # distributions and a list of county probability distributions
+      if(is.null(eaDat))
+        stop("eaDat is null, but a non-null eaDat must be provided for account level predictions for EAs.")
+      regionPredMatExact = t(sapply(regions, integratePredsByRegion, exact=TRUE, withBinom=FALSE))
+      regionPredMatExactB <- lapply(regions, integratePredsByRegion, exact=TRUE, withBinom=TRUE)
     } else {
-      # for each region, integrate predictions over EAs
-      predCounties = eaDat$admin1
-      predRegions = countyToRegion(predCounties)
-      
-      integratePredsByRegion = function(regionName) {
-        # subset data by region of interest
-        regionI = predRegions == regionName
-        regionProbMat = matrix(eaMat[regionI,], nrow=sum(regionI))
-        
-        # combine results by EA
-        # numClusters = sum(regionI)
-        numChildren = eaDat$numChildren[regionI]
-        distribution = dSumBinomRandom(0:sum(numChildren), numChildren, regionProbMat)
-        distribution
-      }
-      
-      # in this case, countyPredMat is a data frame with predictions and confidence intervals, with rejection probabilities
-      distributions <- lapply(regions, integratePredsByRegion)
-      regionPredMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1)))}), ncol=1)
-      regionVarMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1))^2) - sum(masses * (0:(length(masses) - 1)))^2}), ncol=1)
-      # intervals = matrix(as.numeric(sapply(distributions, generateBinomialInterval)), nrow=4)
-      intervals = matrix(as.numeric(sapply(distributions, getHDI)), nrow=4)
-      
-      # calculate crps
-      calcCrpsByI = function(i) {
-        crpsCounts(truthByRegion$truth[i] * (length(distributions[[i]]) - 1), distributions[[i]])
-      }
-      regionCrps = sapply(1:nrow(truthByRegion), calcCrpsByI)
-      
-      regionPredMat <- data.frame(preds=regionPredMat, vars=regionVarMat, 
-                                  lower=intervals[1,], upper=intervals[2,], 
-                                  leftRejectProb=intervals[3,], 
-                                  rightRejectProb=intervals[4,], 
-                                  crps=regionCrps)
+      regionPredMatExact = NULL
+      regionPredMatExactB = NULL
     }
+    
+    regionPreds <- list(regionPredMat=regionPredMat, regionPredMatExact=regionPredMatExact, 
+                        regionPredMatExactB=regionPredMatExactB)
   }
   
   # generate pixel level predictions if necessary
   pixelPreds = NULL
   if(keepPixelPreds) {
-    if(!exactAggregation)
-      pixelPreds = expit(predMat)
-    else {
-      # for each region, integrate predictions over EAs
-      eaToPixel = eaDat$pixelI
-      pixelsWithData = sort(unique(eaToPixel))
-      thisEaMat = eaMat[, 1:nSamplePixel]
+    
+    ##### redefine the integration functions, since care must be taken for pixel level predictions 
+    ##### due to the fineness of the spatial resolution
+    # pixelI: the pixel indices (from 1 to the number of pixels) over which to aggregate predictions
+    inexactIntegrationPixel = function(pixelI) {
+      ## aggregate predictions over the pixel by taking the quantiles of the marginal for the pixel
       
-      integratePredsByRegion = function(pixelIndex) {
-        # subset data by region of interest
-        pixelI = eaToPixel == pixelIndex
-        
-        # if no data in the pixel, return NA
-        if(sum(pixelI) == 0) {
-          return(NA)
-        } else if(sum(pixelI) == 1) {
-          # otherwise, if the pixel only has one ea, use the marginal of the pixel
-          # get the marginal "binomial" densities at each location
-          
-          # this function evaluates the "binomial" probability mass for a fixed n, k, and a marginal
-          n = eaDat$numChildren[pixelI]
-          binomProb = function(k) {
-            inla.emarginal(function(logitP) {dbinom(k, n, expit(logitP))}, pixelMarginals[[pixelIndex]])
-          }
-          
-          ## make highest density coverage interval on count scale
-          # generate the "binomial" pmfs for this marginal
-          probs = sapply(0:n, binomProb)
-          probs
+      thisMarginal = pixelMarginals[[pixelI]]
+      quantiles = seq(0, 1 - 1 / nSamplePixel, by = 1/nSamplePixel) + 1 / (2 * nSamplePixel)
+      inla.qmarginal(quantiles, thisMarginal)
+    }
+    
+    # pixelI: the pixel indices (from 1 to the number of pixels) over which to aggregate predictions
+    # pixelEAI: the indices of enumeration areas (from 1 to ~96k) within the region to aggregate over
+    # withBinom: whether or not to include binomial variation
+    exactIntegrationPixel = function(pixelI, pixelEAI, withBinom) {
+      ## aggregate predictions over the region by integrating with respect to number of children per EA
+      nEAs = sum(pixelEAI)
+      numChildren = eaDat$numChildren[pixelEAI]
+      
+      # subset data by county of interest
+      regionProbMat = matrix(eaMat[regionEAI,], nrow=sum(regionEAI))
+      
+      # combine results by EA
+      if(!withBinom) {
+        if(nEAs == 1) {
+          # just use the quantiles of the EA marginal
+          thisMarginal = pixelMarginals[[pixelI]]
+          quantiles = seq(0, 1 - 1 / nSamplePixel, by = 1/nSamplePixel) + 1 / (2 * nSamplePixel)
+          inla.qmarginal(quantiles, thisMarginal)
         } else {
-          # if we have more than one EAs in the pixel, approximate the convolution of binomials with 
-          # the pearson distribution
-          
-          # get matrix of EA simulated joint distribution mortality probabilities for this pixel. 
-          # Only use a small amount of posterior samples for efficient computation
-          pixelProbMat = matrix(thisEaMat[pixelI,], nrow=sum(pixelI))
-          
-          # combine results by pixel
-          # numClusters = sum(pixelI)
-          numChildren = eaDat$numChildren[pixelI]
-          n = sum(numChildren)
-          distribution = dSumBinomRandom(0:n, numChildren, pixelProbMat)
-          distribution
+          # take the weighted average of joint probability draws of EAs in this pixel
+          # apply(thisEaMat[pixelEAI], 2, weighted.mean, w=numChildren)
+          colSums(thisEaMat[pixelEAI] * (numChildren / sum(numChildren)))
+        }
+      } else {
+        # Use Pearson approximation to account for number of children per EA while accounting for binomial variation. 
+        # Return the resulting discrete probability mass function. Aside from that, separate into the
+        # cases from without binomial variation: 
+        
+        if(nEAs == 1) {
+          # just use the quantiles of the EA marginal
+          thisMarginal = pixelMarginals[[pixelI]]
+          quantiles = seq(0, 1 - 1 / nSamplePixel, by = 1/nSamplePixel) + 1 / (2 * nSamplePixel)
+          dSumBinomRandom(0:sum(numChildren), numChildren, matrix(inla.qmarginal(quantiles, thisMarginal), nrow=1))
+        } else {
+          # use the joint probability draws of EAs in this pixel
+          dSumBinomRandom(0:sum(numChildren), numChildren, thisEaMat[pixelEAI])
         }
       }
-      
-      # in this case, pixelPredMat is a data frame with predictions and confidence intervals, with rejection probabilities
-      distributions <- lapply(1:nrow(predMat), integratePredsByRegion)
-      pixelPredMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1)))}), ncol=1)
-      pixelVarMat <- matrix(sapply(distributions, function(masses) {sum(masses * (0:(length(masses) - 1))^2) - sum(masses * (0:(length(masses) - 1)))^2}), ncol=1)
-      # intervals = matrix(as.numeric(sapply(distributions, generateBinomialInterval)), nrow=4)
-      intervals = matrix(as.numeric(sapply(distributions, getHDI)), nrow=4)
-      
-      # calculate crps
-      calcCrpsByI = function(i) {
-        crpsCounts(truthByPixel$truth[i] * (length(distributions[[i]]) - 1), distributions[[i]])
-      }
-      pixelCrps = sapply(1:nrow(truthByPixel), calcCrpsByI)
-      
-      pixelPredMat <- data.frame(preds=pixelPredMat[pixelsWithData], vars=pixelVarMat[pixelsWithData], 
-                                 lower=intervals[1,pixelsWithData], upper=intervals[2,pixelsWithData], 
-                                 leftRejectProb=intervals[3,pixelsWithData], 
-                                 rightRejectProb=intervals[4,pixelsWithData], 
-                                 crps=pixelCrps)
     }
+    
+    ## generate pixel level predictions
+    # for each region, integrate predictions over EAs
+    eaToPixel = eaDat$pixelI
+    pixelsWithData = sort(unique(eaToPixel))
+    pixelToEa = match(pixelsWithData, eaToPixel)
+    predPixelPixel = 1:nrow(popGrid)
+    predPixelEa = pixelToEa
+    integratePredsByPixel = function(pixelID, exact, withBinom=NULL) {
+      if(exact) {
+        pixelI = predPixelPixel == pixelID
+        pixelEaI = predPixelEa == pixelID
+        exactIntegrationPixel(pixelI, pixelEaI, withBinom)
+      }
+      else {
+        pixelI = predRegionsPixel == pixelID
+        inexactIntegrationPixel(pixelI)
+      }
+    }
+    
+    # integrate over the pixels to get aggregated predictions
+    pixelPredMat <- t(sapply(pixelsWithData, integratePredsByPixel, exact=FALSE))
+    
+    # integrate over the EAs to get aggregated predictions
+    if(genEALevel) {
+      # the following are respectively a matrix of probability draws from the county 
+      # distributions and a list of county probability distributions
+      if(is.null(eaDat))
+        stop("eaDat is null, but a non-null eaDat must be provided for account level predictions for EAs.")
+      pixelPredMatExact = t(sapply(pixelsWithData, integratePredsByPixel, exact=TRUE, withBinom=FALSE))
+      pixelPredMatExactB <- lapply(pixelsWithData, integratePredsByPixel, exact=TRUE, withBinom=TRUE)
+    } else {
+      pixelPredMatExact = NULL
+      pixelPredMatExactB = NULL
+    }
+    
+    pixelPreds <- list(pixelPredMat=pixelPredMat, pixelPredMatExact=pixelPredMatExact, 
+                        pixelPredMatExactB=pixelPredMatExactB)
   }
   
   list(mod=mod, preds=preds, SDs=predSDs, obsInds=obsInds, predInds=index, mesh=mesh, 

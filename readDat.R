@@ -37,13 +37,64 @@ data <- data.frame(read_dta("Kenya2014BirthRecode/KEBR70FL.DTA"))
 # V137 - number of children in the household aged 5 or under
 subdata <- data.frame(data[,c('b2', 'b1', 'b5', 'b7', 'v024', 'v025', 'v001', 'v002', 'v005', 'v006', 'v007')])
 
-# extract births in the range 2005 to 2010 (instead extract from the range 2003 to 2007)
-lowYear <- 2003
-highYear <- 2007
+# extract births in the range 2005 to 2010 (most recent five years)
+lowYear <- 2005
+highYear <- 2009
 subdata <- subdata[(subdata[,'b2'] >= lowYear & subdata[,'b2'] <= highYear),]
 
+# only consider children that died within their first year
+died = !is.na(subdata[,'b7'])
+totalChildren = nrow(subdata)
+subdata = subdata[died,]
+subdata <- subdata[subdata[,'b7'] < 12,]
+totalFirstYearDied = nrow(subdata)
+
+averageFirstYearMortality = totalFirstYearDied / totalChildren
+print(paste0("Average first year mortality: ", averageFirstYearMortality))
+
+# do the same thing for first month
+subdata <- data.frame(data[,c('b2', 'b1', 'b5', 'b7', 'v024', 'v025', 'v001', 'v002', 'v005', 'v006', 'v007')])
+
+# extract births in the range 2005 to 2010 (most recent five years)
+lowYear <- 2005
+highYear <- 2009
+subdata <- subdata[(subdata[,'b2'] >= lowYear & subdata[,'b2'] <= highYear),]
+
+# only consider children that died within their first month
+died = !is.na(subdata[,'b7'])
+totalChildren = nrow(subdata)
+subdata = subdata[died,]
+subdata <- subdata[subdata[,'b7'] < 1,]
+totalFirstMonthDied = nrow(subdata)
+
+averageFirstMonthMortality = totalFirstMonthDied / totalChildren # 0.03909
+print(paste0("Average first month mortality: ", averageFirstMonthMortality)) # 0.02159
+print(paste0("Average first month mortality rate: ", averageFirstMonthMortality * 12)) # 0.259
+
+# subset by urban/rural
+subdata <- data.frame(data[,c('b2', 'b1', 'b5', 'b7', 'v024', 'v025', 'v001', 'v002', 'v005', 'v006', 'v007')])
+
+# extract births in the range 2005 to 2010 (most recent five years)
+lowYear <- 2005
+highYear <- 2009
+subdata <- subdata[(subdata[,'b2'] >= lowYear & subdata[,'b2'] <= highYear),]
+
+# separate urban and rural births
+urban = subdata$v025 == 1
+urbanData = subdata[urban,]
+ruralData = subdata[!urban,]
+
+totalUrbanChildren = nrow(urbanData)
+totalRuralChildren = nrow(ruralData)
+urbanDied = urbanData[!is.na(urbanData$b7),]
+ruralDied = ruralData[!is.na(ruralData$b7),]
+firstYearUrban = nrow(urbanDied[urbanDied$b7 < 12,])
+firstYearRural = nrow(ruralDied[ruralDied$b7 < 12,])
+print(paste0("Average first year mortality urban: ", firstYearUrban / totalUrbanChildren)) # 0.03819
+print(paste0("Average first year mortality rural: ", firstYearRural / totalRuralChildren)) # 0.03949
+
 # add a column for the stratification variable as an interaction between
-# the urban/rural indicator 'v024' (1: urban, 2:rural) and the region indicator 'v025'
+# the urban/rural indicator 'v025' (1: urban, 2:rural) and the region indicator 'v024'
 subdata$regionUral <- with(subdata, interaction(v024, v025), drop=TRUE)
 
 # add a column for the unique households with interaction between
