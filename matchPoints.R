@@ -129,8 +129,11 @@ addEAPixelIndex = function(clustToEAI = FALSE) {
 #   print(sum(SRSDat$eaDat[SRSDat$clustDat[[i]]$eaI,1:15] != SRSDat$clustDat[[i]][,1:15]))
 # }
 
-matchEAToPixel = function(eaDat, maxRows = 100) {
-  load("popGrid.RData")
+matchEAToPixel = function(eaDat, maxRows = 100, kmres=5) {
+  if(kmres == 5)
+    load("popGrid.RData")
+  else
+    popGrid = makeInterpPopGrid(kmres)
   
   eaCoords = cbind(eaDat$east, eaDat$north)
   popCoords = cbind(popGrid$east, popGrid$north)
@@ -150,7 +153,7 @@ matchEAToPixel = function(eaDat, maxRows = 100) {
   c(unlist(sapply(1:ceiling(nrow(eaCoords) / maxRows), matchToClosest)))
 }
 
-addPixelIToEaDat = function() {
+addPixelIToEaDat = function(kmres=5) {
   # load the ea and cluster data
   out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOver2.RData")
   eaDat = SRSDat$eaDat
@@ -158,7 +161,7 @@ addPixelIToEaDat = function() {
   clustDatOverSamp = overSampDat$clustDat
   
   # generate pixel indices
-  pixelI = matchEAToPixel(eaDat)
+  pixelI = matchEAToPixel(eaDat, kmres=kmres)
   SRSDat$eaDat$pixelI = pixelI
   overSampDat$eaDat$pixelI = pixelI
   
@@ -193,5 +196,25 @@ addPixelIToEaDat = function() {
   # save results
   print("Done with SRS case")
   save(SRSDat, overSampDat, file="simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOver2.RData")
+}
+
+# same as addPixelIToEaDat2, but returns modified clustDat instead of overwriting files
+addPixelIToEaDat2 = function(clustDat, kmres=5) {
+  # load the ea and cluster data
+  out = load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOver2.RData")
+  eaDat = clustDat$eaDat
+  clustDat = clustDat$clustDat
+  
+  # generate pixel indices
+  pixelI = matchEAToPixel(eaDat, kmres=kmres)
+  eaDat$pixelI = pixelI
+  
+  # add pixel indices to the cluster data
+  for(i in 1:length(clustDat)) {
+    clustDat[[i]]$pixelI = eaDat[clustDat[[i]]$eaIs,]$pixelI
+  }
+  
+  # return results
+  list(eaDat=eaDat, clustDat=clustDat)
 }
 

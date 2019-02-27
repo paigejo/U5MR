@@ -5,11 +5,11 @@
 # cluster random effect in urban fixed effect in the model
 # genRegionLevel, keepPixelPreds, genEALevel: control whether to include 
 # regional, pixel, and enumeration area level predictions
-resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=5, verbose=TRUE, 
-                       includeClustEffect=FALSE, int.strategy="eb", 
-                       genRegionLevel=TRUE, keepPixelPreds=TRUE, 
+resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=3, verbose=TRUE, 
+                       includeClustEffect=TRUE, int.strategy="eb", 
+                       genRegionLevel=TRUE, keepPixelPreds=TRUE, kmres=5, 
                        genEALevel=TRUE, urbanEffect=TRUE, tausq=0, 
-                       genCountLevel=FALSE, saveResults=!test, exactAggregation=genCountLevel) {
+                       saveResults=!test) {
   # Load data
   # load("simDataMulti.RData") # overSampDat, SRSDat
   # load a different 1 of these depending on whether a cluster effect should be included 
@@ -21,6 +21,13 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=5, verbose=TRUE,
     load(paste0("simDataMultiBeta-1.75margVar0.0225tausq", round(tausq, 4), "gamma-1HHoldVar0urbanOverSamplefrac0.RData"))
   else
     load(paste0("simDataMultiBeta-1.75margVar0.0225tausq", round(tausq, 4), "gamma-1HHoldVar0urbanOverSamplefrac0Test.RData"))
+  
+  # modify the pixel indices if necessary
+  if(kmres != 5) {
+    overSampDat = addPixelIToEaDat2(overSampDat, kmres)
+    SRSDat = addPixelIToEaDat2(SRSDat, kmres)
+  }
+  
   eaDat = overSampDat$eaDat
   clustSRS = SRSDat$clustDat
   clustOverSamp = overSampDat$clustDat
@@ -33,22 +40,33 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=5, verbose=TRUE,
   # SRS results are correct, so load those and recompute overSamp results
   # load(paste0("resultsSPDETausq", round(tausq, 4), 
   #             "urbanEffect", as.character(urbanEffect), ".RData"))
-  spdeSRS = resultsSPDEHelper(clustSRS, eaDat, nPostSamples = nPostSamples, verbose=verbose,
-                              includeClustEffect=includeClustEffect, int.strategy=int.strategy,
-                              genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds,
-                              genEALevel=genEALevel, urbanEffect=urbanEffect, 
-                              genCountLevel=genCountLevel, exactAggregation=exactAggregation)
-  spdeOverSamp = resultsSPDEHelper(clustOverSamp, eaDat, nPostSamples = nPostSamples, verbose=verbose, 
-                                   includeClustEffect=includeClustEffect, int.strategy=int.strategy, 
-                                   genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds, 
-                                   genEALevel=genEALevel, urbanEffect=urbanEffect, 
-                                   genCountLevel=genCountLevel, exactAggregation=exactAggregation)
+  # spdeSRS = resultsSPDEHelper(clustSRS, eaDat, nPostSamples = nPostSamples, verbose=verbose,
+  #                             includeClustEffect=includeClustEffect, int.strategy=int.strategy,
+  #                             genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds,
+  #                             genEALevel=genEALevel, urbanEffect=urbanEffect, 
+  #                             genCountLevel=genCountLevel, exactAggregation=exactAggregation)
+  # spdeOverSamp = resultsSPDEHelper(clustOverSamp, eaDat, nPostSamples = nPostSamples, verbose=verbose, 
+  #                                  includeClustEffect=includeClustEffect, int.strategy=int.strategy, 
+  #                                  genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds, 
+  #                                  genEALevel=genEALevel, urbanEffect=urbanEffect, 
+  #                                  genCountLevel=genCountLevel, exactAggregation=exactAggregation)
+  
+  print("Generating SRS results")
+  spdeSRS = resultsSPDEHelper3(clustSRS, eaDat, nPostSamples = nPostSamples, verbose=verbose,
+                               includeClustEffect=includeClustEffect, int.strategy=int.strategy,
+                               genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds,
+                               genEALevel=genEALevel, urbanEffect=urbanEffect, kmres=kmres)
+  print("Generating urban oversampled results")
+  spdeOverSamp = resultsSPDEHelper3(clustOverSamp, eaDat, nPostSamples = nPostSamples, verbose=verbose, 
+                                    includeClustEffect=includeClustEffect, int.strategy=int.strategy, 
+                                    genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds, 
+                                    genEALevel=genEALevel, urbanEffect=urbanEffect, kmres=kmres)
   
   if(saveResults) {
+    testText = ifelse(test, "Test", "")
     save(spdeSRS, spdeOverSamp, file=paste0("resultsSPDETausq", round(tausq, 4), 
-                                            "urbanEffect", as.character(urbanEffect), ".RData"))
+                                            "urbanEffect", as.character(urbanEffect), testText, ".RData"))
   }
-  
   
   list(spdeSRS=spdeSRS, spdeOverSamp=spdeOverSamp)
 }
@@ -340,25 +358,36 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
 
 # Same as resultsSPDEHelper, but updated to use fitSPDEModel2 instead of fitSPDEModel, with 
 # reorganized scoring rule calculations
-resultsSPDEHelper2 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRUE, 
-                             includeClustEffect=FALSE, int.strategy="eb", 
-                             genRegionLevel=TRUE, keepPixelPreds=TRUE, genEALevel=TRUE, 
-                             urbanEffect=TRUE, 
-                             predictionType=c("mean", "median"), parClust=cl, calcCrps=TRUE) {
+resultsSPDEHelper2 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FALSE, 
+                              includeClustEffect=FALSE, int.strategy="eb", 
+                              genRegionLevel=TRUE, keepPixelPreds=TRUE, genEALevel=TRUE, 
+                              urbanEffect=TRUE, kmres=5, nSamplePixel=10, 
+                              predictionType=c("mean", "median"), parClust=cl, calcCrps=TRUE, 
+                              significance=.8) {
   
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
   
   if(calcCrps) {
     # compute truth based on superpopulation
+    print("Calculating empirical mortality rates at the desired aggregation levels")
     
     # region
     regions = sort(unique(eaDat$region))
     counties = sort(unique(eaDat$admin1))
-    truthByRegion = getTruth("region", eaDat)
     truthByCounty = getTruth("county", eaDat)
-    truthByPixel = getTruth("pixel", eaDat)
-    truthByEa = getTruth("EA", eaDat)
+    if(genRegionLevel)
+      truthByRegion = getTruth("region", eaDat)
+    else
+      truthByRegion = NULL
+    if(keepPixelPreds)
+      truthByPixel = getTruth("pixel", eaDat)
+    else
+      truthByPixel = NULL
+    if(genEALevel)
+      truthByEa = getTruth("EA", eaDat)
+    else
+      truthByEa = NULL
   } else {
     truthByRegion = NULL
     truthByCounty = NULL
@@ -369,8 +398,11 @@ resultsSPDEHelper2 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TR
   nsim = length(clustDatMulti)
   
   # get prediction locations from population grid
-  # popGrid = makeInterpPopGrid()
-  load("popGrid.RData")
+  if(kmres == 5)
+    load("popGrid.RData")
+  else
+    popGrid = makeInterpPopGrid(kmres)
+  
   predCoords = cbind(popGrid$east, popGrid$north)
   predUrban = popGrid$urban
   if(genEALevel) {
@@ -386,13 +418,55 @@ resultsSPDEHelper2 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TR
   
   # first make a function for combining the results that can work either in parallel or serial
   combineResults = function(...) {
+    print("Combining results...")
+    
     results = as.list(...)
-    countyResults = do.call("rbind", lapply(results, function(x) {x$countyResults}))
-    regionResults = do.call("rbind", lapply(results, function(x) {x$regionResults}))
-    pixelResults = do.call("rbind", lapply(results, function(x) {x$pixelResults}))
-    eaResults = do.call("rbind", lapply(results, function(x) {x$eaResults}))
-    list(countyResults=countyResults, regionResults=regionResults, 
-         pixelResults=pixelResults, eaResults=eaResults)
+    
+    # scoring rules
+    scoresEaInexact = do.call("rbind", lapply(results, function(x) {x$scoresEaInexact}))
+    scoresEaExact = do.call("rbind", lapply(results, function(x) {x$scoresEaExact}))
+    scoresEaExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresEaExactBVar}))
+    scoresPixelInexact = do.call("rbind", lapply(results, function(x) {x$scoresPixelInexact}))
+    scoresPixelExact = do.call("rbind", lapply(results, function(x) {x$scoresPixelExact}))
+    scoresPixelExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresPixelExactBVar}))
+    scoresCountyInexact = do.call("rbind", lapply(results, function(x) {x$scoresCountyInexact}))
+    scoresCountyExact = do.call("rbind", lapply(results, function(x) {x$scoresCountyExact}))
+    scoresCountyExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresCountyExactBVar}))
+    scoresRegionInexact = do.call("rbind", lapply(results, function(x) {x$scoresRegionInexact}))
+    scoresRegionExact = do.call("rbind", lapply(results, function(x) {x$scoresRegionExact}))
+    scoresRegionExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresRegionExactBVar}))
+    
+    # parameter estimates
+    interceptSummary = do.call("rbind", lapply(results, function(x) {x$interceptSummary}))
+    interceptSummary = colMeans(interceptSummary)
+    if(urbanEffect) {
+      urbanSummary = do.call("rbind", lapply(results, function(x) {x$urbanSummary}))
+      urbanSummary = colMeans(urbanSummary)
+    } else
+      urbanSummary = NULL
+    rangeSummary = do.call("rbind", lapply(results, function(x) {x$rangeSummary}))
+    rangeSummary = colMeans(rangeSummary)
+    sdSummary = do.call("rbind", lapply(results, function(x) {x$sdSummary}))
+    sdSummary = colMeans(sdSummary)
+    varSummary = do.call("rbind", lapply(results, function(x) {x$varSummary}))
+    varSummary = colMeans(varSummary)
+    if(includeClustEffect) {
+      nuggetVarSummary = do.call("rbind", lapply(results, function(x) {x$nuggetVarSummary}))
+      nuggetVarSummary = colMeans(nuggetVarSummary)
+      nuggetSDSummary = do.call("rbind", lapply(results, function(x) {x$nuggetSDSummary}))
+      nuggetSDSummary = colMeans(nuggetSDSummary)
+    } else {
+      nuggetVarSummary = NULL
+      nuggetSDSummary = NULL
+    }
+    
+    list(scoresEaInexact=scoresEaInexact, scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
+         scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
+         scoresCountyInexact=scoresCountyInexact, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+         scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
+         interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
+         rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
+         nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary)
   }
   
   # now make a function for generating the results that can work either in parallel or serial
@@ -412,200 +486,263 @@ resultsSPDEHelper2 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TR
     obsUrban = clustDat$urban
     
     # fit model, get all predictions for each areal level and each posterior sample
-    fit = fitSPDEModel(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
-                       predUrban, genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
-                       verbose = verbose, clusterEffect=includeClustEffect, 
-                       int.strategy=int.strategy, genRegionLevel=genRegionLevel, 
-                       keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
-                       urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
-                       exactAggregation=exactAggregation, genCountLevel=genCountLevel, 
-                       eaDat=eaDat, truthByCounty=truthByCounty, truthByRegion=truthByRegion, 
-                       truthByPixel=truthByPixel)
+    fit = fitSPDEModel2(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
+                        predUrban, clusterIndices=clustDat$eaIs, genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
+                        verbose = verbose, clusterEffect=includeClustEffect, 
+                        int.strategy=int.strategy, genRegionLevel=genRegionLevel, 
+                        keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
+                        urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
+                        eaDat=eaDat, truthByCounty=truthByCounty, truthByRegion=truthByRegion, 
+                        truthByPixel=truthByPixel, nSamplePixel=nSamplePixel, 
+                        significance=significance)
     print(paste0("Fit completed: iteration ", i, "/", nsim))
-    countyPredMat = fit$countyPredMat
-    regionPredMat = fit$regionPredMat
-    pixelPredMat = fit$pixelPredMat
-    eaPredMat = fit$eaPredMat
-    eaMarginals = fit$eaMarginals
+    countyPreds = fit$countyPreds
+    regionPreds = fit$regionPreds
+    pixelPreds = fit$pixelPreds
+    eaPreds = fit$eaPreds
     
     ## calculate model fit properties for each level of predictions
     
     # enumeration area level
     if(genEALevel) {
-      # uncertainties and coverages that don't include binomial variation
-      thislowerEA = logit(apply(eaPredMat, 1, function(x) {quantile(x, probs=.1)}))
-      thisupperEA = logit(apply(eaPredMat, 1, function(x) {quantile(x, probs=.9)}))
-      thisvar.estEA = apply(logit(eaPredMat), 1, var)
-      thisRightRejectEA = NA
-      thisLeftRejectEA = NA
+      print(paste0("EA results generating: iteration ", i, "/", nsim))
       
-      # get the marginal "binomial" densities at each location
-      # n = 25
-      n = max(eaDat$numChildren)
-      binomProb = function(k, i) {
-        inla.emarginal(function(logitP) {dbinom(k, eaDat$numChildren[i], expit(logitP))}, eaMarginals[[i]])
-      }
+      ### generate enumeration area level predictions
+      # calculate logit scale estimates and variances
       
-      ## make highest density coverage interval on count scale
-      # generate the "binomial" pmfs for each marginal
-      probs = matrix(mapply(binomProb, 
-                            k = matrix(0:n, nrow=length(eaMarginals), ncol=n + 1, byrow = TRUE), 
-                            i = matrix(1:length(eaMarginals), nrow=length(eaMarginals), ncol=n + 1)), 
-                     nrow=length(eaMarginals), ncol=n + 1)
-      
-      # now generate the summary statistics about the marginals
-      if(predictionType == "mean")
-        thisu1mEABinom = rowSums(sweep(probs, 2, STATS = 0:n, "*"))
-      else {
-        thisu1mEABinom = rowSums(sweep(probs, 2, STATS = 0:n, "*"))
-        warning("Using median predictions is not supported for discrete distributions. Used mean prediction instead")
-      }
-      
-      # calculate PREDICTIVE variance on the probability scale
-      # thisvar.estEA = rowSums(sweep(probs, 2, STATS = (0:n)^2, "*")) - thisu1mEA^2
-      predVar = function(eaMarginal, power=2) {
-        inla.emarginal(function(logitP) {expit(logitP)^power}, eaMarginal)
-      }
-      thisvar.estEA = sapply(eaMarginals, predVar) - sapply(eaMarginals, predVar, power=1)^2
-      
-      # get credible intervals
-      intervals = apply(probs, 1, getQuantileInterval)
-      thislowerEABinom = intervals[1,]
-      thisupperEABinom = intervals[2,]
-      thisRightRejectEABinom = intervals[3,]
-      thisLeftRejectEABinom = intervals[4,]
+      # scoring rules for all aggregation models
+      scoresEaInexact = getScoresSPDE(truthByEa$truth, truthByEa$numChildren, eaPreds$logitEst, 
+                                      eaPreds$est, NULL, bVar=FALSE, probMat=eaPreds$eaPredMat, 
+                                      nsim=nSamplePixel, logitVar=eaPreds$logitVar, 
+                                      logitL=eaPreds$logitLower, logitU=eaPreds$logitUpper)
+      cat(".")
+      scoresEaExact = scoresEaInexact
+      cat(".")
+      scoresEaExactBVar = getScoresSPDE(truthByEa$truth, truthByEa$numChildren, eaPreds$logitEst, 
+                                        eaPreds$est, NULL, bVar=TRUE, probMat=eaPreds$eaPredMat, 
+                                        nsim=nSamplePixel, logitVar=eaPreds$logitVar, 
+                                        logitL=eaPreds$logitLower, logitU=eaPreds$logitUpper)
+      cat(".")
     }
     else {
-      thisu1mEA = NA
-      thislowerEA = NA
-      thisupperEA = NA
-      thisvar.estEA = NA
-      
-      thislowerEABinom = NA
-      thisupperEABinom = NA
-      thisRightRejectEABinom = NA
-      thisLeftRejectEABinom = NA
+      scoresEaInexact = NA
+      scoresEaExact = NA
+      scoresEaExactBVar = NA
     }
-    print(paste0("EA results generated: iteration ", i, "/", nsim))
     
     # pixel level
     if(keepPixelPreds) {
-      # first get credible interval when not including binomial variation
-      thislowerPixel = logit(apply(pixelPredMat, 1, function(x) {quantile(x, probs=.1)}))
-      thisupperPixel = logit(apply(pixelPredMat, 1, function(x) {quantile(x, probs=.9)}))
+      print(paste0("Pixel results generating: iteration ", i, "/", nsim))
       
-      # now get rest of the scoring rules when including binomial variation
-      thisu1mPixel = pixelPredMat$preds
-      thisvar.estPixel = pixelPredMat$vars
-      thisupperPixel = pixelPredMat$upper
-      thislowerPixel = pixelPredMat$lower
-      thisRightRejectPixel = pixelPredMat$rightRejectProb
-      thisLeftRejectPixel = pixelPredMat$leftRejectProb
+      # calculate estimates, but convert to the logit scale (estimates are the same with or without binomial variation)
+      out = sapply(pixelPreds$pixelMarginalsWithData, function(m) {inla.emarginal(function(logitP) {c(logitP, logitP^2, expit(logitP), expit(logitP)^2)}, m)})
+      logitEst = pixelPreds$logitEst
+      logitVar = pixelPreds$logitVar
+      est = pixelPreds$est
+      logitLower = pixelPreds$logitLower
+      logitUpper = pixelPreds$logitUpper
+      
+      # scoring rules for all aggregation models
+      scoresPixelInexact = getScoresSPDE(truthByPixel$truth, truthByPixel$numChildren, logitEst, 
+                                         logitEst, est, bVar=FALSE, probMat=pixelPreds$pixelPredMatInexact, 
+                                         nsim=nSamplePixel, logitVar=pixelPreds$logitVar, 
+                                         logitL=pixelPreds$logitLower, logitU=pixelPreds$logitUpper)
+      cat(".")
+      scoresPixelExact = getScoresSPDE(truthByPixel$truth, truthByPixel$numChildren, logitEst, 
+                                       logitEst, est, bVar=FALSE, probMat=pixelPreds$pixelPredMatExact, 
+                                       nsim=nSamplePixel)
+      cat(".")
+      scoresPixelExactBVar = getScoresSPDE(truthByPixel$truth, truthByPixel$numChildren, logitEst, 
+                                           logitEst, est, bVar=TRUE, pmfs=pixelPreds$pixelPredMatExactB, 
+                                           nsim=nSamplePixel)
+      cat(".")
     }
     else {
-      thisu1mPixel = NA
-      thislowerPixel = NA
-      thisupperPixel = NA
-      thisvar.estPixel = NA
-      thisRightRejectPixel = NA
-      thisLeftRejectPixel = NA
+      scoresPixelInexact = NA
+      scoresPixelExact = NA
+      scoresPixelExactBVar = NA
     }
-    print(paste0("Pixel results generated: iteration ", i, "/", nsim))
     
     # County level (county level results are always included)
-    if(!genCountLevel) {
-      if(predictionType == "mean")
-        thisu1mCounty = rowMeans(countyPredMat)
-      else
-        thisu1mCounty = apply(countyPredMat, 1, median)
-      thislowerCounty = logit(apply(countyPredMat, 1, function(x) {quantile(x, probs=.1)}))
-      thisupperCounty = logit(apply(countyPredMat, 1, function(x) {quantile(x, probs=.9)}))
-      thisvar.estCounty = apply(logit(countyPredMat), 1, var)
-      thisRightRejectCounty = NA
-      thisLeftRejectCounty = NA
-    } else {
-      thisu1mCounty = countyPredMat$preds
-      thisvar.estCounty = countyPredMat$vars
-      thisupperCounty = countyPredMat$upper
-      thislowerCounty = countyPredMat$lower
-      thisRightRejectCounty = countyPredMat$rightRejectProb
-      thisLeftRejectCounty = countyPredMat$leftRejectProb
-    }
-    print(paste0("County results generated: iteration ", i, "/", nsim))
+    print(paste0("County results generating: iteration ", i, "/", nsim))
+    
+    # first generate the county estimates
+    thisu1mCountyInexact = logit(rowMeans(countyPreds$countyPredMatInexact))
+    thisu1mCountyExact = logit(rowMeans(countyPreds$countyPredMatExact))
+    thisu1mCountyExactBVar = logit(sapply(countyPreds$countyPredMatExactB, 
+                                          function(pmf) {sum((0:(length(pmf) - 1)) * pmf) / length(pmf)}))
+    
+    # scoring rules for all aggregation models
+    scoresCountyInexact = getScoresSPDE(truthByCounty$truth, truthByCounty$numChildren, thisu1mCountyInexact, 
+                                       expit(thisu1mCountyInexact), NULL, bVar=FALSE, probMat=countyPreds$countyPredMatInexact)
+    cat(".")
+    scoresCountyExact = getScoresSPDE(truthByCounty$truth, truthByCounty$numChildren, thisu1mCountyExact, 
+                                     expit(thisu1mCountyExact), NULL, bVar=FALSE, probMat=countyPreds$countyPredMatExact)
+    cat(".")
+    scoresCountyExactBVar = getScoresSPDE(truthByCounty$truth, truthByCounty$numChildren, thisu1mCountyExactBVar, 
+                                         expit(thisu1mCountyExact), NULL, bVar=TRUE, pmfs=countyPreds$countyPredMatExactB)
+    cat(".")
     
     # region level
     if(genRegionLevel) {
-      if(!genCountLevel) {
-        if(predictionType == "mean")
-          thisu1mRegion = rowMeans(regionPredMat)
-        else
-          thisu1mRegion = apply(regionPredMat, 1, median)
-        thislowerRegion = logit(apply(regionPredMat, 1, function(x) {quantile(x, probs=.1)}))
-        thisupperRegion = logit(apply(regionPredMat, 1, function(x) {quantile(x, probs=.9)}))
-        thisvar.estRegion = apply(logit(regionPredMat), 1, var)
-        thisRightRejectRegion = NA
-        thisLeftRejectRegion = NA
-      } else {
-        thisu1mRegion = regionPredMat$preds
-        thisvar.estRegion = regionPredMat$vars
-        thisupperRegion = regionPredMat$upper
-        thislowerRegion = regionPredMat$lower
-        thisRightRejectRegion = regionPredMat$rightRejectProb
-        thisLeftRejectRegion = regionPredMat$leftRejectProb
-      }
+      print(paste0("Region results generating: iteration ", i, "/", nsim))
+      
+      # first generate the region estimates
+      thisu1mRegionInexact = logit(rowMeans(regionPreds$regionPredMatInexact))
+      thisu1mRegionExact = logit(rowMeans(regionPreds$regionPredMatExact))
+      thisu1mRegionExactB = logit(sapply(regionPreds$regionPredMatExactB, 
+                                         function(pmf) {sum((0:(length(pmf) - 1)) * pmf) / length(pmf)}))
+      
+      # scoring rules for all aggregation models
+      scoresRegionInexact = getScoresSPDE(truthByRegion$truth, truthByRegion$numChildren, thisu1mRegionInexact, 
+                                          expit(thisu1mRegionInexact), NULL, bVar=FALSE, probMat=regionPreds$regionPredMatInexact)
+      cat(".")
+      scoresRegionExact = getScoresSPDE(truthByRegion$truth, truthByRegion$numChildren, thisu1mRegionExact, 
+                                        expit(thisu1mRegionExact), NULL, bVar=FALSE, probMat=regionPreds$regionPredMatExact)
+      cat(".")
+      scoresRegionExactBVar = getScoresSPDE(truthByRegion$truth, truthByRegion$numChildren, thisu1mRegionExactB, 
+                                            expit(thisu1mRegionExact), NULL, bVar=TRUE, pmfs=regionPreds$regionPredMatExactB)
+      cat(".")
     }
     else {
-      thisu1mRegion = NA
-      thislowerRegion = NA
-      thisupperRegion = NA
-      thisvar.estRegion = NA
-      thisRightRejectRegion = NA
-      thisLeftRejectRegion = NA
+      scoresRegionInexact = NA
+      scoresRegionExact = NA
+      scoresRegionExactBVar = NA
     }
-    print(paste0("Region results generated: iteration ", i, "/", nsim))
     
-    # collect results in a list, one element for each simulation
-    thisCountyResults = data.frame(list(admin1=counties, 
-                                        u1m.spde=thisu1mCounty, lower.spde=thislowerCounty, 
-                                        upper.spde=thisupperCounty, logit.est.spde=logit(thisu1mCounty), 
-                                        var.est.spde=thisvar.estCounty, 
-                                        leftReject.spde=thisLeftRejectCounty, 
-                                        rightReject.spde=thisRightRejectCounty))
-    thisRegionResults = data.frame(list(region=regions, 
-                                        u1m.spde=thisu1mRegion, lower.spde=thislowerRegion, 
-                                        upper.spde=thisupperRegion, logit.est.spde=logit(thisu1mRegion), 
-                                        var.est.spde=thisvar.estRegion, 
-                                        leftReject.spde=thisLeftRejectRegion, 
-                                        rightReject.spde=thisRightRejectRegion))
-    thisPixelResults = data.frame(list(u1m.spde=thisu1mPixel, lower.spde=thislowerPixel, 
-                                       upper.spde=thisupperPixel, logit.est.spde=logit(thisu1mPixel), 
-                                       var.est.spde=thisvar.estPixel, 
-                                       leftReject.spde=thisLeftRejectPixel, 
-                                       rightReject.spde=thisRightRejectPixel))
-    thisEaResults = data.frame(list(u1m.spde=thisu1mEA, lower.spde=thislowerEA, 
-                                    upper.spde=thisupperEA, logit.est.spde=logit(thisu1mEA), 
-                                    var.est.spde=thisvar.estEA, 
-                                    leftReject.spde=thisLeftRejectEA, 
-                                    rightReject.spde=thisRightRejectEA))
-    list(countyResults=thisCountyResults, regionResults=thisRegionResults, 
-         pixelResults=thisPixelResults, eaResults=thisEaResults)
+    ## collect parameter means, sds, and quantiles
+    # for fixed effects
+    interceptQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.fixed[[1]])
+    interceptMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.fixed[[1]])
+    interceptSummary = c(interceptMoments[1], sqrt(interceptMoments[2] - interceptMoments[1]^2), interceptMoments[2] - interceptMoments[1]^2, interceptQuants, interceptQuants[3] - interceptQuants[1])
+    
+    urbanSummary = NULL
+    if(urbanEffect) {
+      urbanQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.fixed[[2]])
+      urbanMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.fixed[[2]])
+      urbanSummary = c(urbanMoments[1], sqrt(urbanMoments[2] - urbanMoments[1]^2), urbanMoments[2] - urbanMoments[1]^2, urbanQuants, urbanQuants[3] - urbanQuants[1])
+    }
+    
+    # for hyperparameters
+    rangeQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
+    sdQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
+    varQuants = sdQuants^2
+    varMarg = inla.tmarginal(function(x) {x^2}, fit$mod$marginals.hyperpar[[2]])
+    rangeMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[1]])
+    rangeSummary = c(rangeMoments[1], sqrt(rangeMoments[2] - rangeMoments[1]^2), rangeMoments[2] - rangeMoments[1]^2, rangeQuants, rangeQuants[3] - rangeQuants[1])
+    sdMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[2]])
+    sdSummary = c(sdMoments[1], sqrt(sdMoments[2] - sdMoments[1]^2), sdMoments[2] - sdMoments[1]^2, sdQuants, sdQuants[3] - sdQuants[1])
+    varMoments = inla.emarginal(function(x) {c(x, x^2)}, varMarg)
+    varSummary = c(varMoments[1], sqrt(varMoments[2] - varMoments[1]^2), varMoments[2] - varMoments[1]^2, varQuants, varQuants[3] - varQuants[1])
+    nuggetVarSummary = NULL
+    nuggetSDSummary = NULL
+    if(includeClustEffect) {
+      nuggetPrecQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[3]])
+      nuggetVarQuants = 1/nuggetPrecQuants
+      nuggetSDQuants = sqrt(nuggetVarQuants)
+      nuggetVarMarg = inla.tmarginal(function(x) {1/x}, fit$mod$marginals.hyperpar[[3]])
+      nuggetSDMarg = inla.tmarginal(function(x) {1/sqrt(x)}, fit$mod$marginals.hyperpar[[3]])
+      nuggetVarMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetVarMarg)
+      nuggetSDMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetSDMarg)
+      
+      nuggetVarSummary = c(nuggetVarMoments[1], sqrt(nuggetVarMoments[2] - nuggetVarMoments[1]^2), nuggetVarMoments[2] - nuggetVarMoments[1]^2, nuggetVarQuants, nuggetVarQuants[3] - nuggetVarQuants[1])
+      nuggetSDSummary = c(nuggetSDMoments[1], sqrt(nuggetSDMoments[2] - nuggetSDMoments[1]^2), nuggetSDMoments[2] - nuggetSDMoments[1]^2, nuggetSDQuants, nuggetSDQuants[3] - nuggetSDQuants[1])
+    }
+    
+    list(scoresEaInexact=scoresEaInexact, scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
+         scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
+         scoresCountyInexact=scoresCountyInexact, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+         scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
+         interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
+         rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
+         nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary)
   }
   
   # compute Bias & MSE & mean(Var) & 80\% coverage for each simulation
   if(is.null(parClust)) {
     # sequential version
-    countyResults = as.list(1:nsim)
-    regionResults = as.list(1:nsim)
-    pixelResults = as.list(1:nsim)
-    eaResults = as.list(1:nsim)
+    scoresEaInexact=as.list(1:nsim)
+    scoresEaExact=as.list(1:nsim)
+    scoresEaExactBVar=as.list(1:nsim)
+    scoresPixelInexact=as.list(1:nsim)
+    scoresPixelExact=as.list(1:nsim)
+    scoresPixelExactBVar=as.list(1:nsim)
+    scoresCountyInexact=as.list(1:nsim)
+    scoresCountyExact=as.list(1:nsim)
+    scoresCountyExactBVar=as.list(1:nsim)
+    scoresRegionInexact=as.list(1:nsim)
+    scoresRegionExact=as.list(1:nsim)
+    scoresRegionExactBVar=as.list(1:nsim)
+    
+    interceptSummary=as.list(1:nsim)
+    urbanSummary=as.list(1:nsim)
+    rangeSummary=as.list(1:nsim)
+    varSummary=as.list(1:nsim)
+    sdSummary=as.list(1:nsim)
+    nuggetVarSummary=as.list(1:nsim)
+    nuggetSDSummary=as.list(1:nsim)
     for(i in 1:nsim) {
       results = mainFunction(i, FALSE)
       
       # collect results in a list, one element for each simulation
-      countyResults[[i]] = results$CountyResults
-      regionResults[[i]] = results$regionResults
-      pixelResults[[i]] = results$pixelResults
-      eaResults[[i]] = results$eaResults
+      scoresEaInexact[[i]]=results$scoresEaInexact
+      scoresEaExact[[i]]=results$scoresEaExact
+      scoresEaExactBVar[[i]]=results$scoresEaExactBVar
+      scoresPixelInexact[[i]]=results$scoresPixelInexact
+      scoresPixelExact[[i]]=results$scoresPixelExact
+      scoresPixelExactBVar[[i]]=results$scoresPixelExactBVar
+      scoresCountyInexact[[i]]=results$scoresCountyInexact
+      scoresCountyExact[[i]]=results$scoresCountyExact
+      scoresCountyExactBVar[[i]]=results$scoresCountyExactBVar
+      scoresRegionInexact[[i]]=results$scoresRegionInexact
+      scoresRegionExact[[i]]=results$scoresRegionExact
+      scoresRegionExactBVar[[i]]=results$scoresRegionExactBVar
+      
+      interceptSummary[[i]]=results$interceptSummary
+      urbanSummary[[i]]=results$urbanSummary
+      rangeSummary[[i]]=results$rangeSummary
+      varSummary[[i]]=results$varSummary
+      sdSummary[[i]]=results$sdSummary
+      nuggetVarSummary[[i]]=results$nuggetVarSummary
+      nuggetSDSummary[[i]]=results$nuggetSDSummary
+    }
+    
+    print("Combining results...")
+    scoresEaInexact = do.call("rbind",  scoresEaInexact)
+    scoresEaExact = do.call("rbind", scoresEaExact)
+    scoresEaExactBVar = do.call("rbind", scoresEaExactBVar)
+    scoresPixelInexact = do.call("rbind", scoresPixelInexact)
+    scoresPixelExact = do.call("rbind", scoresPixelExact)
+    scoresPixelExactBVar = do.call("rbind", scoresPixelExactBVar)
+    scoresCountyInexact = do.call("rbind", scoresCountyInexact)
+    scoresCountyExact = do.call("rbind", scoresCountyExact)
+    scoresCountyExactBVar = do.call("rbind", scoresCountyExactBVar)
+    scoresRegionInexact = do.call("rbind", scoresRegionInexact)
+    scoresRegionExact = do.call("rbind", scoresRegionExact)
+    scoresRegionExactBVar = do.call("rbind", scoresRegionExactBVar)
+    
+    interceptSummary = do.call("rbind", interceptSummary)
+    interceptSummary = colMeans(interceptSummary)
+    if(urbanEffect) {
+      urbanSummary = do.call("rbind", urbanSummary)
+      urbanSummary = colMeans(urbanSummary)
+    } else {
+      urbanSummary = NULL
+    }
+    rangeSummary = do.call("rbind", rangeSummary)
+    rangeSummary = colMeans(rangeSummary)
+    sdSummary = do.call("rbind", sdSummary)
+    sdSummary = colMeans(sdSummary)
+    varSummary = do.call("rbind", varSummary)
+    varSummary = colMeans(varSummary)
+    if(includeClustEffect) {
+      nuggetVarSummary = do.call("rbind", nuggetVarSummary)
+      nuggetVarSummary = colMeans(nuggetVarSummary)
+      nuggetSDSummary = do.call("rbind", nuggetSDSummary)
+      nuggetSDSummary = colMeans(nuggetSDSummary)
+    } else {
+      nuggetVarSummary = NULL
+      nuggetSDSummary = NULL
     }
   } else {
     # parallel version
@@ -615,13 +752,456 @@ resultsSPDEHelper2 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TR
     }
     
     # separate results into the different aggregation levels
-    countyResults = results$countyResults
-    regionResults = results$regionResults
-    pixelResults = results$pixelResults
-    eaResults = results$eaResults
+    scoresEaInexact=results$scoresEaInexact
+    scoresEaExact=results$scoresEaExact
+    scoresEaExactBVar=results$scoresEaExactBVar
+    scoresPixelInexact=results$scoresPixelInexact
+    scoresPixelExact=results$scoresPixelExact
+    scoresPixelExactBVar=results$scoresPixelExactBVar
+    scoresCountyInexact=results$scoresCountyInexact
+    scoresCountyExact=results$scoresCountyExact
+    scoresCountyExactBVar=results$scoresCountyExactBVar
+    scoresRegionInexact=results$scoresRegionInexact
+    scoresRegionExact=results$scoresRegionExact
+    scoresRegionExactBVar=results$scoresRegionExactBVar
+    
+    interceptSummary=results$interceptSummary
+    if(urbanEffect) {
+      urbanSummary=results$urbanSummary
+    } else {
+      urbanSummary = NULL
+    }
+    rangeSummary=results$rangeSummary
+    varSummary=results$varSummary
+    sdSummary=results$sdSummary
+    if(includeClustEffect) {
+      nuggetVarSummary=results$nuggetVarSummary
+      nuggetSDSummary=results$nuggetSDSummary
+    } else {
+      nuggetVarSummary=NULL
+      nuggetSDSummary=NULL
+    }
   }
-  list(countyResults=countyResults, regionResults=regionResults, pixelResults=pixelResults, 
-       eaResults=eaResults)
+  list(scoresEaInexact=scoresEaInexact, scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
+       scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
+       scoresCountyInexact=scoresCountyInexact, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+       scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
+       interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
+       rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
+       nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary)
+}
+
+# Same as resultsSPDEHelper, but updated to use fitSPDEModel2 instead of fitSPDEModel, with 
+# reorganized scoring rule calculations
+resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FALSE, 
+                              includeClustEffect=FALSE, int.strategy="eb", 
+                              genRegionLevel=TRUE, keepPixelPreds=TRUE, genEALevel=TRUE, 
+                              urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
+                              predictionType=c("mean", "median"), parClust=cl, calcCrps=TRUE, 
+                              significance=.8) {
+  
+  # match the requested prediction type with one of the possible options
+  predictionType = match.arg(predictionType)
+  
+  if(calcCrps) {
+    # compute truth based on superpopulation
+    print("Calculating empirical mortality rates at the desired aggregation levels")
+    
+    # region
+    regions = sort(unique(eaDat$region))
+    counties = sort(unique(eaDat$admin1))
+    truthByCounty = getTruth("county", eaDat)
+    if(genRegionLevel)
+      truthByRegion = getTruth("region", eaDat)
+    else
+      truthByRegion = NULL
+    if(keepPixelPreds)
+      truthByPixel = getTruth("pixel", eaDat)
+    else
+      truthByPixel = NULL
+    if(genEALevel)
+      truthByEa = getTruth("EA", eaDat)
+    else
+      truthByEa = NULL
+  } else {
+    truthByRegion = NULL
+    truthByCounty = NULL
+    truthByPixel = NULL
+    truthByEa = NULL
+  }
+  
+  nsim = length(clustDatMulti)
+  
+  # get prediction locations from population grid
+  if(kmres == 5)
+    load("popGrid.RData")
+  else
+    popGrid = makeInterpPopGrid(kmres)
+  
+  predCoords = cbind(popGrid$east, popGrid$north)
+  predUrban = popGrid$urban
+  if(genEALevel) {
+    # Must predict at enumeration areas as well. Include enumeration areas as 
+    # first rows of prediction coordinates and prediction urban/rural
+    predCoords = rbind(cbind(eaDat$east, eaDat$north), predCoords)
+    predUrban = c(eaDat$urban, predUrban)
+  }
+  # we only care about the probability, not counts, so not used except for the purposes 
+  # of calling inla:
+  # predNs = rep(25, nrow(predCoords))
+  predNs = rep(1, nrow(predCoords))
+  
+  # first make a function for combining the results that can work either in parallel or serial
+  combineResults = function(...) {
+    print("Combining results...")
+    
+    results = as.list(...)
+    
+    # scoring rules
+    scoresEaExact = do.call("rbind", lapply(results, function(x) {x$scoresEaExact}))
+    scoresEaExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresEaExactBVar}))
+    scoresPixelInexact = do.call("rbind", lapply(results, function(x) {x$scoresPixelInexact}))
+    scoresPixelExact = do.call("rbind", lapply(results, function(x) {x$scoresPixelExact}))
+    scoresPixelExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresPixelExactBVar}))
+    scoresCountyInexact = do.call("rbind", lapply(results, function(x) {x$scoresCountyInexact}))
+    scoresCountyExact = do.call("rbind", lapply(results, function(x) {x$scoresCountyExact}))
+    scoresCountyExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresCountyExactBVar}))
+    scoresRegionInexact = do.call("rbind", lapply(results, function(x) {x$scoresRegionInexact}))
+    scoresRegionExact = do.call("rbind", lapply(results, function(x) {x$scoresRegionExact}))
+    scoresRegionExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresRegionExactBVar}))
+    
+    # parameter estimates
+    interceptSummary = do.call("rbind", lapply(results, function(x) {x$interceptSummary}))
+    interceptSummary = colMeans(interceptSummary)
+    if(urbanEffect) {
+      urbanSummary = do.call("rbind", lapply(results, function(x) {x$urbanSummary}))
+      urbanSummary = colMeans(urbanSummary)
+    } else
+      urbanSummary = NULL
+    rangeSummary = do.call("rbind", lapply(results, function(x) {x$rangeSummary}))
+    rangeSummary = colMeans(rangeSummary)
+    sdSummary = do.call("rbind", lapply(results, function(x) {x$sdSummary}))
+    sdSummary = colMeans(sdSummary)
+    varSummary = do.call("rbind", lapply(results, function(x) {x$varSummary}))
+    varSummary = colMeans(varSummary)
+    if(includeClustEffect) {
+      nuggetVarSummary = do.call("rbind", lapply(results, function(x) {x$nuggetVarSummary}))
+      nuggetVarSummary = colMeans(nuggetVarSummary)
+      nuggetSDSummary = do.call("rbind", lapply(results, function(x) {x$nuggetSDSummary}))
+      nuggetSDSummary = colMeans(nuggetSDSummary)
+    } else {
+      nuggetVarSummary = NULL
+      nuggetSDSummary = NULL
+    }
+    
+    list(scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
+         scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
+         scoresCountyInexact=scoresCountyInexact, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+         scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
+         interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
+         rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
+         nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary)
+  }
+  
+  # now make a function for generating the results that can work either in parallel or serial
+  mainFunction = function(i, doSink=FALSE) {
+    if(doSink)
+      sink("log.txt", append=TRUE)
+    
+    print(paste0("iteration ", i, "/", nsim))
+    
+    # get the simulated sample
+    clustDat = clustDatMulti[[i]]
+    
+    # get observations from dataset
+    obsCoords = cbind(clustDat$east, clustDat$north)
+    obsNs = clustDat$numChildren
+    obsCounts = clustDat$died
+    obsUrban = clustDat$urban
+    
+    # fit model, get all predictions for each areal level and each posterior sample
+    fit = fitSPDEModel3(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
+                        predUrban, clusterIndices=clustDat$eaIs, genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
+                        verbose = verbose, clusterEffect=includeClustEffect, 
+                        int.strategy=int.strategy, genRegionLevel=genRegionLevel, 
+                        keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
+                        urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
+                        eaDat=eaDat, truthByCounty=truthByCounty, truthByRegion=truthByRegion, 
+                        truthByPixel=truthByPixel, nSamplePixel=nSamplePixel, 
+                        significance=significance)
+    print(paste0("Fit completed: iteration ", i, "/", nsim))
+    countyPreds = fit$countyPreds
+    regionPreds = fit$regionPreds
+    pixelPreds = fit$pixelPreds
+    eaPreds = fit$eaPreds
+    
+    ## calculate model fit properties for each level of predictions
+    
+    # enumeration area level
+    if(genEALevel) {
+      print(paste0("EA results generating: iteration ", i, "/", nsim))
+      
+      ### generate enumeration area level predictions
+      # calculate estimates, but convert to the logit scale (estimates are the same with or without binomial variation)
+      thisu1mEaExact = logit(rowMeans(eaPreds$eaPredMat))
+      
+      # scoring rules for all aggregation models
+      cat(".")
+      scoresEaExact = getScoresSPDE(truthByEa$truth, truthByEa$numChildren, thisu1mEaExact, 
+                                       expit(thisu1mEaExact), bVar=FALSE, probMat=eaPreds$eaPredMat)
+      cat(".")
+      scoresEaExactBVar = getScoresSPDE(truthByEa$truth, truthByEa$numChildren, thisu1mEaExact, 
+                                           expit(thisu1mEaExact), bVar=TRUE, probMat=eaPreds$eaPredMat)
+      cat(".")
+    }
+    else {
+      scoresEaExact = NA
+      scoresEaExactBVar = NA
+    }
+    
+    # pixel level
+    if(keepPixelPreds) {
+      print(paste0("Pixel results generating: iteration ", i, "/", nsim))
+      
+      # calculate estimates, but convert to the logit scale (estimates are the same with or without binomial variation)
+      thisu1mPixelInexact = logit(rowMeans(pixelPreds$pixelPredMatInexact))
+      thisu1mPixelExact = logit(rowMeans(pixelPreds$pixelPredMatExact))
+      
+      # scoring rules for all aggregation models
+      scoresPixelInexact = getScoresSPDE(truthByPixel$truth, truthByPixel$numChildren, thisu1mPixelInexact, 
+                                         expit(thisu1mPixelInexact), bVar=FALSE, probMat=pixelPreds$pixelPredMatInexact)
+      cat(".")
+      scoresPixelExact = getScoresSPDE(truthByPixel$truth, truthByPixel$numChildren, thisu1mPixelExact, 
+                                       expit(thisu1mPixelExact), bVar=FALSE, probMat=pixelPreds$pixelPredMatExact)
+      cat(".")
+      scoresPixelExactBVar = getScoresSPDE(truthByPixel$truth, truthByPixel$numChildren, thisu1mPixelExact, 
+                                           expit(thisu1mPixelExact), bVar=TRUE, pmfs=pixelPreds$pixelPredMatExactB)
+      cat(".")
+    }
+    else {
+      scoresPixelInexact = NA
+      scoresPixelExact = NA
+      scoresPixelExactBVar = NA
+    }
+    
+    # County level (county level results are always included)
+    print(paste0("County results generating: iteration ", i, "/", nsim))
+    
+    # first generate the county estimates
+    thisu1mCountyInexact = logit(rowMeans(countyPreds$countyPredMatInexact))
+    thisu1mCountyExact = logit(rowMeans(countyPreds$countyPredMatExact))
+    
+    # scoring rules for all aggregation models
+    scoresCountyInexact = getScoresSPDE(truthByCounty$truth, truthByCounty$numChildren, thisu1mCountyInexact, 
+                                        expit(thisu1mCountyInexact), NULL, bVar=FALSE, probMat=countyPreds$countyPredMatInexact)
+    cat(".")
+    scoresCountyExact = getScoresSPDE(truthByCounty$truth, truthByCounty$numChildren, thisu1mCountyExact, 
+                                      expit(thisu1mCountyExact), NULL, bVar=FALSE, probMat=countyPreds$countyPredMatExact)
+    cat(".")
+    scoresCountyExactBVar = getScoresSPDE(truthByCounty$truth, truthByCounty$numChildren, thisu1mCountyExact, 
+                                          expit(thisu1mCountyExact), NULL, bVar=TRUE, pmfs=countyPreds$countyPredMatExactB)
+    cat(".")
+    
+    # region level
+    if(genRegionLevel) {
+      print(paste0("Region results generating: iteration ", i, "/", nsim))
+      
+      # first generate the region estimates
+      thisu1mRegionInexact = logit(rowMeans(regionPreds$regionPredMatInexact))
+      thisu1mRegionExact = logit(rowMeans(regionPreds$regionPredMatExact))
+      
+      # scoring rules for all aggregation models
+      scoresRegionInexact = getScoresSPDE(truthByRegion$truth, truthByRegion$numChildren, thisu1mRegionInexact, 
+                                          expit(thisu1mRegionInexact), NULL, bVar=FALSE, probMat=regionPreds$regionPredMatInexact)
+      cat(".")
+      scoresRegionExact = getScoresSPDE(truthByRegion$truth, truthByRegion$numChildren, thisu1mRegionExact, 
+                                        expit(thisu1mRegionExact), NULL, bVar=FALSE, probMat=regionPreds$regionPredMatExact)
+      cat(".")
+      scoresRegionExactBVar = getScoresSPDE(truthByRegion$truth, truthByRegion$numChildren, thisu1mRegionExact, 
+                                            expit(thisu1mRegionExact), NULL, bVar=TRUE, pmfs=regionPreds$regionPredMatExactB)
+      cat(".")
+    }
+    else {
+      scoresRegionInexact = NA
+      scoresRegionExact = NA
+      scoresRegionExactBVar = NA
+    }
+    
+    ## collect parameter means, sds, and quantiles
+    # for fixed effects
+    interceptQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.fixed[[1]])
+    interceptMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.fixed[[1]])
+    interceptSummary = c(interceptMoments[1], sqrt(interceptMoments[2] - interceptMoments[1]^2), interceptMoments[2] - interceptMoments[1]^2, interceptQuants, interceptQuants[3] - interceptQuants[1])
+    
+    urbanSummary = NULL
+    if(urbanEffect) {
+      urbanQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.fixed[[2]])
+      urbanMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.fixed[[2]])
+      urbanSummary = c(urbanMoments[1], sqrt(urbanMoments[2] - urbanMoments[1]^2), urbanMoments[2] - urbanMoments[1]^2, urbanQuants, urbanQuants[3] - urbanQuants[1])
+    }
+    
+    # for hyperparameters
+    rangeQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
+    sdQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
+    varQuants = sdQuants^2
+    varMarg = inla.tmarginal(function(x) {x^2}, fit$mod$marginals.hyperpar[[2]])
+    rangeMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[1]])
+    rangeSummary = c(rangeMoments[1], sqrt(rangeMoments[2] - rangeMoments[1]^2), rangeMoments[2] - rangeMoments[1]^2, rangeQuants, rangeQuants[3] - rangeQuants[1])
+    sdMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[2]])
+    sdSummary = c(sdMoments[1], sqrt(sdMoments[2] - sdMoments[1]^2), sdMoments[2] - sdMoments[1]^2, sdQuants, sdQuants[3] - sdQuants[1])
+    varMoments = inla.emarginal(function(x) {c(x, x^2)}, varMarg)
+    varSummary = c(varMoments[1], sqrt(varMoments[2] - varMoments[1]^2), varMoments[2] - varMoments[1]^2, varQuants, varQuants[3] - varQuants[1])
+    nuggetVarSummary = NULL
+    nuggetSDSummary = NULL
+    if(includeClustEffect) {
+      nuggetPrecQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[3]])
+      nuggetVarQuants = 1/nuggetPrecQuants
+      nuggetSDQuants = sqrt(nuggetVarQuants)
+      nuggetVarMarg = inla.tmarginal(function(x) {1/x}, fit$mod$marginals.hyperpar[[3]])
+      nuggetSDMarg = inla.tmarginal(function(x) {1/sqrt(x)}, fit$mod$marginals.hyperpar[[3]])
+      nuggetVarMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetVarMarg)
+      nuggetSDMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetSDMarg)
+      
+      nuggetVarSummary = c(nuggetVarMoments[1], sqrt(nuggetVarMoments[2] - nuggetVarMoments[1]^2), nuggetVarMoments[2] - nuggetVarMoments[1]^2, nuggetVarQuants, nuggetVarQuants[3] - nuggetVarQuants[1])
+      nuggetSDSummary = c(nuggetSDMoments[1], sqrt(nuggetSDMoments[2] - nuggetSDMoments[1]^2), nuggetSDMoments[2] - nuggetSDMoments[1]^2, nuggetSDQuants, nuggetSDQuants[3] - nuggetSDQuants[1])
+    }
+    
+    list(scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
+         scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
+         scoresCountyInexact=scoresCountyInexact, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+         scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
+         interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
+         rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
+         nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary)
+  }
+  
+  # compute Bias & MSE & mean(Var) & 80\% coverage for each simulation
+  if(is.null(parClust)) {
+    # sequential version
+    scoresEaExact=as.list(1:nsim)
+    scoresEaExactBVar=as.list(1:nsim)
+    scoresPixelInexact=as.list(1:nsim)
+    scoresPixelExact=as.list(1:nsim)
+    scoresPixelExactBVar=as.list(1:nsim)
+    scoresCountyInexact=as.list(1:nsim)
+    scoresCountyExact=as.list(1:nsim)
+    scoresCountyExactBVar=as.list(1:nsim)
+    scoresRegionInexact=as.list(1:nsim)
+    scoresRegionExact=as.list(1:nsim)
+    scoresRegionExactBVar=as.list(1:nsim)
+    
+    interceptSummary=as.list(1:nsim)
+    urbanSummary=as.list(1:nsim)
+    rangeSummary=as.list(1:nsim)
+    varSummary=as.list(1:nsim)
+    sdSummary=as.list(1:nsim)
+    nuggetVarSummary=as.list(1:nsim)
+    nuggetSDSummary=as.list(1:nsim)
+    for(i in 1:nsim) {
+      results = mainFunction(i, FALSE)
+      
+      # collect results in a list, one element for each simulation
+      scoresEaExact[[i]]=results$scoresEaExact
+      scoresEaExactBVar[[i]]=results$scoresEaExactBVar
+      scoresPixelInexact[[i]]=results$scoresPixelInexact
+      scoresPixelExact[[i]]=results$scoresPixelExact
+      scoresPixelExactBVar[[i]]=results$scoresPixelExactBVar
+      scoresCountyInexact[[i]]=results$scoresCountyInexact
+      scoresCountyExact[[i]]=results$scoresCountyExact
+      scoresCountyExactBVar[[i]]=results$scoresCountyExactBVar
+      scoresRegionInexact[[i]]=results$scoresRegionInexact
+      scoresRegionExact[[i]]=results$scoresRegionExact
+      scoresRegionExactBVar[[i]]=results$scoresRegionExactBVar
+      
+      interceptSummary[[i]]=results$interceptSummary
+      urbanSummary[[i]]=results$urbanSummary
+      rangeSummary[[i]]=results$rangeSummary
+      varSummary[[i]]=results$varSummary
+      sdSummary[[i]]=results$sdSummary
+      nuggetVarSummary[[i]]=results$nuggetVarSummary
+      nuggetSDSummary[[i]]=results$nuggetSDSummary
+    }
+    
+    print("Combining results...")
+    scoresEaExact = do.call("rbind", scoresEaExact)
+    scoresEaExactBVar = do.call("rbind", scoresEaExactBVar)
+    scoresPixelInexact = do.call("rbind", scoresPixelInexact)
+    scoresPixelExact = do.call("rbind", scoresPixelExact)
+    scoresPixelExactBVar = do.call("rbind", scoresPixelExactBVar)
+    scoresCountyInexact = do.call("rbind", scoresCountyInexact)
+    scoresCountyExact = do.call("rbind", scoresCountyExact)
+    scoresCountyExactBVar = do.call("rbind", scoresCountyExactBVar)
+    scoresRegionInexact = do.call("rbind", scoresRegionInexact)
+    scoresRegionExact = do.call("rbind", scoresRegionExact)
+    scoresRegionExactBVar = do.call("rbind", scoresRegionExactBVar)
+    
+    interceptSummary = do.call("rbind", interceptSummary)
+    interceptSummary = colMeans(interceptSummary)
+    if(urbanEffect) {
+      urbanSummary = do.call("rbind", urbanSummary)
+      urbanSummary = colMeans(urbanSummary)
+    } else {
+      urbanSummary = NULL
+    }
+    rangeSummary = do.call("rbind", rangeSummary)
+    rangeSummary = colMeans(rangeSummary)
+    sdSummary = do.call("rbind", sdSummary)
+    sdSummary = colMeans(sdSummary)
+    varSummary = do.call("rbind", varSummary)
+    varSummary = colMeans(varSummary)
+    if(includeClustEffect) {
+      nuggetVarSummary = do.call("rbind", nuggetVarSummary)
+      nuggetVarSummary = colMeans(nuggetVarSummary)
+      nuggetSDSummary = do.call("rbind", nuggetSDSummary)
+      nuggetSDSummary = colMeans(nuggetSDSummary)
+    } else {
+      nuggetVarSummary = NULL
+      nuggetSDSummary = NULL
+    }
+  } else {
+    # parallel version
+    
+    results = foreach(i = 1:nsim, .combine=combineResults, .verbose=TRUE, .multicombine=TRUE) %dopar% {
+      mainFunction(i, TRUE)
+    }
+    
+    # separate results into the different aggregation levels
+    scoresEaExact=results$scoresEaExact
+    scoresEaExactBVar=results$scoresEaExactBVar
+    scoresPixelInexact=results$scoresPixelInexact
+    scoresPixelExact=results$scoresPixelExact
+    scoresPixelExactBVar=results$scoresPixelExactBVar
+    scoresCountyInexact=results$scoresCountyInexact
+    scoresCountyExact=results$scoresCountyExact
+    scoresCountyExactBVar=results$scoresCountyExactBVar
+    scoresRegionInexact=results$scoresRegionInexact
+    scoresRegionExact=results$scoresRegionExact
+    scoresRegionExactBVar=results$scoresRegionExactBVar
+    
+    interceptSummary=results$interceptSummary
+    if(urbanEffect) {
+      urbanSummary=results$urbanSummary
+    } else {
+      urbanSummary = NULL
+    }
+    rangeSummary=results$rangeSummary
+    varSummary=results$varSummary
+    sdSummary=results$sdSummary
+    if(includeClustEffect) {
+      nuggetVarSummary=results$nuggetVarSummary
+      nuggetSDSummary=results$nuggetSDSummary
+    } else {
+      nuggetVarSummary=NULL
+      nuggetSDSummary=NULL
+    }
+  }
+  list(scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
+       scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
+       scoresCountyInexact=scoresCountyInexact, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+       scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
+       interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
+       rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
+       nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary)
 }
 
 # compute true proportion of population that died in each county in the order of the 

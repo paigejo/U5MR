@@ -199,6 +199,8 @@ getKenyaGrid = function(res=.25, nc=NULL, nx=NULL, ny=NULL) {
 ##### put Kenya population density on a grid of the chosen resolution
 makeInterpPopGrid = function(kmRes=5) {
   # load population density data
+  require(raster)
+  
   # pop = raster("Kenya2014Pop/worldpop_total_1y_2014_00_00.tif", values= TRUE)
   load("Kenya2014Pop/pop.RData")
   
@@ -484,3 +486,9 @@ binarySearchMatch = function(x, values, fun=function(v, i) {v[i]}) {
     NA
 }
 
+matchMultiple = function(vals, x) {
+  x.map <- split(1:length(x), match(x, vals))
+  # write a wrapper function that does a look-up on the unique list. and then returns all matches using the map.
+  matchMake <- function(x) { x.map[[ fmatch(x, vals) ]] }
+  sapply(vals, function(val) {matchMake(val)})
+}

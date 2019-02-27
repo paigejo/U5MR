@@ -55,11 +55,19 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
   # thisWidthNoBinom = mean(expit(logitU) - expit(logitL))
   # thisWidthBinom = mean(probU - probL)
   
-  # calculate mean squared error at the proportion scale
-  if(is.null(est))
+  # calculate mean squared error and bias at the proportion scale
+  if(is.null(est)) {
+    # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
+    thisBias = bias(truth, logitEst, logit=FALSE, logitVar, n=1)
+    
     thisMSE = mse(truth, logitEst, logit=FALSE, logitVar, nsim=nsim)
-  else
-    thisMSE = mse(truth, logit(est), logit=FALSE, logitVar, nsim=nsim)
+  }
+  else {
+    # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
+    thisBias = bias(truth, logit(est), logit=FALSE, n=1)
+    
+    thisMSE = mse(truth, logit(est), logit=FALSE, nsim=nsim)
+  }
   
   # calculate predictive variance at the proportion scale based on the joint simulation probability matrix 
   # if available or assume gaussian predictive distribution on the logit scale otherwise
@@ -139,32 +147,30 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
 # pmfs: a list of probability mass functions with the same length as truth
 # marginals: list of INLA marginals on the logit probability scale
 # NOTE: Discrete, count level credible intervals are estimated based on the input probMat along with coverage and CRPS
-getScoresSPDE = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL, probMat=NULL, significance=.8, nsim=10, 
-                         bVar, pmfs=NULL, marginals=NULL) {
-  # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
-  thisBias = bias(truth, logitEst, logit=FALSE, n=1)
+getScoresSPDE = function(truth, numChildren, logitEst, est=NULL, var=NULL, probMat=NULL, significance=.8, nsim=10, 
+                         bVar, pmfs=NULL, logitVar=NULL, logitL=NULL, logitU=NULL) {
   
-  # calculate mean squared error at the proportion scale
-  if(is.null(est))
-    thisMSE = mse(truth, logitEst, logit=FALSE, nsim=nsim)
-  else
-    thisMSE = mse(truth, logit(est), logit=FALSE, nsim=nsim)
+  # calculate mean squared error and bias at the proportion scale
+  if(is.null(est)) {
+    # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
+    thisBias = bias(truth, logitEst, logit=FALSE, logitVar, n=1)
+    
+    thisMSE = mse(truth, logitEst, logit=FALSE, logitVar, nsim=nsim, n=1)
+  }
+  else {
+    # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
+    thisBias = bias(truth, est, logit=TRUE, n=1)
+    
+    thisMSE = mse(truth, est, logit=TRUE, nsim=nsim, n=1)
+  }
   
   # calculate predictive variance at the proportion scale based on the marginals or joint 
   # simulation probability matrix if available or assume gaussian predictive distribution 
   # on the logit scale otherwise
-  if(!is.null(marginals)) {
-    if(is.null(var)) {
-      if(bVar)
-        var = sapply(1:length(marginals), function(i) {inla.emarginal(function(logitP) {expit(logitP) * (1 - expit(logitP)) / numChildren[i]}, marginals[[i]])})
-      else
-        var = sapply(marginals, function(m) {inla.emarginal(function(logitP) {expit(logitP)}, m)})
-    }
-  }
-  else if(!is.null(pmfs)) {
+  if(!is.null(pmfs)) {
     if(!bVar && is.null(probMat))
       stop("bVar FALSE, but only pmfs included")
-    var = sapply(1:length(pmfs), function(i) {sum((0:numChildren[i])^2 * pmfs[[i]]) - (sum((0:numChildren[i]) * pmfs[[i]]))^2})
+    var = sapply(1:length(pmfs), function(i) {sum(((0:numChildren[i]) / numChildren[i])^2 * pmfs[[i]]) - (sum(((0:numChildren[i]) / numChildren[i]) * pmfs[[i]]))^2})
   }
   else if(!is.null(probMat)) {
     if(is.null(var))
@@ -177,25 +183,35 @@ getScoresSPDE = function(truth, numChildren, logitEst, logitVar, est=NULL, var=N
   # calculate predictive variance on the proportion scale
   thisVar = mean(var)
   
+  # if CIs are included, but binomial variation is not, calculate credible intervals based on them
+  if(!(any(is.null(logitL)) || any(is.null(logitU))) && !bVar) {
+    lower = logitL
+    upper = logitU
+  } else {
+    lower = NULL
+    upper = NULL
+  }
+  
   # calculate coverage and credible interval width with and without binomial variation
   cvg = coverage(truth, doLogit=FALSE, bVar=bVar, numChildren=numChildren, logitEst=logitEst, logitVar=logitVar, 
                  lowerRejectProb=lowerRejectProb, upperRejectProb=upperRejectProb, probMat=probMat, 
-                 significance=significance, returnIntervalWidth=TRUE, returnPMFs=TRUE, pmfs=pmfs, nsim=nsim)
+                 significance=significance, returnIntervalWidth=TRUE, returnPMFs=TRUE, pmfs=pmfs, nsim=nsim, 
+                 lower=lower, upper=upper)
   
   thisCoverage = cvg$intervalInfo[1]
   thisWidth = cvg$intervalInfo[2]
   
   # also get the probability mass functions for the binomial predictive distributions for the CRPS calculations
   if(bVar)
-    pmfs = coverageBinom$pmfs
+    pmfs = cvg$pmfs
   
   # calculate CRPS on the proportion scale with and without binomial variation
   thisCRPS = crpsNormal(truth, logitEst, logitVar, logit=FALSE, n=numChildren, bVar=bVar, probMat=probMat, 
-                        nsim=nsim, pmfs=pmfs, marginals=marginals)
+                        nsim=nsim, pmfs=pmfs)
   
   # return the results
   results = matrix(c(thisBias, thisVar, thisMSE, thisCRPS, thisCoverage, thisWidth), 
-                     nrow=2, byrow = TRUE)
+                     nrow=1, byrow = TRUE)
   colnames(results) = c("bias", "var", "mse", "crps", "coverage", "length")
   as.data.frame(results)
 }
@@ -211,13 +227,14 @@ mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1){
     # first draw different values of p from the predictive distribution
     if(is.null(my.var)) {
       my.est = expit(my.est)
-      warning("variance not supplied when calculating mse on non-logit scale, so assuming estimate has already been debiased")
+      res = mean((my.est - truth)^2)
     } else {
       quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(my.est)), ncol=nsim, byrow=TRUE)
       logitP = matrix(qnorm(quantiles, my.est, sd=sqrt(my.var)), ncol=nsim)
       my.est = expit(logitP)
+      res = mean(sweep(my.est, 1, truth, "-")^2 * n^2)
     }
-    res = mean(sweep(my.est, 1, truth, "-")^2 * n^2)
+    
   }
   else {
     res <- mean((truth - my.est)^2)
@@ -226,6 +243,7 @@ mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1){
   return(res)
 }
 
+# logit: if TRUE use the raw estimates, otherwise assume estimates are on the logit scale
 bias <- function(truth, my.est, logit=TRUE, my.var=NULL, n=1){
   
   if(!logit) {
@@ -259,7 +277,7 @@ bias <- function(truth, my.est, logit=TRUE, my.var=NULL, n=1){
 #          on the logit scale, do not include this since just using the estimates and variance will be accurate.
 # pmfs: a list of probability mass functions of the same length as truth
 # marginals: a list of inla marginals of the same length as truth
-crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, n=25, bVar=TRUE, probMat=NULL, pmfs=NULL, marginals=NULL){
+crpsNormal <- function(truth, my.est, my.var=NULL, logit=TRUE, nsim=10, n=25, bVar=TRUE, probMat=NULL, pmfs=NULL, marginals=NULL){
   # if(resultType == "EA" || resultType == "pixel")
   #   logit=FALSE
   
@@ -286,48 +304,159 @@ crpsNormal <- function(truth, my.est, my.var, logit=TRUE, nsim=10, n=25, bVar=TR
     } else {
       # no binomial variation is included. Integrate numerically on the proportion scale
       
-      if(!is.null(marginals)) {
-        CRPSMarginal = function(i) {
-          integrate(function(p) {(inla.pmarginal(logit(p), marginals[[i]]) - (p >= truth[i]))^2}, 0, 1)$value
-        }
-        crpsVals = sapply(1:length(marginals), CRPSMarginal)
-      } else {
-        # compute the crps for this row of truth
-        crpsRow = function(rowI) {
-          thisTruth = truth[rowI]
-          
-          # either build the predictive cdf assuming normality on the logit scale or from the 
-          # empirical distribution given by probMat if the user supplies it
-          if(is.null(probMat)) {
-            thisEst = my.est[rowI]
-            thisVar = my.var[rowI]
-            thisCdf = function(ws) {pnorm(logit(ws), thisEst, sqrt(thisVar))}
-          } else {
-            thisCdf = ecdf(probMat[rowI,])
-          }
+      if(!is.null(marginals) && is.null(probMat) && is.null(my.var)) {
+        ## too slow
+        # CRPSMarginal = function(i) {
+        #   integrate(function(p) {(inla.pmarginal(logit(p), marginals[[i]]) - (p >= truth[i]))^2}, 0, 1)$value
+        # }
+        # crpsVals = sapply(1:length(marginals), CRPSMarginal)
+        
+        ## also too slow
+        # quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(my.est)), ncol=nsim, byrow=TRUE)
+        # quantilesMarginal = function(i) {
+        #   inla.qmarginal(quantiles, marginals[[i]])
+        # }
+        # logitP = sapply(1:length(marginals), quantilesMarginal)
+        # probMat = expit(logitP)
+        
+        quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(my.est)), ncol=nsim, byrow=TRUE)
+        logitP = matrix(qnorm(quantiles, my.est, sd=sqrt(my.var)), ncol=nsim)
+        probMat = expit(logitP)
+      }
+      
+      # # compute the crps for this row of truth
+      # crpsRow = function(rowI) {
+      #   thisTruth = truth[rowI]
+      #   
+      #   # either build the predictive cdf assuming normality on the logit scale or from the 
+      #   # empirical distribution given by probMat if the user supplies it
+      #   if(is.null(probMat)) {
+      #     thisEst = my.est[rowI]
+      #     thisVar = my.var[rowI]
+      #     thisCdf = function(ws) {pnorm(logit(ws), thisEst, sqrt(thisVar))}
+      #   } else {
+      #     thisCdf = ecdf(probMat[rowI,])
+      #   }
+      #   
+      #   intFun = function(ws) {
+      #     (thisCdf(ws) - (ws >= thisTruth))^2
+      #   }
+      #   
+      #   if(is.null(probMat)) {
+      #     # when integrating we will set bounds on the integral to be reasonable to avoid 
+      #     # faulty "divergent integral" error. The bounds will be 20 standard errors out 
+      #     # of the estimate, making sure to include the truth.
+      #     lowerBound = max(0, min(thisTruth - .01, expit(thisEst - 20 * sqrt(thisVar))))
+      #     upperBound = min(1, max(thisTruth + .01, expit(thisEst + 20 * sqrt(thisVar))))
+      #     integrate(intFun, lowerBound, upperBound)$value
+      #   }
+      #   else {
+      #     # since we are using the empirical distribution, there is a closed form for the integral
+      #     ps = probMat[rowI,]
+      #     allPoints = sort(c(ps, thisTruth))
+      #     deltas = diff(allPoints)
+      #     sum(deltas * intFun(allPoints[1:length(ps)]))
+      #   }
+      # }
+      # 
+      # crpsRow2 = function(rowI) {
+      #   thisTruth = truth[rowI]
+      #   
+      #   # either build the predictive cdf assuming normality on the logit scale or from the 
+      #   # empirical distribution given by probMat if the user supplies it
+      #   if(is.null(probMat)) {
+      #     thisEst = my.est[rowI]
+      #     thisVar = my.var[rowI]
+      #     thisCdf = function(ws) {pnorm(logit(ws), thisEst, sqrt(thisVar))}
+      #   } else {
+      #     # thisCdf = ecdf(probMat[rowI,])
+      #     sorted = sort(probMat[rowI,])
+      #     thisCdf = approxfun(sorted, (1:length(sorted))/length(sorted), 
+      #                         method = "constant", yleft = 0, yright = 1, f = 0, ties = "ordered")
+      #   }
+      #   
+      #   intFun = function(ws) {
+      #     (thisCdf(ws) - (ws >= thisTruth))^2
+      #   }
+      #   
+      #   if(is.null(probMat)) {
+      #     # when integrating we will set bounds on the integral to be reasonable to avoid 
+      #     # faulty "divergent integral" error. The bounds will be 20 standard errors out 
+      #     # of the estimate, making sure to include the truth.
+      #     lowerBound = max(0, min(thisTruth - .01, expit(thisEst - 20 * sqrt(thisVar))))
+      #     upperBound = min(1, max(thisTruth + .01, expit(thisEst + 20 * sqrt(thisVar))))
+      #     integrate(intFun, lowerBound, upperBound)$value
+      #   }
+      #   else {
+      #     # since we are using the empirical distribution, there is a closed form for the integral
+      #     allPoints = sort(c(sorted, thisTruth))
+      #     firstGreater = match(TRUE, sorted >= thisTruth)
+      #     if(is.na(firstGreater))
+      #       allPoints = c(sorted, thisTruth)
+      #     else if(firstGreater == 1)
+      #       allPoints = c(thisTruth, sorted)
+      #     else
+      #       allPoints = c(sorted[1:(firstGreater - 1)], thisTruth, sorted[firstGreater:length(sorted)])
+      #     
+      #     deltas = diff(allPoints)
+      #     sum(deltas * intFun(allPoints[1:length(sorted)]))
+      #   }
+      # }
+      
+      crpsRow = function(rowI) {
+        thisTruth = truth[rowI]
+        
+        # either build the predictive cdf assuming normality on the logit scale or from the 
+        # empirical distribution given by probMat if the user supplies it
+        if(is.null(probMat)) {
+          thisEst = my.est[rowI]
+          thisVar = my.var[rowI]
+          thisCdf = function(ws) {pnorm(logit(ws), thisEst, sqrt(thisVar))}
           
           intFun = function(ws) {
             (thisCdf(ws) - (ws >= thisTruth))^2
           }
+        } else {
+          # thisCdf = ecdf(probMat[rowI,])
+          sorted = probMat[rowI,] # already sorted
           
-          if(is.null(probMat)) {
-            # when integrating we will set bounds on the integral to be reasonable to avoid 
-            # faulty "divergent integral" error. The bounds will be 20 standard errors out 
-            # of the estimate, making sure to include the truth.
-            lowerBound = max(0, min(thisTruth - .01, expit(thisEst - 20 * sqrt(thisVar))))
-            upperBound = min(1, max(thisTruth + .01, expit(thisEst + 20 * sqrt(thisVar))))
-            integrate(intFun, lowerBound, upperBound)$value
-          }
+          # since we are using the empirical distribution, there is a closed form for the integral
+          allPoints = sort(c(sorted, thisTruth))
+          deltas = diff(allPoints)
+          firstGreater = match(TRUE, sorted >= thisTruth)
+          vals = (1:length(sorted))/length(sorted)
+          if(is.na(firstGreater))
+            return((vals)^2 * deltas)
+          else if(firstGreater == 1)
+            return(deltas[1] + (1-vals[1:(length(sorted)-1)])^2 * deltas[2:length(deltas)])
           else {
-            # since we are using the empirical distribution, there is a closed form for the integral
-            ps = probMat[rowI,]
-            allPoints = sort(c(ps, thisTruth))
-            deltas = diff(allPoints)
-            sum(deltas * intFun(allPoints[1:length(ps)]))
+            left = sum(vals[1:(firstGreater-1)]^2 * deltas[1:(firstGreater-1)])
+            mid = sum((1 - vals[firstGreater-1])^2 * deltas[firstGreater])
+            right = ifelse(firstGreater == length(vals), 0, sum((1 - vals[firstGreater:(length(vals)-1)])^2 * deltas[(firstGreater+1):length(deltas)]))
+            return(left+mid+right)
           }
+          
+          # intFun = function(ws) {
+          #   (thisCdf(ws) - (ws >= thisTruth))^2
+          # }
         }
-        crpsVals = sapply(1:length(truth), crpsRow)
+        
+        if(is.null(probMat)) {
+          # when integrating we will set bounds on the integral to be reasonable to avoid 
+          # faulty "divergent integral" error. The bounds will be 20 standard errors out 
+          # of the estimate, making sure to include the truth.
+          lowerBound = max(0, min(thisTruth - .01, expit(thisEst - 20 * sqrt(thisVar))))
+          upperBound = min(1, max(thisTruth + .01, expit(thisEst + 20 * sqrt(thisVar))))
+          integrate(intFun, lowerBound, upperBound)$value
+        }
+        else {
+          stop("should have already returned result")
+        }
       }
+      
+      if(!is.null(probMat))
+        probMat = t(apply(probMat, 1, sort))
+      crpsVals = sapply(1:length(truth), crpsRow)
       
       res = mean(crpsVals)
     }
@@ -463,8 +592,8 @@ coverage = function(truth, lower=NULL, upper=NULL, lowerRejectProb=NULL, upperRe
   if(any(is.null(lower)) || any(is.null(upper))) {
     # if the user did not supply their own credible intervals, we must get them ourselves given the other information
     
-    if(is.null(probMat) && (is.null(logitEst) || is.null(logitVar)))
-      stop("either include both lower and upper, probMat, or both logitEst and logitVar")
+    if(is.null(probMat) && (is.null(logitEst) || is.null(logitVar)) && is.null(pmfs))
+      stop("either include both lower and upper, probMat, pmfs, or both logitEst and logitVar")
     
     if(!is.null(logitEst) && !is.null(logitVar) && bVar) {
       # in this case, we must generate the probabilities over which we will later integrate to get the 

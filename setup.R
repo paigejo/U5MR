@@ -10,11 +10,13 @@ library(sp)
 library(data.table)
 # library(raster)
 library(sampling)
+library(fastmatch)
 
 source('~/git/U5MR/utilityFuns.R')
 source('~/git/U5MR/matchPoints.R')
 source('~/git/U5MR/simStudy.R')
 source('~/git/U5MR/mercer.R')
+source('~/git/U5MR/compareModels.R')
 source('~/git/U5MR/scores.R')
 source('~/git/U5MR/spdeMod.R')
 source('~/git/U5MR/spdeResults.R')
@@ -38,7 +40,7 @@ out = load("kenyaData.RData")
 # kenyaPop$east = tmp[,1]
 # kenyaPop$north = tmp[,2]
 # save(kenyaPop, file="kenyaPopProj.RData")
-load("kenyaPopProj.RData")
+# load("kenyaPopProj.RData")
 
 # map data
 # adm1 = readRDS("mapData/KEN_adm1.rds")
@@ -82,8 +84,13 @@ latRes = latsInterp[2] - latsInterp[1]
 # save(eastLim, northLim, file="lims.RData")
 load("lims.RData")
 
+# generate 5km population density grid over Kenya
+# popGrid = makeInterpPopGrid(kmRes=5)
+# save(popGrid, file="popGrid.RData")
+load("popGrid.RData")
+
 # set enumeration areas
-# kenyaEAs = simEAs2(kenyaPop, numEAs, totalKenyaPop)
+# kenyaEAs = simEAs2(popGrid, numEAs, totalKenyaPop)
 # save(kenyaEAs, file="kenyaEAs.RData")
 load("kenyaEAs.RData")
 
@@ -93,11 +100,6 @@ load("kenyaEAs.RData")
 # mort$north = tmp[,2]
 # save(mort, file="mortProj.RData")
 load("mortProj.RData")
-
-# generate 5km population density grid over Kenya
-# popGrid = makeInterpPopGrid(kmRes=5)
-# save(popGrid, file="popGrid.RData")
-load("popGrid.RData")
 
 # Bernoulli datasets
 out = load("data4direct.RData")

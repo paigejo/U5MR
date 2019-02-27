@@ -19,6 +19,7 @@ simEAs = function(kenyaPop, numEAs=96251, totalKenyaPop=43.0 * 10^6, seed=123) {
   eaCounty = unique(mort$admin1)[mapping[eaCounty]]
   kenyaEAs$admin1 = eaCounty
   kenyaEAs$region = countyToRegion(eaCounty)
+  kenyaEAs$eaIs = EAIs
   
   kenyaEAs
 }
@@ -97,6 +98,7 @@ simEAs2 = function(kenyaPop, numEAs=96251, totalKenyaPop=43.0 * 10^6, seed=123,
   projCoords = projKenya(coordsX, coordsY)
   kenyaEAs$east = projCoords[,1]
   kenyaEAs$north = projCoords[,2]
+  kenyaEAs$pixelIs = EAIs
   
   kenyaEAs
 }
@@ -571,7 +573,7 @@ genClustDatFromEAIsLong = function(eaDat, eaIs, eaDatLong, HHIs, sampleWeights, 
   
   # aggregate the long format to the short format
   # TODO: figure out what columns are in the cluster data and how to aggregate
-  clustDat = clustDatLong[, .(lon=lon[1], lat=lat[1], pop=pop[1], popOrig=popOrig[1], popDens=popDens[1], 
+  clustDat = clustDatLong[, .(lon=lon[1], lat=lat[1], pop=pop[1], popOrig=popOrig[1], 
                               admin1=admin1[1], region=region[1], 
                               east=east[1], north=north[1], urban=urban[1], nHH=nHH[1], 
                               numWomen=sum(numWomen), numChildren=sum(numChildren), 
@@ -1136,7 +1138,8 @@ simDatLK = function(eaDat, clustDat=NULL, nsim=1, margVar=4, nu=1.5, NC=5, effRa
 # urbanProps: see simClusters2
 # counties: a vector of county names giving the order with which to simulate the data
 # nsim: number of simulations
-# margVar: marginal variance of the spatial process, excluding household end cluster effects
+# margVar: marginal variance of the spatial process, excluding household end cluster effects. 
+#          If 0, no spatial component is included
 # beta0: intercept of logit model for mortality rate
 # gamma: effect of urban on logit scale for logit model for mortality rate
 # tausq: cluster effect variance for logit model of mortality rate
@@ -1187,8 +1190,12 @@ simDatEmpirical = function(empiricalDistributions, eaDat, clustDat=NULL, nsim=1,
   # generate Lattice Krig simulations
   eaCoords = cbind(eaDat$east, eaDat$north)
   print("Simulating nationwide mortality rates and data")
-  SPDEArgs = list(coords=eaCoords, nsim=1, margVar=margVar, effRange=effRange)
-  simVals = do.call("simSPDE", SPDEArgs)
+  if(margVar != 0) {
+    SPDEArgs = list(coords=eaCoords, nsim=1, margVar=margVar, effRange=effRange)
+    simVals = do.call("simSPDE", SPDEArgs)
+  } else {
+    simVals = rep(0, nrow(eaCoords))
+  }
   
   # add in intercept
   simVals = simVals + beta0

@@ -44,16 +44,19 @@ getSPDEMeshGrid = function(locs=NULL, max.n=100, doPlot=TRUE,
 # from Lindgren Rue (2015) "Bayesian Spatial Modelling with R-INLA"
 # sigma0: field standard deviation
 # NOTE: by default, this constructs a spde prior with unit median marginal variance 
-#       and median effective range equal to a fifth of the spatial range
+#       and median effective range equal to a fifth of the spatial range 
+# or use inla.spde2.pcmatern (possibly allow (1/4,4) variance here rather than (1/2,2))
 getSPDEPrior = function(mesh, sigma0=1) {
   size <- min(c(diff(range(mesh$loc[, 1])), diff(range(mesh$loc[, 2])))) # 1277.237
-  range0 <- size/5
-  kappa0 <- sqrt(8)/range0
-  tau0 <- 1/(sqrt(4 * pi) * kappa0 * sigma0)
-  spde <- inla.spde2.matern(mesh, B.tau = cbind(log(tau0), -1, +1),
-                            B.kappa = cbind(log(kappa0), 0, -1), theta.prior.mean = c(0, 0),
-                            theta.prior.prec = c(0.1, 1))
+  # range0 <- size/5
+  # kappa0 <- sqrt(8)/range0
+  # tau0 <- 1/(sqrt(4 * pi) * kappa0 * sigma0)
+  # spde <- inla.spde2.matern(mesh, B.tau = cbind(log(tau0), -1, +1),
+  #                           B.kappa = cbind(log(kappa0), 0, -1), theta.prior.mean = c(0, 0),
+  #                           theta.prior.prec = c(0.1, 1))
   
+  range0 <- size/5
+  spde = inla.spde2.pcmatern(mesh, prior.range=c(range0, 0.5), prior.sigma = c(1, 0.01))
   spde
 }
 
@@ -569,7 +572,7 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          eaIndices=1:nrow(kenyaEAs), urbanEffect=TRUE, link=1, 
                          predictionType=c("median", "mean"), eaDat=NULL, nSamplePixel=10, 
                          truthByPixel=NULL, truthByCounty=NULL, truthByRegion=NULL, 
-                         truthByEa=NULL, clusterEffect=FALSE) {
+                         truthByEa=NULL, clusterEffect=FALSE, significance=.8) {
   
   # match the prediction type
   predictionType = match.arg(predictionType)
@@ -619,8 +622,8 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   latticeInds = 1:n
   
   # do not include cluster effect at the pixel level
-  stack.pred = inla.stack(A =list(APred[,pixelIndices], 1),
-                          effects =list(field=pixelIndices, X=XPred[,pixelIndices]),
+  stack.pred = inla.stack(A =list(APred[pixelIndices,], 1),
+                          effects =list(field=latticeInds, X=XPred[pixelIndices,]),
                           data =list(y=NA, Ntrials = predNs[pixelIndices], link=1),
                           tag ="pred",
                           remove.unused=FALSE)
@@ -638,14 +641,14 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
       
       # only include clusters in the enumeration area predictions
       clustIPreds = 1:nrow(eaDat)
-      stack.predEA = inla.stack(A =list(APred[,eaIndices], 1, 1),
-                                effects =list(field=eaIndices, clust=clustIPreds, X=XPred[eaIndices,]),
+      stack.predEA = inla.stack(A =list(APred[eaIndices,], 1, 1),
+                                effects =list(field=latticeInds, clust=clustIPreds, X=XPred[eaIndices,]),
                                 data =list(y=NA, Ntrials = predNs[eaIndices], link=1),
                                 tag ="pred",
                                 remove.unused=FALSE)
     } else {
-      stack.predEA = inla.stack(A =list(APred[,eaIndices], 1),
-                                effects =list(field=eaIndices, X=XPred[eaIndices,]),
+      stack.predEA = inla.stack(A =list(APred[eaIndices,], 1),
+                                effects =list(field=latticeInds, X=XPred[eaIndices,]),
                                 data =list(y=NA, Ntrials = predNs[eaIndices], link=1),
                                 tag ="pred",
                                 remove.unused=FALSE)
@@ -677,7 +680,7 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   
   # construct the full prediction stack if necessary
   if(genEALevel) {
-    stack.pred = inla.stack(stack.pred, stack.predEA)
+    stack.pred = inla.stack(stack.predEA, stack.pred)
   }
   
   # make mesh index
@@ -688,18 +691,19 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   allNs = c(obsNs, predNs)
   stack.full = inla.stack(stack.est, stack.pred, remove.unused=FALSE)
   stackDat = inla.stack.data(stack.full, spde=prior)
+  allQuantiles = c((1-significance) / 2, 1 - (1-significance) / 2, seq(0, 1 - 1 / nSamplePixel, by = 1/nSamplePixel) + 1 / (2 * nSamplePixel))
   if(clusterEffect) {
     mod = inla(y ~ - 1 + X + f(field, model=prior) + 
                  f(clust, model="iid", 
                    hyper = list(prec = list(prior = "pc.prec", param = c(3,0.01)))),
                data = stackDat, Ntrials=stackDat$Ntrials,
-               control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link),
+               control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link, quantiles=allQuantiles),
                family="binomial", verbose=TRUE, control.inla=control.inla,
                control.compute=list(config=TRUE))
   } else {
     mod = inla(y ~ - 1 + X + f(field, model=prior), 
                data = stackDat, Ntrials=stackDat$Ntrials, 
-               control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link), 
+               control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link, quantiles=allQuantiles), 
                family="binomial", verbose=verbose, control.inla=control.inla, 
                control.compute=list(config=TRUE))
   }
@@ -745,10 +749,10 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     predMat = predMat[pixelIndices, ]
     
     # get the marginals of the enumeration areas
-    eaMarginals = mod$marginals.linear.predictor[eaIndices]
+    eaMarginals = mod$marginals.linear.predictor[index.pred[eaIndices]]
   }
   if(keepPixelPreds)
-    pixelMarginals = mod$marginals.linear.predictor[pixelIndices]
+    pixelMarginals = mod$marginals.linear.predictor[index.pred[pixelIndices]]
   
   # The below code shouldn't be necessary since the matrix should already be produced:
   # # generate samples from posterior to use for prediction and aggregation
@@ -798,7 +802,7 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     if(!withBinom) {
       # same as the inexact aggregation, but integrate with respect to number of children per EA
       numChildren = numChildren/sum(numChildren)
-      integrals = t(regionPredMat[,1:nSample]) %*% numChildren
+      integrals = t(regionProbMat[,1:nSample]) %*% numChildren
       return(integrals)
     } else {
       # Use Pearson approximation to account for number of children per EA while accounting for binomial variation. 
@@ -811,6 +815,7 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   countyPreds = NULL
   if(genCountyLevel) {
     ### county level predictions
+    print("Aggregating over counties")
     
     predCountiesPixel = popGrid$admin1
     predCountiesEa = eaDat$admin1
@@ -826,7 +831,8 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     }
     
     # integrate over the pixels to get aggregated predictions
-    countyPredMat <- t(sapply(counties, integratePredsByCounty, exact=FALSE))
+    countyPredMatInexact <- t(sapply(counties, integratePredsByCounty, exact=FALSE))
+    cat(".")
     
     # integrate over the EAs to get aggregated predictions
     if(genEALevel) {
@@ -835,18 +841,22 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
       if(is.null(eaDat))
         stop("eaDat is null, but a non-null eaDat must be provided for account level predictions for EAs.")
       countyPredMatExact = t(sapply(counties, integratePredsByCounty, exact=TRUE, withBinom=FALSE))
+      cat(".")
       countyPredMatExactB <- lapply(counties, integratePredsByCounty, exact=TRUE, withBinom=TRUE)
+      cat(".")
     } else {
       countyPredMatExact = NULL
       countyPredMatExactB = NULL
     }
     
-    countyPreds <- list(countyPredMat=countyPredMat, countyPredMatExact=countyPredMatExact, 
+    countyPreds <- list(countyPredMatInexact=countyPredMatInexact, countyPredMatExact=countyPredMatExact, 
                         countyPredMatExactB=countyPredMatExactB)
   }
   
   regionPreds = NULL
   if(genRegionLevel) {
+    print("Aggregating over regions")
+    
     ## generate region level predictions
     predCountiesPixel = popGrid$admin1
     predCountiesEa = eaDat$admin1
@@ -864,7 +874,8 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     }
     
     # integrate over the pixels to get aggregated predictions
-    regionPredMat <- t(sapply(regions, integratePredsByRegion, exact=FALSE))
+    regionPredMatInexact <- t(sapply(regions, integratePredsByRegion, exact=FALSE))
+    cat(".")
     
     # integrate over the EAs to get aggregated predictions
     if(genEALevel) {
@@ -873,19 +884,26 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
       if(is.null(eaDat))
         stop("eaDat is null, but a non-null eaDat must be provided for account level predictions for EAs.")
       regionPredMatExact = t(sapply(regions, integratePredsByRegion, exact=TRUE, withBinom=FALSE))
+      cat(".")
       regionPredMatExactB <- lapply(regions, integratePredsByRegion, exact=TRUE, withBinom=TRUE)
+      cat(".")
     } else {
       regionPredMatExact = NULL
       regionPredMatExactB = NULL
     }
     
-    regionPreds <- list(regionPredMat=regionPredMat, regionPredMatExact=regionPredMatExact, 
+    regionPreds <- list(regionPredMatInexact=regionPredMatInexact, regionPredMatExact=regionPredMatExact, 
                         regionPredMatExactB=regionPredMatExactB)
   }
   
   # generate pixel level predictions if necessary
+  eaToPixel = eaDat$pixelI
+  # pixelsWithData = sort(unique(eaToPixel))
+  pixelsWithData = unique(eaToPixel) # don't sort so that these indices matchup with the indices in truth
+  pixelPredIndices = index.pred[pixelIndices[pixelsWithData]]
   pixelPreds = NULL
   if(keepPixelPreds) {
+    print("Aggregating over pixels")
     
     ##### redefine the integration functions, since care must be taken for pixel level predictions 
     ##### due to the fineness of the spatial resolution
@@ -899,7 +917,7 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     }
     
     # pixelI: the pixel indices (from 1 to the number of pixels) over which to aggregate predictions
-    # pixelEAI: the indices of enumeration areas (from 1 to ~96k) within the region to aggregate over
+    # pixelEAI: logical vector of enumeration areas (from 1 to ~96k) within the region to aggregate over
     # withBinom: whether or not to include binomial variation
     exactIntegrationPixel = function(pixelI, pixelEAI, withBinom) {
       ## aggregate predictions over the region by integrating with respect to number of children per EA
@@ -907,19 +925,17 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
       numChildren = eaDat$numChildren[pixelEAI]
       
       # subset data by county of interest
-      regionProbMat = matrix(eaMat[regionEAI,], nrow=sum(regionEAI))
+      regionProbMat = matrix(eaMat[pixelEAI,1:nSamplePixel], nrow=length(numChildren))
       
       # combine results by EA
       if(!withBinom) {
         if(nEAs == 1) {
           # just use the quantiles of the EA marginal
-          thisMarginal = pixelMarginals[[pixelI]]
-          quantiles = seq(0, 1 - 1 / nSamplePixel, by = 1/nSamplePixel) + 1 / (2 * nSamplePixel)
-          inla.qmarginal(quantiles, thisMarginal)
+          expit(matrix(unlist(mod$summary.linear.predictor[pixelIndices[pixelI], 5:(4 + nSamplePixel)]), nrow=1))
         } else {
           # take the weighted average of joint probability draws of EAs in this pixel
           # apply(thisEaMat[pixelEAI], 2, weighted.mean, w=numChildren)
-          colSums(thisEaMat[pixelEAI] * (numChildren / sum(numChildren)))
+          colSums(regionProbMat * (numChildren / sum(numChildren)))
         }
       } else {
         # Use Pearson approximation to account for number of children per EA while accounting for binomial variation. 
@@ -928,37 +944,44 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
         
         if(nEAs == 1) {
           # just use the quantiles of the EA marginal
-          thisMarginal = pixelMarginals[[pixelI]]
-          quantiles = seq(0, 1 - 1 / nSamplePixel, by = 1/nSamplePixel) + 1 / (2 * nSamplePixel)
-          dSumBinomRandom(0:sum(numChildren), numChildren, matrix(inla.qmarginal(quantiles, thisMarginal), nrow=1))
+          if(length(numChildren) > 1)
+            stop("Too many children")
+          thisProbMat = expit(matrix(unlist(mod$summary.linear.predictor[eaIndices[pixelEAI], 5:(4 + nSamplePixel)]), nrow=1))
+          dSumBinomRandom(0:sum(numChildren), numChildren, thisProbMat)
         } else {
           # use the joint probability draws of EAs in this pixel
-          dSumBinomRandom(0:sum(numChildren), numChildren, thisEaMat[pixelEAI])
+          dSumBinomRandom(0:sum(numChildren), numChildren, regionProbMat)
         }
       }
     }
     
     ## generate pixel level predictions
     # for each region, integrate predictions over EAs
-    eaToPixel = eaDat$pixelI
-    pixelsWithData = sort(unique(eaToPixel))
     pixelToEa = match(pixelsWithData, eaToPixel)
     predPixelPixel = 1:nrow(popGrid)
     predPixelEa = pixelToEa
-    integratePredsByPixel = function(pixelID, exact, withBinom=NULL) {
-      if(exact) {
-        pixelI = predPixelPixel == pixelID
-        pixelEaI = predPixelEa == pixelID
-        exactIntegrationPixel(pixelI, pixelEaI, withBinom)
-      }
-      else {
-        pixelI = predRegionsPixel == pixelID
-        inexactIntegrationPixel(pixelI)
-      }
+    integratePredsByPixel = function(pixelID, withBinom=NULL) {
+      # if(exact) {
+      pixelI = pixelID
+      pixelEaI = eaToPixel == pixelID
+      exactIntegrationPixel(pixelI, pixelEaI, withBinom)
+      # }
+      # else {
+      #   pixelI = predRegionsPixel == pixelID
+      #   inexactIntegrationPixel(pixelI)
+      # }
     }
     
-    # integrate over the pixels to get aggregated predictions
-    pixelPredMat <- t(sapply(pixelsWithData, integratePredsByPixel, exact=FALSE))
+    # use the precomputed logit scale mean, variance, CIs, and equally spaced pixel marginal 
+    # quantiles for integration
+    pixelPredIndices = index.pred[pixelIndices[pixelsWithData]]
+    logitLower = mod$summary.linear.predictor[pixelPredIndices, 3]
+    logitUpper = mod$summary.linear.predictor[pixelPredIndices, 4]
+    logitEst = mod$summary.linear.predictor[pixelPredIndices, 1]
+    logitVar = mod$summary.linear.predictor[pixelPredIndices, 2]
+    pixelPredMatInexact = expit(as.matrix(unlist(mod$summary.linear.predictor[pixelPredIndices, 5:(4 + nSamplePixel)])))
+    est = rowMeans(pixelPredMatInexact)
+    cat(".")
     
     # integrate over the EAs to get aggregated predictions
     if(genEALevel) {
@@ -966,20 +989,435 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
       # distributions and a list of county probability distributions
       if(is.null(eaDat))
         stop("eaDat is null, but a non-null eaDat must be provided for account level predictions for EAs.")
-      pixelPredMatExact = t(sapply(pixelsWithData, integratePredsByPixel, exact=TRUE, withBinom=FALSE))
-      pixelPredMatExactB <- lapply(pixelsWithData, integratePredsByPixel, exact=TRUE, withBinom=TRUE)
+      pixelPredMatExact = t(sapply(pixelsWithData, integratePredsByPixel, withBinom=FALSE))
+      cat(".")
+      pixelPredMatExactB <- lapply(pixelsWithData, integratePredsByPixel, withBinom=TRUE)
+      cat(".")
     } else {
       pixelPredMatExact = NULL
       pixelPredMatExactB = NULL
     }
     
-    pixelPreds <- list(pixelPredMat=pixelPredMat, pixelPredMatExact=pixelPredMatExact, 
-                        pixelPredMatExactB=pixelPredMatExactB)
+    pixelPreds <- list(pixelPredMatInexact=pixelPredMatInexact, pixelPredMatExact=pixelPredMatExact, 
+                       pixelPredMatExactB=pixelPredMatExactB, pixelsWithData=pixelsWithData, 
+                       logitLower=logitLower, logitUpper=logitUpper, logitEst=logitEst, logitVar=logitVar, 
+                       est=est)
   }
   
-  list(mod=mod, preds=preds, SDs=predSDs, obsInds=obsInds, predInds=index, mesh=mesh, 
-       prior=prior, stack=stack.full, countyPredMat=countyPredMat, regionPredMat=regionPredMat, 
-       pixelPredMat=pixelPredMat, pixelMarginals=pixelMarginals, eaPredMat=eaMat, eaMarginals=eaMarginals)
+  if(genEALevel) {
+    # use the precomputed logit scale mean, variance, CIs, and equally spaced pixel marginal 
+    # quantiles for integration
+    eaPredIndices = index.pred[eaIndices]
+    logitLower = mod$summary.linear.predictor[eaPredIndices, 3]
+    logitUpper = mod$summary.linear.predictor[eaPredIndices, 4]
+    logitEst = mod$summary.linear.predictor[eaPredIndices, 1]
+    logitVar = mod$summary.linear.predictor[eaPredIndices, 2]
+    eaPredMat = expit(unlist(as.matrix(mod$summary.linear.predictor[eaPredIndices, 5:(4 + nSamplePixel)])))
+    est = rowMeans(eaPredMat)
+    
+    eaPreds = list(eaPredMat=eaPredMat, logitLower=logitLower, logitUpper=logitUpper, 
+                   logitEst=logitEst, logitVar=logitVar, est=est)
+  } else {
+    eaPreds = NULL
+  }
+  
+  list(mod=mod, preds=preds, SDs=predSDs, obsInds=obsInds, predInds=index, pixelInds=pixelIndices, 
+       eaInds=eaIndices, mesh=mesh, prior=prior, stack=stack.full, 
+       countyPreds=countyPreds, regionPreds=regionPreds, pixelPreds=pixelPreds, eaPreds=eaPreds)
+}
+
+# fit the SPDE model given some data and some prediction locations
+# Inputs:
+# obsCoords: coordinates of the observations
+# obsNs: the binomial n of the observations
+# obsCounts: the response, mortality counts
+# obsUrban: whether the observations were urban or knot
+# predCoords: the spatial coordinates of the predictions: first the EAs, then the pixels
+# predNs: the binomial n of the predictions
+# predUrban: whether the prediction locations are urban or not
+# clusterIndices: the row indices in eaDat corresponding to the observations
+# prior: the prior for the spde. Defaults to getSPDEPrior with the spatial mesh
+# mesh: the spatial mesh. Defaults to something dat should be reasonable
+# int.strategy: the introduction strategy argument for inla
+# strategy: the strategy argument for inla
+# genCountyLevel: whether or knot to generate county level predictions
+# popGrid: population densities over the prediction grid for integration
+# nPostSamples: number of samples from the joint posterior to take
+# kmRes: the kilometers resolution of the pixels
+# counties: the county names, determining the order of the county predictions
+# clusterEffect: whether or not to include an iid gaussian error term at the EA level
+# verbose: verbose argument to inla
+# genRegionLevel: whether or not to generate regional level predictions. Not currently supported
+# regions: the region names, determining the order of the region predictions
+# keepPixelPreds: whether or not to return the pixel level predictions
+# genEALevel: whether or not to generate ea level predictions
+# eaIndices: indices giving which of the prediction coordinates in predCoords are EAs. NOTE: 
+#            these must be the first indices of the predictions
+# urbanEffect: if in urban fixed effect is included
+# link: the link argument for inla. 1 means logit scale, 2 means probability scale (?)
+# predictionType: either median or mean predictions are returned
+# eaPixelIndices: the pixel indices each ea belongs to. This is of length equal to the number of EAs
+# link: either one or two. If one, uses the identity link, otherwise uses
+# exactAggregation: aggregate using the known ea locations rather than integrating over
+#                   the aggregation area with respect to population density
+# genCountLevel: whether or not to generate predictions at the count level versus logistic. DEPRECATED
+# nSamplePixel: fewer samples are required for good approximation of the posterior at the pixel level 
+#               than county, so we only take this many of the posterior samples for pixel level estimation
+fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, obsUrban, predCoords, 
+                         predNs = rep(1, nrow(predCoords)), predUrban, clusterIndices, prior=NULL, 
+                         mesh=NULL, int.strategy="auto", strategy="laplace", 
+                         genCountyLevel=FALSE, popGrid=NULL, nPostSamples=100, kmRes=5, 
+                         counties=sort(unique(eaDat$admin1)), verbose=TRUE, genRegionLevel=FALSE, 
+                         regions=sort(unique(eaDat$region)), keepPixelPreds=FALSE, genEALevel=FALSE, 
+                         eaIndices=1:nrow(kenyaEAs), urbanEffect=TRUE, link=1, 
+                         predictionType=c("median", "mean"), eaDat=NULL, nSamplePixel=10, 
+                         truthByPixel=NULL, truthByCounty=NULL, truthByRegion=NULL, 
+                         truthByEa=NULL, clusterEffect=FALSE, significance=.8) {
+  
+  # match the prediction type
+  predictionType = match.arg(predictionType)
+  
+  # for enumeration area level predictions, set enumeration area end pixel level prediction indices
+  eaMat = NULL
+  if(genEALevel) {
+    pixelIndices = (1:nrow(predCoords))[-eaIndices]
+  }
+  else {
+    pixelIndices = 1:nrow(predCoords)
+  }
+  
+  # make default mesh
+  if(is.null(mesh)) {
+    mesh = getSPDEMeshGrid(doPlot = FALSE)
+  }
+  
+  # make default prior
+  if(is.null(prior)) {
+    prior = getSPDEPrior(mesh)
+  }
+  
+  # make covariate matrices (intercept plus urban/rural depending on whether urban effect included)
+  if(urbanEffect) {
+    X = cbind(1, obsUrban)
+    XPred = cbind(1, predUrban)
+  }
+  else {
+    X = matrix(1, ncol=1, nrow=nrow(obsCoords))
+    XPred = matrix(1, ncol=1, nrow=nrow(predCoords))
+  }
+  
+  
+  # construct A matrix for observations
+  m = nrow(obsCoords)
+  AEst = inla.spde.make.A(mesh, loc = obsCoords)
+  
+  # construct A matrix for predictions
+  APred = inla.spde.make.A(mesh, loc = predCoords)
+  
+  # make inla stack
+  ys = obsCounts
+  n = ncol(AEst) # number of basis elements
+  nObs = length(ys) # number of observations
+  nPreds = nrow(predCoords)
+  latticeInds = 1:n
+  
+  if(clusterEffect) {
+    # clustIObs = (n+1):(n+nObs)
+    # clustIPreds = (n+1):(n+nPreds)
+    # clustIPreds = (n+nObs+1):(n+nObs+nPreds)
+    clustIObs = clusterIndices
+  }
+    
+  # construct the observation stack 
+  if(clusterEffect) {
+    stack.est = inla.stack(A =list(AEst, 1, 1),
+                           effects =list(field=latticeInds, clust=clustIObs, X=X),
+                           data =list(y=ys, Ntrials = obsNs, link=1),
+                           tag ="est",
+                           remove.unused=FALSE)
+    
+  } else {
+    stack.est = inla.stack(A =list(AEst, 1), 
+                           effects =list(field=latticeInds, X=X), 
+                           data =list(y=ys, Ntrials = obsNs, link=link), 
+                           tag ="est", 
+                           remove.unused=FALSE)
+  }
+  
+  # make mesh index
+  mesh.index <- inla.spde.make.index(name = "field", n.spde = prior$n.spde)
+  
+  # fit model
+  control.inla = list(strategy=strategy, int.strategy=int.strategy) 
+  allNs = obsNs
+  stack.full = stack.est
+  stackDat = inla.stack.data(stack.full, spde=prior)
+  allQuantiles = c(0.5, (1-significance) / 2, 1 - (1-significance) / 2)
+  if(clusterEffect) {
+    mod = inla(y ~ - 1 + X + f(field, model=prior) + 
+                 f(clust, model="iid", 
+                   hyper = list(prec = list(prior = "pc.prec", param = c(3,0.01)))),
+               data = stackDat, Ntrials=stackDat$Ntrials,
+               control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link, quantiles=allQuantiles),
+               family="binomial", verbose=verbose, control.inla=control.inla,
+               control.compute=list(config=TRUE))
+  } else {
+    mod = inla(y ~ - 1 + X + f(field, model=prior), 
+               data = stackDat, Ntrials=stackDat$Ntrials, 
+               control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link, quantiles=allQuantiles), 
+               family="binomial", verbose=verbose, control.inla=control.inla, 
+               control.compute=list(config=TRUE))
+  }
+  
+  # get predictive surface, SD, and data
+  n = nrow(obsCoords)
+  # obsInds = 1:n
+  obsInds = inla.stack.index(stack.full, "est")$data
+  predInds = inla.stack.index(stack.full, "pred")$data
+  index = inla.stack.index(stack.full, "pred")$data
+  if(predictionType == "mean")
+    linpreds = mod[["summary.fitted.values"]]$mean
+  else
+    linpreds = mod[["summary.fitted.values"]]$`0.5quant`
+  linpred.sd = mod[["summary.fitted.values"]]$sd
+  
+  # predInds = (n+1):(n+nrow(predCoords))
+  preds = linpreds
+  predSDs = linpred.sd
+  
+  # if not supplied, get grid of population densities for pop-weighted integration
+  if(is.null(popGrid))
+    popGrid = makeInterpPopGrid(kmRes=kmRes)
+  
+  # make sure prediction coordinates correspond to population density grid coordinates
+  if(length(pixelIndices) != nrow(popGrid)) {
+    stop("for county level predictions, prediction points must be on same grid as popGrid")
+  }
+  
+  # generate samples from posterior
+  postSamples = inla.posterior.sample(nPostSamples, mod)
+  latentMat = sapply(postSamples, function(x) {x$latent})
+  clusterVars = sapply(postSamples, function(x) {1 / x$hyperpar[3]})
+  latentVarNames = rownames(postSamples[[1]]$latent)
+  fieldIndices = which(grepl("field", latentVarNames))
+  fixedIndices = which(grepl("X", latentVarNames))
+  if(clusterEffect)
+    clustIndices = grepl("clust", latentVarNames)
+  
+  # generate logit predictions (first without cluster effect then add the cluster effect in)
+  predMatNoClust = XPred  %*% latentMat[fixedIndices,] + APred %*% latentMat[fieldIndices,]
+  predMat <- predMatNoClust
+  
+  if(clusterEffect) {
+    predMat[clusterIndices,] = predMat[clusterIndices,] + latentMat[clustIndices,]
+    predMat[!clusterIndices,] = predMat[!clusterIndices,] + 
+      rnorm(sum(!clusterIndices) * nPostSamples, sd = rep(sqrt(clusterVars), each=sum(!clusterIndices)))
+  }
+  
+  if(genEALevel) {
+    # make sure to separate enumeration area and pixel level predictions
+    eaMat = expit(predMat[eaIndices, ])
+    predMat = predMat[pixelIndices, ]
+  }
+  
+  pops = popGrid$popOrig
+  
+  # regionPixelI: the pixel indices (from 1 to the number of pixels) over which to aggregate predictions
+  # integrateByPixel: either integrate over the pixels or enumeration areas
+  noBinomialIntegration = function(integrationMat, integrateByPixel=TRUE, nSample=nPostSamples) {
+    ## aggregate predictions over the region by integrating with respect to population density
+    
+    # either integrate predictions of the pixels or enumeration areas
+    if(integrateByPixel)
+      regionPredMat = expit(predMat[,1:nSample])
+    else
+      regionPredMat = eaMat[,1:nSample]
+    
+    # compute integrals of predictions with respect to population density or the number of children
+    integrationMat %*% regionPredMat
+  }
+  
+  # regionEAI: the indices of enumeration areas (from 1 to ~96k) within the region to aggregate over
+  binomialIntegration = function(regionEAI, nSample=nPostSamples) {
+    ## aggregate predictions over the region by integrating with respect to number of children per EA
+    
+    # subset data by county of interest
+    regionProbMat = matrix(eaMat[regionEAI,1:nSample], nrow=sum(regionEAI))
+    
+    # combine results by EA
+    numChildren = eaDat$numChildren[regionEAI]
+    
+    # Use Pearson approximation to account for number of children per EA while accounting for binomial variation. 
+    # Return the resulting discrete probability mass function
+    distribution = dSumBinomRandom(0:sum(numChildren), numChildren, regionProbMat)
+    distribution
+  }
+  
+  countyPreds = NULL
+  if(genCountyLevel) {
+    ### county level predictions
+    print("Aggregating over counties")
+    
+    predCountiesPixel = popGrid$admin1
+    predCountiesEa = eaDat$admin1
+    
+    getCountyIntegrationMatrix = function(integrateByPixel=TRUE) {
+      counties = as.character(counties)
+      if(integrateByPixel) {
+        mat = t(sapply(counties, function(countyName) {popGrid$admin1 == countyName}))
+        mat = sweep(mat, 2, popGrid$popOrig, "*")
+      }
+      else {
+        mat = t(sapply(counties, function(countyName) {eaDat$admin1 == countyName}))
+        mat = sweep(mat, 2, eaDat$numChildren, "*")
+      }
+      sweep(mat, 1, 1/rowSums(mat), "*")
+    }
+    
+    countyBinomialIntegration = function(countyName) {
+      countyI = predCountiesEa == countyName
+      binomialIntegration(countyI)
+    }
+    
+    # integrate over the pixels to get aggregated predictions
+    countyPredMatInexact <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE), TRUE)
+    cat(".")
+    
+    # integrate over the EAs to get aggregated predictions
+    if(genEALevel) {
+      # the following are respectively a matrix of probability draws from the county 
+      # distributions and a list of county probability distributions
+      if(is.null(eaDat))
+        stop("eaDat is null, but a non-null eaDat must be provided for account level predictions for EAs.")
+      countyPredMatExact = noBinomialIntegration(getCountyIntegrationMatrix(FALSE), FALSE)
+      cat(".")
+      countyPredMatExactB <- lapply(counties, countyBinomialIntegration)
+      cat(".")
+    } else {
+      countyPredMatExact = NULL
+      countyPredMatExactB = NULL
+    }
+    
+    countyPreds <- list(countyPredMatInexact=countyPredMatInexact, countyPredMatExact=countyPredMatExact, 
+                        countyPredMatExactB=countyPredMatExactB)
+  }
+  
+  regionPreds = NULL
+  if(genRegionLevel) {
+    print("Aggregating over regions")
+    
+    ## generate region level predictions
+    predCountiesPixel = popGrid$admin1
+    predCountiesEa = eaDat$admin1
+    predRegionsPixel = countyToRegion(predCountiesPixel)
+    predRegionsEa = countyToRegion(predCountiesEa)
+    
+    getRegionIntegrationMatrix = function(integrateByPixel=TRUE) {
+      
+      if(integrateByPixel) {
+        mat = t(sapply(regions, function(regionName) {predRegionsPixel == regionName}))
+        mat = sweep(mat, 2, popGrid$popOrig, "*")
+      }
+      else {
+        mat = t(sapply(regions, function(regionName) {predRegionsEa == regionName}))
+        mat = sweep(mat, 2, eaDat$numChildren, "*")
+      }
+      sweep(mat, 1, 1/rowSums(mat), "*")
+    }
+    
+    regionBinomialIntegration = function(regionName) {
+      regionI = predRegionsEa == regionName
+      binomialIntegration(regionI)
+    }
+    
+    # integrate over the pixels to get aggregated predictions
+    regionPredMatInexact <- noBinomialIntegration(getRegionIntegrationMatrix(TRUE), TRUE)
+    cat(".")
+    
+    # integrate over the EAs to get aggregated predictions
+    if(genEALevel) {
+      # the following are respectively a matrix of probability draws from the county 
+      # distributions and a list of county probability distributions
+      if(is.null(eaDat))
+        stop("eaDat is null, but a non-null eaDat must be provided for account level predictions for EAs.")
+      regionPredMatExact = noBinomialIntegration(getRegionIntegrationMatrix(FALSE), FALSE)
+      cat(".")
+      regionPredMatExactB <- lapply(regions, regionBinomialIntegration)
+      cat(".")
+    } else {
+      regionPredMatExact = NULL
+      regionPredMatExactB = NULL
+    }
+    
+    regionPreds <- list(regionPredMatInexact=regionPredMatInexact, regionPredMatExact=regionPredMatExact, 
+                        regionPredMatExactB=regionPredMatExactB)
+  }
+  
+  # generate pixel level predictions if necessary
+  eaToPixel = eaDat$pixelI
+  # pixelsWithData = sort(unique(eaToPixel))
+  pixelsWithData = unique(eaToPixel) # don't sort so that these indices matchup with the indices in truth
+  pixelPreds = NULL
+  if(keepPixelPreds) {
+    print("Aggregating over pixels")
+    
+    # this integration function will use a sparse matrix due to memory constraints
+    getPixelIntegrationMatrix = function(integrateByPixel=TRUE) {
+      # row is pixel, in the same order as pixelsWithData
+      # column is either pixel, indexed in the same way as popGrid, or enumeration area, 
+      # indexed in the same way as eaMat/eaDat
+      
+      if(integrateByPixel) {
+        stop("Do not call getPixelIntegrationMatrix with integrateByPixel set to TRUE. 
+             Instead take the indices of predMat directly.")
+      }
+      else {
+        allcols = matchMultiple(pixelsWithData, eaToPixel)
+        allrows = lapply(1:length(allcols), function(i) {rep(i, l=length(allcols[[i]]))})
+        vals = lapply(allcols, function(eaIs) {eaDat$numChildren[eaIs] / sum(eaDat$numChildren[eaIs])})
+        sparseMatrix(unlist(allrows), unlist(allcols), x=unlist(vals))
+      }
+    }
+    
+    pixelBinomialIntegration = function(thisPixelToEA) {
+      logicalIndices = rep(FALSE, nrow(eaDat))
+      logicalIndices[thisPixelToEA] = TRUE
+      binomialIntegration(logicalIndices, nSamplePixel)
+    }
+    
+    # integrate over the pixels to get aggregated predictions
+    pixelPredMatInexact <- expit(predMat[pixelsWithData,1:nSamplePixel])
+    cat(".")
+    
+    # integrate over the EAs to get aggregated predictions
+    if(genEALevel) {
+      # the following are respectively a matrix of probability draws from the county 
+      # distributions and a list of county probability distributions
+      if(is.null(eaDat))
+        stop("eaDat is null, but a non-null eaDat must be provided for account level predictions for EAs.")
+      pixelPredMatExact = noBinomialIntegration(getPixelIntegrationMatrix(FALSE), FALSE, nSamplePixel)
+      cat(".")
+      pixelToEA = matchMultiple(pixelsWithData, eaToPixel)
+      pixelPredMatExactB <- lapply(pixelToEA, pixelBinomialIntegration)
+      cat(".")
+    } else {
+      countyPredMatExact = NULL
+      countyPredMatExactB = NULL
+    }
+    
+    pixelPreds <- list(pixelPredMatInexact=pixelPredMatInexact, pixelPredMatExact=pixelPredMatExact, 
+                       pixelPredMatExactB=pixelPredMatExactB, pixelsWithData=pixelsWithData)
+  }
+  
+  if(genEALevel) {
+    eaPreds = list(eaPredMat=eaMat)
+  } else {
+    eaPreds = NULL
+  }
+  
+  list(mod=mod, preds=preds, SDs=predSDs, obsInds=obsInds, predInds=index, pixelInds=pixelIndices, 
+       eaInds=eaIndices, mesh=mesh, prior=prior, stack=stack.full, 
+       countyPreds=countyPreds, regionPreds=regionPreds, pixelPreds=pixelPreds, eaPreds=eaPreds)
 }
 
 testFitSPDEModel = function(predCoords=NULL, nPredPts=NULL, predUrban=NULL, seed=1234, numClusters=1000) {
@@ -1259,7 +1697,6 @@ simSPDE = function(coords, nsim=1, mesh=NULL, effRange=(max(coords[,1])-min(coor
   spde <- inla.spde2.matern(mesh, B.tau = cbind(logTau, -1, +1),
                             B.kappa = cbind(logKappa, 0, -1), theta.prior.mean = theta,
                             theta.prior.prec = c(0.1, 1))
-  
   
   # generate A and Q precision matrix
   Q = inla.spde2.precision(spde, theta = theta)

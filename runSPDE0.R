@@ -1,0 +1,5 @@
+source("setupParallel.R")
+resultsSPDE(test=TRUE)
+resultsSPDE(test=TRUE,  includeUrbanRural=FALSE)
+resultsSPDE(test=TRUE, includeClustEffect=FALSE)
+resultsSPDE(test=TRUE, includeUrbanRural=FALSE, includeClustEffect=FALSE)

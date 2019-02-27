@@ -1527,15 +1527,20 @@ getTruth = function(resultType = c("county", "region", "EA", "pixel"), eaDat) {
     }
     truth = data.frame(admin1=regions, truth=truthbycounty, numChildren=childrenPerCounty)
   } else if(resultType == "pixel") {
-    counties = sort(unique(eaDat$admin1))
     eaToPixel = eaDat$pixelI
-    childrenPerPixel = tapply(eaDat$numChildren, list(pixel=eaDat$pixelI), sum)
-    urbanPixel = tapply(eaDat$urban, list(pixel=eaDat$pixelI), function(x) {mean(x[1])})
-    deathsPerPixel = tapply(eaDat$died, list(pixel=eaDat$pixelI), sum)
-    regions = names(childrenPerPixel) # these are the pixels with enumeration areas in them
+    pixelsWithData = unique(eaToPixel)
+    counties = sort(unique(eaDat$admin1))
+    childrenPerPixel = aggregate(eaDat$numChildren, list(pixel=eaDat$pixelI), sum)
+    urbanPixel = aggregate(eaDat$urban, list(pixel=eaDat$pixelI), function(x) {mean(x[1])})
+    deathsPerPixel = aggregate(eaDat$died, list(pixel=eaDat$pixelI), sum)
+    regions = childrenPerPixel$pixel # these are the pixels with enumeration areas in them
+    # sort results by pixels with data
+    sortI=match(pixelsWithData, regions)
+    
     pixelToAdmin = match(popGrid$admin1[as.numeric(regions)], counties)
     
-    truth = data.frame(pixel=regions, truth=deathsPerPixel / childrenPerPixel, countyI=pixelToAdmin, urban=urbanPixel, numChildren=childrenPerPixel)
+    truth = data.frame(pixel=regions, truth=deathsPerPixel$x / childrenPerPixel$x, countyI=pixelToAdmin, urban=urbanPixel$x, numChildren=childrenPerPixel$x)
+    truth = truth[sortI,]
   } else if(resultType == "EA") {
     truth = data.frame(EA = 1:nrow(eaDat), truth = eaDat$died/eaDat$numChildren, urban=eaDat$urban, numChildren=eaDat$numChildren)
   } else if(resultType == "region") {
@@ -1546,7 +1551,7 @@ getTruth = function(resultType = c("county", "region", "EA", "pixel"), eaDat) {
     for(i in 1:8){
       super = eaDat[eaDat$region == regions[i],]
       childrenPerRegion[i] = sum(super$numChildren)
-      truthbycounty[i] <- sum(super$died)/childrenPerRegion[i]
+      truthbyregion[i] <- sum(super$died)/childrenPerRegion[i]
     }
     truth = data.frame(admin1=regions, truth=truthbyregion, numChildren=childrenPerRegion)
   }
