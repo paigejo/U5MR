@@ -978,15 +978,65 @@ dSumBinom = function(k, ns=25, ps=.5) {
   }
 }
 
-# approximate the sum of binomials where the probabilities or sampled from a random distribution
-# using a Pearson distribution
-# pMat: a matrix of probabilities, the number of rows equaling the length of ns, and the number 
-#       of columns corresponding to the number of samples of p for each discrete distribution
+# approximate the sum of binomial distributions using the method from:
+# https://stackoverflow.com/questions/15926448/approximate-the-distribution-of-a-sum-of-binomial-random-variables-in-r
+# http://www.dtic.mil/dtic/tr/fulltext/u2/a266969.pdf
+# use the first 4 moments of the sum, fits with a pearson distribution
+# normalize: if true, normalize the returned densities by their sum (use this when approximating full pmf)
+dPearsonMoments = function(k, moments, normalize=TRUE) {
+  # moments <- c(mean=k.1,variance=k.2,skewness=sqrt(beta.1),kurtosis=beta.2 + 3)
+  
+  results = dpearson(k, moments=moments)
+  if(normalize)
+    results * (1 / sum(results))
+  results
+}
+
+# a previous version of the following function that is slightly less efficient for computing full pmfs
 dSumBinomRandom = function(k, ns=25, pMat, parClust=NULL) {
   if(is.null(parClust) || length(ns) <= 100 || ncol(pMat) <= 30)
     dSumBinoms = matrix(apply(pMat, 2, dSumBinom, k=k, ns=ns), ncol=ncol(pMat))
   else
     dSumBinoms = matrix(parApply(parClust, pMat, 2, dSumBinom, k=k, ns=ns), ncol=ncol(pMat))
+  rowMeans(dSumBinoms)
+}
+
+# approximate the sum of binomials where the probabilities or sampled from a random distribution
+# using a Pearson distribution
+# pMat: a matrix of probabilities, the number of rows equaling the length of ns, and the number 
+#       of columns corresponding to the number of samples of p for each discrete distribution
+dSumBinomRandom2 = function(k, ns=25, pMat, parClust=NULL, normalize=TRUE) {
+  # get the first 4 cumulants
+  temp = sweep(pMat, 1, ns, "*")
+  k.1s = colSums(temp)
+  temp = temp*(1 - pMat)
+  k.2s = colSums(temp)
+  temp2 = temp * (1 - 2 * pMat)
+  k.3s = colSums(temp2)
+  temp = temp * (1 - 6 * pMat * (1 - pMat))
+  k.4s = colSums(temp)
+  # k.1<-sum(ns*ps)
+  # k.2<-sum(ns*ps*(1-ps))
+  # k.3<-sum(ns*ps*(1-ps)*(1-2*ps))
+  # k.4<-sum(ns*ps*(1-ps)*(1-6*ps*(1-ps)))
+  
+  # obtain skewness and excess kurtosis
+  beta.1s = k.3s^2 / k.2s^3
+  beta.2s = k.4s / k.2s^2
+  # beta.1<-k.3^2/k.2^3
+  # beta.2<-k.4/k.2^2
+  
+  # get the moments, and return the probability mass
+  # (by integrating the density of the continuous pearson distribution)
+  moments <- rbind(mean=k.1s,variance=k.2s,skewness=sqrt(beta.1s),kurtosis=beta.2s + 3)
+  # moments <- c(mean=k.1,variance=k.2,skewness=sqrt(beta.1),kurtosis=beta.2 + 3)
+  
+  # if(is.null(parClust) || length(ns) <= 100 || ncol(pMat) <= 30)
+  #   dSumBinoms = matrix(apply(pMat, 2, dSumBinom, k=k, ns=ns), ncol=ncol(pMat))
+  # else
+  #   dSumBinoms = matrix(parApply(parClust, pMat, 2, dSumBinom, k=k, ns=ns), ncol=ncol(pMat))
+  
+  dSumBinoms = apply(moments, 2, dPearsonMoments, k=k, normalize=normalize)
   rowMeans(dSumBinoms)
 }
 

@@ -492,3 +492,18 @@ matchMultiple = function(vals, x) {
   matchMake <- function(x) { x.map[[ fmatch(x, vals) ]] }
   sapply(vals, function(val) {matchMake(val)})
 }
+
+matchMultiple2 = function(vals, x) {
+  dt_sol <- data.table(b, row = 1:length(b))[data.table(a), .(a, idx = row), on = .(b = a)][, .(idxs = list(idx)), by = a];
+  dt_sol2 <- setNames(dt_sol$idxs, dt_sol$a)
+  dt_sol2
+}
+
+
+
+
+
+
+
+
+

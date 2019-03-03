@@ -1249,7 +1249,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     
     # Use Pearson approximation to account for number of children per EA while accounting for binomial variation. 
     # Return the resulting discrete probability mass function
-    distribution = dSumBinomRandom(0:sum(numChildren), numChildren, regionProbMat)
+    distribution = dSumBinomRandom2(0:sum(numChildren), numChildren, regionProbMat)
     distribution
   }
   

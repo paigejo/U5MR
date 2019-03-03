@@ -9,7 +9,8 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=3, verbose=TRUE,
                        includeClustEffect=TRUE, int.strategy="eb", 
                        genRegionLevel=TRUE, keepPixelPreds=TRUE, kmres=5, 
                        genEALevel=TRUE, urbanEffect=TRUE, tausq=0, 
-                       saveResults=!test) {
+                       saveResults=!test, margVar=.15^2, gamma=-1, 
+                       beta0=-1.75) {
   # Load data
   # load("simDataMulti.RData") # overSampDat, SRSDat
   # load a different 1 of these depending on whether a cluster effect should be included 
@@ -18,9 +19,11 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=3, verbose=TRUE,
   # load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOver2.RData")
   # load and relevant data
   if(!test)
-    load(paste0("simDataMultiBeta-1.75margVar0.0225tausq", round(tausq, 4), "gamma-1HHoldVar0urbanOverSamplefrac0.RData"))
+    load(paste0("simDataMultiBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+                round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0.RData"))
   else
-    load(paste0("simDataMultiBeta-1.75margVar0.0225tausq", round(tausq, 4), "gamma-1HHoldVar0urbanOverSamplefrac0Test.RData"))
+    load(paste0("simDataMultiBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+                round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0Test.RData"))
   
   # modify the pixel indices if necessary
   if(kmres != 5) {
@@ -64,8 +67,9 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=3, verbose=TRUE,
   
   if(saveResults) {
     testText = ifelse(test, "Test", "")
-    save(spdeSRS, spdeOverSamp, file=paste0("resultsSPDETausq", round(tausq, 4), 
-                                            "urbanEffect", as.character(urbanEffect), testText, ".RData"))
+    save(spdeSRS, spdeOverSamp, file=paste0("resultsSPDEBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+                                            round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
+                                            "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, testText, ".RData"))
   }
   
   list(spdeSRS=spdeSRS, spdeOverSamp=spdeOverSamp)
