@@ -16,7 +16,7 @@ extendData <- function(clustDatRow, v001, divideWeight=TRUE){
   # add extra columns for ageMonth, ageGrpD, v001, v002
   nC = clustDatRow$numChildren
   # tmp = data.frame(clustDatRow[c(1, 6:16)])
-  tmp = data.frame(clustDatRow[c(1, 6:ncol(clustDatRow))])
+  tmp = data.frame(clustDatRow[c(1, c(4, 6:ncol(clustDatRow)))])
   tmp$v001 = v001
 
   ageMonth = rep(0, nC)
@@ -32,6 +32,7 @@ extendData <- function(clustDatRow, v001, divideWeight=TRUE){
   } else {
     urbanRural = rep("rural", nC)
   }
+  # admin1 = rep(clustDatRow$admin1, nC)
 
   res = merge(data.frame(died, ageMonth, ageGrpD, v001, v002, urbanRural), tmp, by="v001")
   

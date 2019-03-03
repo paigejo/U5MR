@@ -6,12 +6,14 @@ source("neonatalSimStudyWeighted.R")
 # load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOver2.RData")
 # load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOver2.RData")
 
-getDirectNaive = function(tausq=0.1^2, test=FALSE, loadResults=FALSE, big=FALSE) {
+getDirectNaive = function(tausq=0.1^2, test=FALSE, loadResults=FALSE, big=FALSE, margVar=0.15^2, gamma=-1) {
   bigText = ifelse(big, "Big", "")
   if(!test)
-    load(paste0("simDataMultiBeta-1.75margVar0.0225tausq", round(tausq, 4), "gamma-1HHoldVar0urbanOverSamplefrac0", bigText, ".RData"))
+    load(paste0("simDataMultiBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                "HHoldVar0urbanOverSamplefrac0", bigText, ".RData"))
   else
-    load(paste0("simDataMultiBeta-1.75margVar0.0225tausq", round(tausq, 4), "gamma-1HHoldVar0urbanOverSamplefrac0Test", bigText, ".RData"))
+    load(paste0("simDataMultiBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                "HHoldVar0urbanOverSamplefrac0Test", bigText, ".RData"))
   # load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0.25.RData")
   # load("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0.25Test.RData")
   # load("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0.25Test.RData")
@@ -81,8 +83,8 @@ getDirectNaive = function(tausq=0.1^2, test=FALSE, loadResults=FALSE, big=FALSE)
       }
       
       # add in RegionRural interaction
-      resSRS$regionRural <- with(resSRS, interaction(admin1, urban), drop=TRUE)
-      resoverSamp$regionRural <- with(resoverSamp, interaction(admin1, urban), drop=TRUE)
+      resSRS$regionRural <- with(resSRS, interaction(admin1, urbanRural), drop=TRUE)
+      resoverSamp$regionRural <- with(resoverSamp, interaction(admin1, urbanRural), drop=TRUE)
       
       if(any(is.na(resSRS)) || any(is.na(resoverSamp)))
         stop()
@@ -134,11 +136,16 @@ getDirectNaive = function(tausq=0.1^2, test=FALSE, loadResults=FALSE, big=FALSE)
     
     naiveSRS[[i]] = resnA2
   }
-  
+  load(paste0("simDataMultiBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+              "HHoldVar0urbanOverSamplefrac0Test", bigText, ".RData"))
   if(!test)
-    save(directEstSRS, directEstoverSamp, naiveSRS, naiveoverSamp,file=paste0("resultsDirectNaiveTausq", round(tausq, 4), bigText, ".RData"))
+    save(directEstSRS, directEstoverSamp, naiveSRS, naiveoverSamp,
+         file=paste0("resultsDirectNaiveBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                     "HHoldVar0urbanOverSamplefrac0", bigText, ".RData"))
   else
-    save(directEstSRS, directEstoverSamp, naiveSRS, naiveoverSamp,file=paste0("resultsDirectNaiveTausq", round(tausq, 4), "Test", bigText, ".RData"))
+    save(directEstSRS, directEstoverSamp, naiveSRS, naiveoverSamp,
+         file=paste0("resultsDirectNaiveBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                     "HHoldVar0urbanOverSamplefrac0Test", bigText, ".RData"))
   # save(directEstSRS, directEstoverSamp, naiveSRS, naiveoverSamp,file="resultsDirectNaiveTausq0.01.RData")
   # save(directEstSRS, directEstoverSamp, naiveSRS, naiveoverSamp,file="resultsDirectNaiveTausq0Test.RData")
   # save(directEstSRS, directEstoverSamp, naiveSRS, naiveoverSamp,file="resultsDirectNaiveTausq0.01Test.RData")
