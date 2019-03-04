@@ -9,4 +9,4 @@
 #SBATCH --mail-type=ALL       # Type of email notification- BEGIN,END,FAIL,ALL
 #SBATCH --mail-user=me@uw.edu # Email to which notifications will be sent
 module load R
-Rscript --verbose runSPDEALL.R ${SLURM_ARRAY_TASK_ID} > runSPDEAll_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.Rout
+Rscript --verbose runSPDEAll.R ${SLURM_ARRAY_TASK_ID} > runSPDEAll_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.Rout
