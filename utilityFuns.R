@@ -499,11 +499,16 @@ matchMultiple2 = function(vals, x) {
   dt_sol2
 }
 
-
-
-
-
-
-
-
+# get expected children per cluster assuming independence of children per mother and mothers 
+# per household conditional on urbanicity
+getExpectedChildrenPerEa = function(distributionFile="empiricalDistributions.RData") {
+  # load empirical distributions
+  load(distributionFile)
+  
+  childrenUrban = ecdfExpectation(empiricalDistributions$householdsUrban) * ecdfExpectation(empiricalDistributions$mothersUrban) * 
+    ecdfExpectation(empiricalDistributions$childrenUrban) # 42.06381
+  childrenRural = ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiricalDistributions$mothersRural) * 
+    ecdfExpectation(empiricalDistributions$childrenRural) # 61.15194
+  list(childrenPerClusterUrban=childrenUrban, childrenPerClusterRural=childrenRural)
+}
 
