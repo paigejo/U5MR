@@ -46,4 +46,19 @@ naiveMort = resnA2
 # save results
 save(directEstMort, naiveMort, file="resultsDirectNaiveMort.RData")
 
-##### 
+##### run Mercer et al. model
+source("mercer.R")
+tmpMort = mercer_u1m(directEstMort$logit.est, directEstMort$var.est, 
+                    graph.path = "Kenyaadm1.graph")
+
+resMort = data.frame(admin1=directEstMort$admin1,
+                    u1m.mercer=expit(tmpMort$summary.linear.predictor$mean),
+                    lower.mercer=tmpMort$summary.linear.predictor$"0.1quant",
+                    upper.mercer=tmpMort$summary.linear.predictor$"0.9quant",
+                    logit.est.mercer=tmpMort$summary.linear.predictor$mean, 
+                    var.est.mercer=(tmpMort$summary.linear.predictor$sd)^2)
+mercerMort = resMort
+
+save(mercerMort, file=paste0("resultsMercerMort.RData"))
+
+##### run BYM models

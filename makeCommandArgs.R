@@ -71,7 +71,7 @@ makeSpdeCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarV
 # save(spdeCommandArgs, file="spdeCommandArgs.RData")
 
 # tausq=0.1^2, big=TRUE, test
-# make the command arguments file for runAllSPDE.R
+# make the command arguments file for runDirectAll.R
 makeDirectCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarVec=c(0, 0.15^2), 
                                  bigVec=c(FALSE, TRUE), testVec=c(FALSE, TRUE)) {
   directCommandArgs = list()
@@ -101,4 +101,73 @@ makeDirectCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVa
   }
   
   save(directCommandArgs, file="directCommandArgs.RData")
+}
+
+# make the command arguments file for runMercerAll.R
+makeMercerCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarVec=c(0, 0.15^2), 
+                                 testVec=c(FALSE, TRUE)) {
+  mercerCommandArgs = list()
+  i = 1
+  for(i1 in 1:length(tausqVec)) {
+    tausq=tausqVec[i1]
+    
+    for(i2 in 1:length(gammaVec)) {
+      gamma = gammaVec[i2]
+      
+      for(i3 in 1:length(margVarVec)) {
+        margVar = margVarVec[i3]
+        
+        for(i4 in 1:length(testVec)) {
+          test = testVec[i4]
+          
+          mercerCommandArgs[[i]] = list(tausq=tausq, gamma=gamma, margVar=margVar, test=test)
+          i = i + 1
+        }
+      }
+    }
+  }
+  
+  save(mercerCommandArgs, file="mercerCommandArgs.RData")
+}
+
+# make the command arguments file for runBYM2All.R
+makeBYM2CommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarVec=c(0, 0.15^2), 
+                               testVec=c(FALSE, TRUE), includeUrbanRuralVec=c(FALSE, TRUE), 
+                               includeClusterVec=c(FALSE, TRUE), aggregateByPopulationVec=c(FALSE, TRUE)) {
+  bym2CommandArgs = list()
+  i = 1
+  for(i1 in 1:length(tausqVec)) {
+    tausq=tausqVec[i1]
+    
+    for(i2 in 1:length(gammaVec)) {
+      gamma = gammaVec[i2]
+      
+      for(i3 in 1:length(margVarVec)) {
+        margVar = margVarVec[i3]
+        
+        for(i4 in 1:length(testVec)) {
+          test = testVec[i4]
+          
+          for(i5 in 1:length(includeUrbanRuralVec)) {
+            includeUrbanRural = includeUrbanRuralVec[i5]
+            
+            for(i6 in 1:length(includeClusterVec)) {
+              includeCluster = includeClusterVec[i6]
+              
+              for(i7 in 1:length(aggregateByPopulationVec)) {
+                aggregateByPopulation = aggregateByPopulationVec[i7]
+                
+                bym2CommandArgs[[i]] = list(tausq=tausq, gamma=gamma, margVar=margVar, test=test, 
+                                              includeUrbanRural=includeUrbanRural, includeCluster=includeCluster, 
+                                              aggregateByPopulation=aggregateByPopulation)
+                i = i + 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  save(bym2CommandArgs, file="bym2CommandArgs.RData")
 }
