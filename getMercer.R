@@ -9,11 +9,11 @@ library(INLA)
 # in the simulation of the data or not (tausq is the cluster effect variance)
 getMercer = function(tausq=.1^2, test=FALSE, margVar=0.15^2, gamma=-1) {
   if(!test)
-    paste0("resultsDirectNaiveBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
-           "HHoldVar0urbanOverSamplefrac0.RData")
+    load(paste0("resultsDirectNaiveBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+           "HHoldVar0urbanOverSamplefrac0.RData"))
   else
-    paste0("resultsDirectNaiveBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
-           "HHoldVar0urbanOverSamplefrac0Test.RData")
+    load(paste0("resultsDirectNaiveBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+           "HHoldVar0urbanOverSamplefrac0Test.RData"))
   
   # number of simulation scenarios
   n = 100
