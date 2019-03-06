@@ -1208,6 +1208,129 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
        nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary)
 }
 
+# Based on resultsSPDEHelper, but use for analyzing a single mortality rate data set
+resultsSPDEmort = function(clustDat=mort, nPostSamples=1000, verbose=FALSE, 
+                              includeClustEffect=FALSE, int.strategy="eb", 
+                              genRegionLevel=TRUE, keepPixelPreds=TRUE, 
+                              urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
+                              predictionType=c("mean", "median"), parClust=cl, 
+                              significance=.8) {
+  
+  # match the requested prediction type with one of the possible options
+  predictionType = match.arg(predictionType)
+  
+  # get prediction locations from population grid
+  if(kmres == 5)
+    load("popGrid.RData")
+  else
+    popGrid = makeInterpPopGrid(kmres)
+  
+  predCoords = cbind(popGrid$east, popGrid$north)
+  predUrban = popGrid$urban
+  
+  # Must predict at clusters as well. Include clusters as 
+  # first rows of prediction coordinates and prediction urban/rural
+  predCoords = rbind(cbind(mort$east, mort$north), predCoords)
+  predUrban = c(mort$urban, predUrban)
+  
+  # we only care about the probability, not counts, so not used except for the purposes 
+  # of calling inla:
+  # predNs = rep(25, nrow(predCoords))
+  predNs = rep(1, nrow(predCoords))
+  
+  # get the simulated sample
+  clustDat = mort
+  
+  # get observations from dataset
+  obsCoords = cbind(clustDat$east, clustDat$north)
+  obsNs = clustDat$numChildren
+  obsCounts = clustDat$died
+  obsUrban = clustDat$urban
+  
+  # fit model, get all predictions for each areal level and each posterior sample
+  fit = fitSPDEModel3(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
+                      predUrban, clusterIndices=1:nrow(mort), genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
+                      verbose = verbose, clusterEffect=includeClustEffect, 
+                      int.strategy=int.strategy, genRegionLevel=genRegionLevel, 
+                      keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
+                      urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
+                      eaDat=eaDat, truthByCounty=truthByCounty, truthByRegion=truthByRegion, 
+                      truthByPixel=truthByPixel, nSamplePixel=nSamplePixel, 
+                      significance=significance, onlyInexact=TRUE, allPixels=TRUE)
+  
+  countyPreds = fit$countyPreds
+  regionPreds = fit$regionPreds
+  pixelPreds = fit$pixelPreds
+  clusterPreds = fit$eaPreds
+  
+  ## calculate model fit properties for each level of predictions
+  generatePredictions = function(probMat) {
+    pred = rowMeans(probMat)
+    sds = apply(probMat, 1, sd)
+    lower = apply(probMat, 1, function(x) {quantile(probs=0.1, x)})
+    upper = apply(probMat, 1, function(x) {quantile(probs=0.9, x)})
+    
+    results = list(pred=pred, sds=sds, lower=lower, upper=upper)
+    results
+  }
+  
+  # enumeration area level
+  resultsCluster = generatePredictions(clusterPreds$eaPredMat)
+  
+  # pixel level
+  resultsPixel = generatePredictions(pixelPreds$pixelPredMatInexact)
+  
+  # County level
+  resultsCounty = generatePredictions(countyPreds$countyPredMatInexact)
+  
+  # region level
+  resultsRegion = generatePredictions(regionPreds$regionPredMatInexact)
+  
+  ## collect parameter means, sds, and quantiles
+  # for fixed effects
+  interceptQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.fixed[[1]])
+  interceptMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.fixed[[1]])
+  interceptSummary = c(interceptMoments[1], sqrt(interceptMoments[2] - interceptMoments[1]^2), interceptMoments[2] - interceptMoments[1]^2, interceptQuants, interceptQuants[3] - interceptQuants[1])
+  
+  urbanSummary = NULL
+  if(urbanEffect) {
+    urbanQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.fixed[[2]])
+    urbanMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.fixed[[2]])
+    urbanSummary = c(urbanMoments[1], sqrt(urbanMoments[2] - urbanMoments[1]^2), urbanMoments[2] - urbanMoments[1]^2, urbanQuants, urbanQuants[3] - urbanQuants[1])
+  }
+  
+  # for hyperparameters
+  rangeQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
+  sdQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
+  varQuants = sdQuants^2
+  varMarg = inla.tmarginal(function(x) {x^2}, fit$mod$marginals.hyperpar[[2]])
+  rangeMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[1]])
+  rangeSummary = c(rangeMoments[1], sqrt(rangeMoments[2] - rangeMoments[1]^2), rangeMoments[2] - rangeMoments[1]^2, rangeQuants, rangeQuants[3] - rangeQuants[1])
+  sdMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[2]])
+  sdSummary = c(sdMoments[1], sqrt(sdMoments[2] - sdMoments[1]^2), sdMoments[2] - sdMoments[1]^2, sdQuants, sdQuants[3] - sdQuants[1])
+  varMoments = inla.emarginal(function(x) {c(x, x^2)}, varMarg)
+  varSummary = c(varMoments[1], sqrt(varMoments[2] - varMoments[1]^2), varMoments[2] - varMoments[1]^2, varQuants, varQuants[3] - varQuants[1])
+  nuggetVarSummary = NULL
+  nuggetSDSummary = NULL
+  if(includeClustEffect) {
+    nuggetPrecQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[3]])
+    nuggetVarQuants = 1/nuggetPrecQuants
+    nuggetSDQuants = sqrt(nuggetVarQuants)
+    nuggetVarMarg = inla.tmarginal(function(x) {1/x}, fit$mod$marginals.hyperpar[[3]])
+    nuggetSDMarg = inla.tmarginal(function(x) {1/sqrt(x)}, fit$mod$marginals.hyperpar[[3]])
+    nuggetVarMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetVarMarg)
+    nuggetSDMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetSDMarg)
+    
+    nuggetVarSummary = c(nuggetVarMoments[1], sqrt(nuggetVarMoments[2] - nuggetVarMoments[1]^2), nuggetVarMoments[2] - nuggetVarMoments[1]^2, nuggetVarQuants, nuggetVarQuants[3] - nuggetVarQuants[1])
+    nuggetSDSummary = c(nuggetSDMoments[1], sqrt(nuggetSDMoments[2] - nuggetSDMoments[1]^2), nuggetSDMoments[2] - nuggetSDMoments[1]^2, nuggetSDQuants, nuggetSDQuants[3] - nuggetSDQuants[1])
+  }
+  
+  list(resultsEa, resultsPixel, resultsCounty, resultsRegion, 
+       interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
+       rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
+       nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary)
+}
+
 # compute true proportion of population that died in each county in the order of the 
 # input counties variable from the full dataset eaDat
 getTruthByCounty = function(eaDat, counties=as.character(unique(mort$admin1))) {

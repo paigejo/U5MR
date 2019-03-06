@@ -478,12 +478,10 @@ runBYM2Mort = function(dat=mort, includeUrbanRural=TRUE, includeCluster=TRUE) {
   
   # Get true ratios of urban/rural
   urbRatio = vector('numeric', length = 47)
-  for(i in 1:47){
-    # TODO: fix this!!!!!!!!!!!!!!!!!!!!
-    idx = dat$admin1 == i
-    urbanI = idx[SRSDat$eaDat$urban[idx]]
-    urbRatio[i] = sum(SRSDat$eaDat$numChildren[urbanI])/sum(SRSDat$eaDat$numChildren[idx])
-  }
+  counties = sort(unique(as.character(SRSDat$eaDat$admin1)))
+  urbRatio = poppc$popUrb / poppc$popTotal
+  sortI = matchMultiple(counties, poppc$County)
+  urbRatio = urbRatio[sortI]
   
   # Define formula
   if(includeUrbanRural) {
@@ -665,19 +663,12 @@ runBYM2Mort = function(dat=mort, includeUrbanRural=TRUE, includeCluster=TRUE) {
                    stddev = ss)
   
   if(includeCluster) {
-    Q10 = matrix(NA, nrow = 47, ncol = dim(sampCountySRSDatMod)[3])
-    Q50 = matrix(NA, nrow = 47, ncol = dim(sampCountySRSDatMod)[3])
-    Q90 = matrix(NA, nrow = 47, ncol = dim(sampCountySRSDatMod)[3])
-    mm = matrix(NA, nrow = 47, ncol = dim(sampCountySRSDatMod)[3])
-    ss = matrix(NA, nrow = 47, ncol = dim(sampCountySRSDatMod)[3])
-    for(i in 1:dim(sampCountySRSDatMod)[3]){
-      tmp = processSamples(sampCountySRSDatMod[,,i])
-      Q10[,i] = tmp$logit$CI[,1]
-      Q50[,i] = tmp$logit$CI[,2]
-      Q90[,i] = tmp$logit$CI[,3]
-      mm[,i] = tmp$logit$mean
-      ss[,i] = tmp$logit$stddev
-    }
+    tmp = processSamples(sampCountySRSDatMod)
+      Q10 = tmp$logit$CI[,1]
+      Q50 = tmp$logit$CI[,2]
+      Q90 = tmp$logit$CI[,3]
+      mm = tmp$logit$mean
+      ss = tmp$logit$stddev
     resSRSdatMod = list(Q10 = Q10,
                         Q50 = Q50,
                         Q90 = Q90,
@@ -709,94 +700,22 @@ runBYM2Mort = function(dat=mort, includeUrbanRural=TRUE, includeCluster=TRUE) {
                                  mean = mm,
                                  stddev = ss))
   
-  ## overSampDat
-  Q10 = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDat)[3])
-  Q50 = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDat)[3])
-  Q90 = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDat)[3])
-  mm = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDat)[3])
-  ss = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDat)[3])
-  for(i in 1:dim(sampCountyOverSampDat)[3]){
-    tmp = processSamples(sampCountyOverSampDat[,,i])
-    Q10[,i] = tmp$logit$CI[,1]
-    Q50[,i] = tmp$logit$CI[,2]
-    Q90[,i] = tmp$logit$CI[,3]
-    mm[,i] = tmp$logit$mean
-    ss[,i] = tmp$logit$stddev
-  }
-  resOverSampDat = list(Q10 = Q10,
-                        Q50 = Q50,
-                        Q90 = Q90,
-                        mean = mm,
-                        stddev = ss)
-  
-  if(includeCluster) {
-    Q10 = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDatMod)[3])
-    Q50 = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDatMod)[3])
-    Q90 = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDatMod)[3])
-    mm = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDatMod)[3])
-    ss = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDatMod)[3])
-    for(i in 1:dim(sampCountyOverSampDatMod)[3]){
-      tmp = processSamples(sampCountyOverSampDatMod[,,i])
-      Q10[,i] = tmp$logit$CI[,1]
-      Q50[,i] = tmp$logit$CI[,2]
-      Q90[,i] = tmp$logit$CI[,3]
-      mm[,i] = tmp$logit$mean
-      ss[,i] = tmp$logit$stddev
-    }
-    resOverSampDatMod = list(Q10 = Q10,
-                             Q50 = Q50,
-                             Q90 = Q90,
-                             mean = mm,
-                             stddev = ss)
-  } else {
-    resOverSampDatMod = NULL
-  }
-  
-  ## now collect the parameters
-  # first invert precision to variance, make rural parameter the urban parameter
-  precIds = 3
-  if(includeCluster)
-    precIds = c(precIds, 5)
-  sampCountyOverSampDatPar[precIds, ] = 1 / sampCountyOverSampDatPar[precIds, ]
-  sampCountyOverSampDatSD[precIds, ] = 1 / sampCountyOverSampDatSD[precIds, ]
-  sampCountyOverSampDat10[precIds, ] = 1 / sampCountyOverSampDat10[precIds, ]
-  sampCountyOverSampDat90[precIds, ] = 1 / sampCountyOverSampDat90[precIds, ]
-  sampCountyOverSampDatPar[2, ] = -sampCountyOverSampDatPar[2, ]
-  sampCountyOverSampDatSD[2, ] = -sampCountyOverSampDatSD[2, ]
-  sampCountyOverSampDat10[2, ] = -sampCountyOverSampDat10[2, ]
-  sampCountyOverSampDat90[2, ] = -sampCountyOverSampDat90[2, ]
-  mm = rowMeans(sampCountyOverSampDatPar)
-  ss = rowMeans(sampCountyOverSampDatSD)
-  Q10 = rowMeans(sampCountyOverSampDat10)
-  Q90 = rowMeans(sampCountyOverSampDat90)
-  resOverSampDatPar = data.frame(list(Q10 = Q10,
-                                      Q90 = Q90,
-                                      mean = mm,
-                                      stddev = ss))
-  
   # Full result
-  designRes = list(SRSdat = resSRSdat,
-                   overSampDat = resOverSampDat, 
-                   overSampDatPar = resOverSampDatPar, 
-                   SRSdatPar = resSRSdatPar)
+  designRes = list(predictions = resSRSdat,
+                   parameters = resSRSdatPar)
   # save(file = 'kenyaSpatialDesignResultNew.RData', designRes = designRes)
   # save(file = paste0('kenyaSpatialDesignResultNewTausq0UrbRur', 
   #                      includeUrbanRural, '.RData'), designRes = designRes)
   
-  testText = ifelse(test, "Test", "")
-  save(file = paste0('bym2Tausq', round(tausq, 4), 'UrbRur',
-                     includeUrbanRural, 'Cluster', includeCluster, "maxDataSets", maxDataSets, testText, '.RData'), 
+  save(file = paste0('bym2MortUrbRur',includeUrbanRural, 'Cluster', includeCluster, '.RData'), 
        designRes = designRes)
   
   # include the debiased results if cluster effect is included
   if(includeCluster) {
-    designRes = list(SRSdat = resSRSdatMod,
-                     overSampDat = resOverSampDatMod, 
-                     overSampDatPar = resOverSampDatPar, 
-                     SRSdatPar = resSRSdatPar)
+    designRes = list(predictions = resSRSdatMod,
+                     parameters = resSRSdatPar)
     
-    save(file = paste0('bym2Tausq', round(tausq, 4), 'UrbRur',
-                       includeUrbanRural, 'Cluster', includeCluster, 'debiasedMaxDataSets', maxDataSets, testText, '.RData'), 
+    save(file = paste0('bym2MortUrbRur',includeUrbanRural, 'Cluster', includeCluster, 'debiased.RData'), 
          designRes = designRes)
   }
   

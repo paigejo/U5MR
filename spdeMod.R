@@ -1072,7 +1072,8 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          eaIndices=1:nrow(kenyaEAs), urbanEffect=TRUE, link=1, 
                          predictionType=c("median", "mean"), eaDat=NULL, nSamplePixel=10, 
                          truthByPixel=NULL, truthByCounty=NULL, truthByRegion=NULL, 
-                         truthByEa=NULL, clusterEffect=FALSE, significance=.8) {
+                         truthByEa=NULL, clusterEffect=FALSE, significance=.8, 
+                         onlyInexact=FALSE, allPixels=FALSE) {
   
   # match the prediction type
   predictionType = match.arg(predictionType)
@@ -1284,7 +1285,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     cat(".")
     
     # integrate over the EAs to get aggregated predictions
-    if(genEALevel) {
+    if(genEALevel && !onlyInexact) {
       # the following are respectively a matrix of probability draws from the county 
       # distributions and a list of county probability distributions
       if(is.null(eaDat))
@@ -1335,7 +1336,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     cat(".")
     
     # integrate over the EAs to get aggregated predictions
-    if(genEALevel) {
+    if(genEALevel && !onlyInexact) {
       # the following are respectively a matrix of probability draws from the county 
       # distributions and a list of county probability distributions
       if(is.null(eaDat))
@@ -1386,11 +1387,14 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     }
     
     # integrate over the pixels to get aggregated predictions
-    pixelPredMatInexact <- expit(predMat[pixelsWithData,1:nSamplePixel])
+    if(!allPixels)
+      pixelPredMatInexact <- expit(predMat[pixelsWithData,1:nSamplePixel])
+    else
+      pixelPredMatInexact <- expit(predMat[,1:nSamplePixel])
     cat(".")
     
     # integrate over the EAs to get aggregated predictions
-    if(genEALevel) {
+    if(genEALevel && !onlyInexact) {
       # the following are respectively a matrix of probability draws from the county 
       # distributions and a list of county probability distributions
       if(is.null(eaDat))
