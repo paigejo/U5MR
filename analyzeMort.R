@@ -1,17 +1,21 @@
 source("setup.R")
+source("neonatalSimStudyWeighted.R")
 
 # script for analyzing the neonatal mortality dataset
+
+# first name elements of mort to be the same as the corresponding elements of the simulated datasets
+mort$num
 
 ##### first generate results for direct and naïve models
 for(i in 1:nrow(mort)) {
   if(i %% 100 == 1)
     print(paste0("i: ", i))
   
-  tmpDat = extendData(mort[i,], v001 = i)
+  tmpDat = extendDataMort(mort[i,], v001 = i)
   
   # initialize the data frames on the first iteration only
   if(i == 1) {
-    resMort = as.data.frame(matrix(nrow=sum(MortDat[[2]][[j]]$numChildren), ncol=ncol(tmpDat) + 1))
+    resMort = as.data.frame(matrix(nrow=sum(mort$numChildren), ncol=ncol(tmpDat) + 1))
   }
   
   # append to the data frames
@@ -90,36 +94,15 @@ obsNs = mort$numChildren
 obsCounts = mort$died
 obsUrban = mort$urban
 
-
-
-# fit model, get all predictions for each areal level and each posterior sample
-fit = fitSPDEModel(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
-                   predUrban, genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
-                   verbose = verbose, clusterEffect=includeClustEffect, 
-                   int.strategy=int.strategy, genRegionLevel=genRegionLevel, 
-                   keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
-                   urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
-                   exactAggregation=exactAggregation, genCountLevel=genCountLevel, 
-                   eaDat=eaDat, truthByCounty=truthByCounty, truthByRegion=truthByRegion, 
-                   truthByPixel=truthByPixel)
-print(paste0("Fit completed: iteration ", i, "/", nsim))
-countyPredMat = fit$countyPredMat
-regionPredMat = fit$regionPredMat
-pixelPredMat = fit$pixelPredMat
-eaPredMat = fit$eaPredMat
-eaMarginals = fit$eaMarginals
-# fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, obsUrban, predCoords, 
-#                          predNs = rep(1, nrow(predCoords)), predUrban, clusterIndices, prior=NULL, 
-#                          mesh=NULL, int.strategy="auto", strategy="laplace", 
-#                          genCountyLevel=FALSE, popGrid=NULL, nPostSamples=100, kmRes=5, 
-#                          counties=sort(unique(eaDat$admin1)), verbose=TRUE, genRegionLevel=FALSE, 
-#                          regions=sort(unique(eaDat$region)), keepPixelPreds=FALSE, genEALevel=FALSE, 
-#                          eaIndices=1:nrow(kenyaEAs), urbanEffect=TRUE, link=1, 
-#                          predictionType=c("median", "mean"), eaDat=NULL, nSamplePixel=10, 
-#                          truthByPixel=NULL, truthByCounty=NULL, truthByRegion=NULL, 
-#                          truthByEa=NULL, clusterEffect=FALSE, significance=.8)
-
-
+argList = list(list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = FALSE), 
+               list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = TRUE), 
+               list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = FALSE), 
+               list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = TRUE))
+resultsSPDEmort()
+for(i in 1:length(argList)) {
+  args = argList[i]
+  do.call("resultsSPDEmort", args)
+}
 
 
 

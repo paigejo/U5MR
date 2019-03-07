@@ -45,6 +45,42 @@ extendData <- function(clustDatRow, v001, divideWeight=TRUE){
   return(res)
 }
 
+extendDataMort <- function(clustDatRow, v001, divideWeight=TRUE){
+  
+  # add extra columns for ageMonth, ageGrpD, v001, v002
+  nC = clustDatRow$numChildren
+  # the only things we need are admin1 and sampling weight, but we must get rid of 
+  # urban, died, and the number of children since those will be recalculated
+  # tmp = data.frame(clustDatRow[c(1, 6:16)])
+  tmp = data.frame(clustDatRow[c(1, c(4, 6:ncol(clustDatRow)))])
+  tmp$v001 = v001
+  
+  ageMonth = rep(0, nC)
+  ageGrpD = rep("[0,1)", nC)
+  v001 = rep(v001, nC)
+  # there is only one child and one mother per household.
+  # All 25 households are sampled
+  v002 = 1:nC
+  
+  died = c(rep(0,nC-clustDatRow$died), rep(1, clustDatRow$died))
+  if(clustDatRow["urban"][1,1]){
+    urbanRural = rep("urban", nC)
+  } else {
+    urbanRural = rep("rural", nC)
+  }
+  # admin1 = rep(clustDatRow$admin1, nC)
+  
+  res = merge(data.frame(died, ageMonth, ageGrpD, v001, v002, urbanRural), tmp, by="v001")
+  
+  # the below line was commented out since each cluster only has one type of admin and urban level. 
+  # The equivalent line has been added into the parent function
+  # res$regionRural <- with(res, interaction(admin1, urbanRural), drop=TRUE)
+  
+  if(divideWeight)
+    res$samplingWeight = res$samplingWeight / nC
+  return(res)
+}
+
 
 # - a function that reads in a glm or svyglm - #
 # - object and returns the estimate and SE - #

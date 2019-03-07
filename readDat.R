@@ -1,5 +1,5 @@
 # Kenya U5MR
-setwd("~/Google Drive/UW/Wakefield/WakefieldShared/U5MR/")
+# setwd("~/Google Drive/UW/Wakefield/WakefieldShared/U5MR/")
 # library(foreign)
 
 # read in the STATA data:
@@ -15,6 +15,9 @@ library(zoo)
 library(latex2exp)
 library(maptools)
 library(data.table)
+
+wd = getwd()
+setwd("~/Google Drive/UW/Wakefield/WakefieldShared/U5MR/")
 
 # lines represent births
 data <- data.frame(read_dta("Kenya2014BirthRecode/KEBR70FL.DTA"))
@@ -201,7 +204,6 @@ names(mort)=newNames
 
 
 
-##### What are these datasets being read and do I need to get them?
 
 
 # (kends00ag.asc, admToCounty.txt)
@@ -673,3 +675,5 @@ neighb <- poly2nb(spP)
 
 ## save the neighbourhood graph
 nb2INLA(file = 'Kenyaadm1.graph', neighb)
+
+setwd(wd)
