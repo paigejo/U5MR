@@ -1,7 +1,6 @@
 # make the command arguments file for runAllSPDE.R
 makeSpdeCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarVec=c(0, 0.15^2), 
-                            includeClustEffectVec=c(FALSE, TRUE), urbanEffectVec=c(FALSE, TRUE), 
-                            testVec=c(FALSE, TRUE)) {
+                               includeClustEffectVec=c(FALSE, TRUE), urbanEffectVec=c(FALSE, TRUE)) {
   spdeCommandArgs = list()
   i = 1
   for(i1 in 1:length(tausqVec)) {
@@ -13,20 +12,29 @@ makeSpdeCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarV
       for(i3 in 1:length(margVarVec)) {
         margVar = margVarVec[i3]
         
+        # check to make sure this dataset even exists
+        included = c(margVar != 0, gamma != 0, tausq != 0)
+        if(!included[1]) {
+          if(any(included[2:3]))
+            next
+        }
+        if(!included[2]) {
+          if(included[3])
+            next
+        }
+        
+        
         for(i4 in 1:length(includeClustEffectVec)) {
           includeClustEffect = includeClustEffectVec[i4]
           
           for(i5 in 1:length(urbanEffectVec)) {
             urbanEffect = urbanEffectVec[i5]
             
-            for(i6 in 1:length(testVec)) {
-              test = testVec[i6]
-              
-              spdeCommandArgs[[i]] = list(tausq=tausq, gamma=gamma, margVar=margVar, 
-                                          includeClustEffect=includeClustEffect, urbanEffect=urbanEffect, 
-                                          test=test)
-              i = i + 1
-            }
+            # don't bother with the test argument, since most of the time here is spent in the aggregation 
+            # over pixels and enumeration areas rather than on the fitting
+            spdeCommandArgs[[i]] = list(tausq=tausq, gamma=gamma, margVar=margVar, 
+                                        includeClustEffect=includeClustEffect, urbanEffect=urbanEffect)
+            i = i + 1
           }
         }
       }
@@ -85,6 +93,17 @@ makeDirectCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVa
       for(i3 in 1:length(margVarVec)) {
         margVar = margVarVec[i3]
         
+        # check to make sure this dataset even exists
+        included = c(margVar != 0, gamma != 0, tausq != 0)
+        if(!included[1]) {
+          if(any(included[2:3]))
+            next
+        }
+        if(!included[2]) {
+          if(included[3])
+            next
+        }
+        
         for(i4 in 1:length(bigVec)) {
           big = bigVec[i4]
           
@@ -117,6 +136,17 @@ makeMercerCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVa
       for(i3 in 1:length(margVarVec)) {
         margVar = margVarVec[i3]
         
+        # check to make sure this dataset even exists
+        included = c(margVar != 0, gamma != 0, tausq != 0)
+        if(!included[1]) {
+          if(any(included[2:3]))
+            next
+        }
+        if(!included[2]) {
+          if(included[3])
+            next
+        }
+        
         for(i4 in 1:length(testVec)) {
           test = testVec[i4]
           
@@ -145,6 +175,17 @@ makeBYM2CommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarV
       for(i3 in 1:length(margVarVec)) {
         margVar = margVarVec[i3]
         
+        # check to make sure this dataset even exists
+        included = c(margVar != 0, gamma != 0, tausq != 0)
+        if(!included[1]) {
+          if(any(included[2:3]))
+            next
+        }
+        if(!included[2]) {
+          if(included[3])
+            next
+        }
+        
         for(i4 in 1:length(testVec)) {
           test = testVec[i4]
           
@@ -158,8 +199,8 @@ makeBYM2CommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarV
                 aggregateByPopulation = aggregateByPopulationVec[i7]
                 
                 bym2CommandArgs[[i]] = list(tausq=tausq, gamma=gamma, margVar=margVar, test=test, 
-                                              includeUrbanRural=includeUrbanRural, includeCluster=includeCluster, 
-                                              aggregateByPopulation=aggregateByPopulation)
+                                            includeUrbanRural=includeUrbanRural, includeCluster=includeCluster, 
+                                            aggregateByPopulation=aggregateByPopulation)
                 i = i + 1
               }
             }
