@@ -75,9 +75,11 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   }
   
   if(includeCluster)
-    parNames = c("Intercept", "Urban", "BYM2 Tot. Var", "BYM2 Phi", "Cluster Var", "BYM2 Spatial Var", "BYM2 iid Var")
+    parNames = c("Intercept", "Urban", "Cluster Var", "BYM2 Phi", "BYM2 Tot. Var", "BYM2 Spatial Var", "BYM2 iid Var")
   else
-    parNames = c("Intercept", "Urban", "BYM2 Tot. Var", "BYM2 Phi", "BYM2 Spatial Var", "BYM2 iid Var")
+    parNames = c("Intercept", "Urban", "BYM2 Phi", "BYM2 Tot. Var", "BYM2 Spatial Var", "BYM2 iid Var")
+  includeI = c(1, rep(2, includeUrban), 3:length(parNames))
+  parNames = parNames[includeI]
   
   # set the maximum number of data sets to analyze
   if(is.null(maxDataSets)) {
@@ -90,10 +92,10 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   
   # for the final parameters to store, 2 fixed effects, 2 + includeCluster estimated 
   # hyperparameters, and 2 hyperparameters we will get via transformation
-  sampCountySRSDatPar = matrix(NA, nrow = 2 + 2 + includeCluster + 2, ncol=maxDataSets)
-  sampCountySRSDatSD = matrix(NA, nrow = 2 + 2 + includeCluster + 2, ncol=maxDataSets)
-  sampCountySRSDat10 = matrix(NA, nrow = 2 + 2 + includeCluster + 2, ncol=maxDataSets)
-  sampCountySRSDat90 = matrix(NA, nrow = 2 + 2 + includeCluster + 2, ncol=maxDataSets)
+  sampCountySRSDatPar = matrix(NA, 5 + includeUrban + includeCluster, ncol=maxDataSets)
+  sampCountySRSDatSD = matrix(NA, 5 + includeUrban + includeCluster, ncol=maxDataSets)
+  sampCountySRSDat10 = matrix(NA, 5 + includeUrban + includeCluster, ncol=maxDataSets)
+  sampCountySRSDat90 = matrix(NA, 5 + includeUrban + includeCluster, ncol=maxDataSets)
   rownames(sampCountySRSDatPar) = parNames
   rownames(sampCountySRSDatSD) = parNames
   rownames(sampCountySRSDat10) = parNames
@@ -123,31 +125,50 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
                   family="binomial",
                   Ntrials = Ntrials,
                   data=dat, 
-                  control.compute = list(config = TRUE))
+                  control.compute = list(config = TRUE), 
+                  quantiles=c(0.1, 0.5, 0.9))
     
     ## include parameter estimates in the table
     # fixed effects
-    sampCountySRSDatPar[1:2, i] = result$summary.fixed[,1]
-    sampCountySRSDatSD[1:2, i] = result$summary.fixed[,2]
-    sampCountySRSDat10[1:2, i] = result$summary.fixed[,3]
-    sampCountySRSDat90[1:2, i] = result$summary.fixed[,5]
+    sampCountySRSDatPar[1:(1 + includeUrban), i] = result$summary.fixed[,1]
+    sampCountySRSDatSD[1:(1 + includeUrban), i] = result$summary.fixed[,2]
+    sampCountySRSDat10[1:(1 + includeUrban), i] = result$summary.fixed[,3]
+    sampCountySRSDat90[1:(1 + includeUrban), i] = result$summary.fixed[,5]
     
-    # hyperparameters
-    sampCountySRSDatPar[3:(4 + includeCluster), i] = result$summary.hyperpar[,1]
-    sampCountySRSDatSD[3:(4 + includeCluster), i] = result$summary.hyperpar[,2]
-    sampCountySRSDat10[3:(4 + includeCluster), i] = result$summary.hyperpar[,3]
-    sampCountySRSDat90[3:(4 + includeCluster), i] = result$summary.hyperpar[,5]
+    ## include parameter estimates in the table
+    # fixed effects
+    sampCountySRSDatPar[1:(1 + includeUrban), i] = result$summary.fixed[,1]
+    sampCountySRSDatSD[1:(1 + includeUrban), i] = result$summary.fixed[,2]
+    sampCountySRSDat10[1:(1 + includeUrban), i] = result$summary.fixed[,3]
+    sampCountySRSDat90[1:(1 + includeUrban), i] = result$summary.fixed[,5]
+    
+    # BYM2 hyperparameter phi
+    sampCountySRSDatPar[(2 + includeCluster + includeUrban), i] = result$summary.hyperpar[2,1]
+    sampCountySRSDatSD[(2 + includeCluster + includeUrban), i] = result$summary.hyperpar[2,2]
+    sampCountySRSDat10[(2 + includeCluster + includeUrban), i] = result$summary.hyperpar[2,3]
+    sampCountySRSDat90[(2 + includeCluster + includeUrban), i] = result$summary.hyperpar[2,5]
     
     ## transformed hyperparameters
     # sample the hyperparameters, using the marginals to improve the sampling
     out = inla.hyperpar.sample(1000, result, improve.marginals=TRUE)
-    transformedOut = apply(out, 1, function(x) {c(1/x[1]*x[2], 1/x[1]*(1-x[2]))})
+    transformFunction = function(x) {c(1/x[1], 1/x[1]*x[2], 1/x[1]*(1-x[2]), 1/x[3])}
+    if(!includeCluster)
+      transformFunction = function(x) {c(1/x[1], 1/x[1]*x[2], 1/x[1]*(1-x[2]))}
+    transformedOut = apply(out, 1, transformFunction)
     
-    # now calculate their summary statistics
-    sampCountySRSDatPar[(5 + includeCluster):(6 + includeCluster), i] = rowMeans(transformedOut)
-    sampCountySRSDatSD[(5 + includeCluster):(6 + includeCluster), i] = apply(transformedOut, 1, sd)
-    sampCountySRSDat10[(5 + includeCluster):(6 + includeCluster), i] = apply(transformedOut, 1, quantile, probs=.1)
-    sampCountySRSDat90[(5 + includeCluster):(6 + includeCluster), i] = apply(transformedOut, 1, quantile, probs=.9)
+    # now calculate the summary statistics of the transformed BYM2 hyperparameters
+    sampCountySRSDatPar[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster), i] = rowMeans(transformedOut[1:3,])
+    sampCountySRSDatSD[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster), i] = apply(transformedOut[1:3,], 1, sd)
+    sampCountySRSDat10[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster), i] = apply(transformedOut[1:3,], 1, quantile, probs=.1)
+    sampCountySRSDat90[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster), i] = apply(transformedOut[1:3,], 1, quantile, probs=.9)
+    
+    # calculate summary statistics for cluster variance if necessary
+    if(includeCluster) {
+      sampCountySRSDatPar[2 + includeUrban, i] = mean(transformedOut[4,])
+      sampCountySRSDatSD[2 + includeUrban, i] = sd(transformedOut[4,])
+      sampCountySRSDat10[2 + includeUrban, i] = quantile(transformedOut[4,], probs=.1)
+      sampCountySRSDat90[2 + includeUrban, i] = quantile(transformedOut[4,], probs=.9)
+    }
     
     if(includeCluster)
       sampClusterSigmaSRS = 1:Nsim
@@ -198,10 +219,10 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   
   # for the final parameters to store, 2 fixed effects, 2 + includeCluster estimated 
   # hyperparameters, and 2 hyperparameters we will get via transformation
-  sampCountyOverSampDatPar = matrix(NA, nrow = 2 + 2 + includeCluster + 2, ncol=maxDataSets)
-  sampCountyOverSampDatSD = matrix(NA, nrow = 2 + 2 + includeCluster + 2, ncol=maxDataSets)
-  sampCountyOverSampDat10 = matrix(NA, nrow = 2 + 2 + includeCluster + 2, ncol=maxDataSets)
-  sampCountyOverSampDat90 = matrix(NA, nrow = 2 + 2 + includeCluster + 2, ncol=maxDataSets)
+  sampCountyOverSampDatPar = matrix(NA, 5 + includeUrban + includeCluster, ncol=maxDataSets)
+  sampCountyOverSampDatSD = matrix(NA, 5 + includeUrban + includeCluster, ncol=maxDataSets)
+  sampCountyOverSampDat10 = matrix(NA, 5 + includeUrban + includeCluster, ncol=maxDataSets)
+  sampCountyOverSampDat90 = matrix(NA, 5 + includeUrban + includeCluster, ncol=maxDataSets)
   rownames(sampCountyOverSampDatPar) = parNames
   rownames(sampCountyOverSampDatSD) = parNames
   rownames(sampCountyOverSampDat10) = parNames
@@ -236,27 +257,45 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
                   control.compute = list(config = TRUE))
     
     # fixed effects
-    sampCountyOverSampDatPar[1:2, i] = result$summary.fixed[,1]
-    sampCountyOverSampDatSD[1:2, i] = result$summary.fixed[,2]
-    sampCountyOverSampDat10[1:2, i] = result$summary.fixed[,3]
-    sampCountyOverSampDat90[1:2, i] = result$summary.fixed[,5]
+    sampCountyOverSampDatPar[1:(1 + includeUrban), i] = result$summary.fixed[,1]
+    sampCountyOverSampDatSD[1:(1 + includeUrban), i] = result$summary.fixed[,2]
+    sampCountyOverSampDat10[1:(1 + includeUrban), i] = result$summary.fixed[,3]
+    sampCountyOverSampDat90[1:(1 + includeUrban), i] = result$summary.fixed[,5]
     
-    # hyperparameters
-    sampCountyOverSampDatPar[3:(4 + includeCluster), i] = result$summary.hyperpar[,1]
-    sampCountyOverSampDatSD[3:(4 + includeCluster), i] = result$summary.hyperpar[,2]
-    sampCountyOverSampDat10[3:(4 + includeCluster), i] = result$summary.hyperpar[,3]
-    sampCountyOverSampDat90[3:(4 + includeCluster), i] = result$summary.hyperpar[,5]
+    ## include parameter estimates in the table
+    # fixed effects
+    sampCountyOverSampDatPar[1:(1 + includeUrban), i] = result$summary.fixed[,1]
+    sampCountyOverSampDatSD[1:(1 + includeUrban), i] = result$summary.fixed[,2]
+    sampCountyOverSampDat10[1:(1 + includeUrban), i] = result$summary.fixed[,3]
+    sampCountyOverSampDat90[1:(1 + includeUrban), i] = result$summary.fixed[,5]
+    
+    # BYM2 hyperparameter phi
+    sampCountyOverSampDatPar[(2 + includeCluster + includeUrban), i] = result$summary.hyperpar[2,1]
+    sampCountyOverSampDatSD[(2 + includeCluster + includeUrban), i] = result$summary.hyperpar[2,2]
+    sampCountyOverSampDat10[(2 + includeCluster + includeUrban), i] = result$summary.hyperpar[2,3]
+    sampCountyOverSampDat90[(2 + includeCluster + includeUrban), i] = result$summary.hyperpar[2,5]
     
     ## transformed hyperparameters
     # sample the hyperparameters, using the marginals to improve the sampling
     out = inla.hyperpar.sample(1000, result, improve.marginals=TRUE)
-    transformedOut = apply(out, 1, function(x) {c(1/x[1]*x[2], 1/x[1]*(1-x[2]))})
+    transformFunction = function(x) {c(1/x[1], 1/x[1]*x[2], 1/x[1]*(1-x[2]), 1/x[3])}
+    if(!includeCluster)
+      transformFunction = function(x) {c(1/x[1], 1/x[1]*x[2], 1/x[1]*(1-x[2]))}
+    transformedOut = apply(out, 1, transformFunction)
     
-    # now calculate their summary statistics
-    sampCountyOverSampDatPar[(5 + includeCluster):(6 + includeCluster), i] = rowMeans(transformedOut)
-    sampCountyOverSampDatSD[(5 + includeCluster):(6 + includeCluster), i] = apply(transformedOut, 1, sd)
-    sampCountyOverSampDat10[(5 + includeCluster):(6 + includeCluster), i] = apply(transformedOut, 1, quantile, probs=.1)
-    sampCountyOverSampDat90[(5 + includeCluster):(6 + includeCluster), i] = apply(transformedOut, 1, quantile, probs=.9)
+    # now calculate the summary statistics of the transformed BYM2 hyperparameters
+    sampCountyOverSampDatPar[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster), i] = rowMeans(transformedOut[1:3,])
+    sampCountyOverSampDatSD[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster), i] = apply(transformedOut[1:3,], 1, sd)
+    sampCountyOverSampDat10[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster), i] = apply(transformedOut[1:3,], 1, quantile, probs=.1)
+    sampCountyOverSampDat90[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster), i] = apply(transformedOut[1:3,], 1, quantile, probs=.9)
+    
+    # calculate summary statistics for cluster variance if necessary
+    if(includeCluster) {
+      sampCountyOverSampDatPar[2 + includeUrban, i] = mean(transformedOut[4,])
+      sampCountyOverSampDatSD[2 + includeUrban, i] = sd(transformedOut[4,])
+      sampCountyOverSampDat10[2 + includeUrban, i] = quantile(transformedOut[4,], probs=.1)
+      sampCountyOverSampDat90[2 + includeUrban, i] = quantile(transformedOut[4,], probs=.9)
+    }
     
     if(includeCluster) {
       sampClusterSigmaOverSampDat = 1:Nsim
@@ -358,18 +397,13 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   }
   
   ## now collect the parameters
-  # first invert precision to variance, make rural parameter the urban parameter
-  precIds = 3
-  if(includeCluster)
-    precIds = c(precIds, 5)
-  sampCountySRSDatPar[precIds, ] = 1 / sampCountySRSDatPar[precIds, ]
-  sampCountySRSDatSD[precIds, ] = 1 / sampCountySRSDatSD[precIds, ]
-  sampCountySRSDat10[precIds, ] = 1 / sampCountySRSDat10[precIds, ]
-  sampCountySRSDat90[precIds, ] = 1 / sampCountySRSDat90[precIds, ]
-  sampCountySRSDatPar[2, ] = -sampCountySRSDatPar[2, ]
-  sampCountySRSDatSD[2, ] = -sampCountySRSDatSD[2, ]
-  sampCountySRSDat10[2, ] = -sampCountySRSDat10[2, ]
-  sampCountySRSDat90[2, ] = -sampCountySRSDat90[2, ]
+  # make rural parameter the urban parameter
+  if(includeUrban) {
+    sampCountySRSDatPar[2,] = -sampCountySRSDatPar[2,]
+    sampCountySRSDatSD[2,] = -sampCountySRSDatSD[2,]
+    sampCountySRSDat10[2,] = -sampCountySRSDat10[2,]
+    sampCountySRSDat90[2,] = -sampCountySRSDat90[2,]
+  }
   mm = rowMeans(sampCountySRSDatPar)
   ss = rowMeans(sampCountySRSDatSD)
   Q10 = rowMeans(sampCountySRSDat10)
@@ -423,18 +457,13 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   }
   
   ## now collect the parameters
-  # first invert precision to variance, make rural parameter the urban parameter
-  precIds = 3
-  if(includeCluster)
-    precIds = c(precIds, 5)
-  sampCountyOverSampDatPar[precIds, ] = 1 / sampCountyOverSampDatPar[precIds, ]
-  sampCountyOverSampDatSD[precIds, ] = 1 / sampCountyOverSampDatSD[precIds, ]
-  sampCountyOverSampDat10[precIds, ] = 1 / sampCountyOverSampDat10[precIds, ]
-  sampCountyOverSampDat90[precIds, ] = 1 / sampCountyOverSampDat90[precIds, ]
-  sampCountyOverSampDatPar[2, ] = -sampCountyOverSampDatPar[2, ]
-  sampCountyOverSampDatSD[2, ] = -sampCountyOverSampDatSD[2, ]
-  sampCountyOverSampDat10[2, ] = -sampCountyOverSampDat10[2, ]
-  sampCountyOverSampDat90[2, ] = -sampCountyOverSampDat90[2, ]
+  # make rural parameter the urban parameter
+  if(includeUrban) {
+    sampCountyOverSampDatPar[2,] = -sampCountyOverSampDatPar[2,]
+    sampCountyOverSampDatSD[2,] = -sampCountyOverSampDatSD[2,]
+    sampCountyOverSampDat10[2,] = -sampCountyOverSampDat10[2,]
+    sampCountyOverSampDat90[2,] = -sampCountyOverSampDat90[2,]
+  }
   mm = rowMeans(sampCountyOverSampDatPar)
   ss = rowMeans(sampCountyOverSampDatSD)
   Q10 = rowMeans(sampCountyOverSampDat10)
@@ -475,10 +504,11 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
 
 # same as runBYM2, except fits a single data set (the mort global data frame)
 runBYM2Mort = function(dat=mort, includeUrbanRural=TRUE, includeCluster=TRUE) {
+  includeUrban = includeUrbanRural
   
   # Get true ratios of urban/rural
   urbRatio = vector('numeric', length = 47)
-  counties = sort(unique(as.character(SRSDat$eaDat$admin1)))
+  counties = sort(unique(as.character(mort$admin1)))
   urbRatio = poppc$popUrb / poppc$popTotal
   sortI = matchMultiple(counties, poppc$County)
   urbRatio = urbRatio[sortI]
@@ -526,109 +556,129 @@ runBYM2Mort = function(dat=mort, includeUrbanRural=TRUE, includeCluster=TRUE) {
   }
   
   if(includeCluster)
-    parNames = c("Intercept", "Urban", "BYM2 Tot. Var", "BYM2 Phi", "Cluster Var", "BYM2 Spatial Var", "BYM2 iid Var")
+    parNames = c("Intercept", "Urban", "Cluster Var", "BYM2 Phi", "BYM2 Tot. Var", "BYM2 Spatial Var", "BYM2 iid Var")
   else
-    parNames = c("Intercept", "Urban", "BYM2 Tot. Var", "BYM2 Phi", "BYM2 Spatial Var", "BYM2 iid Var")
+    parNames = c("Intercept", "Urban", "BYM2 Phi", "BYM2 Tot. Var", "BYM2 Spatial Var", "BYM2 iid Var")
+  includeI = c(1, rep(2, includeUrban), 3:length(parNames))
+  parNames = parNames[includeI]
   
-  # Go through datasets for SRSDat
-  sampCountySRSDat = matrix(NA, nrow=47, ncol=Nsim)
-  sampCountySRSDatMod = matrix(NA, nrow=47, ncol=Nsim)
+  # Go through mortality data set
+  sampCountyMort = matrix(NA, nrow=47, ncol=Nsim)
   
   # for the final parameters to store, 2 fixed effects, 2 + includeCluster estimated 
   # hyperparameters, and 2 hyperparameters we will get via transformation
-  sampCountySRSDatPar = numeric(2 + 2 + includeCluster + 2)
-  sampCountySRSDatSD = numeric(2 + 2 + includeCluster + 2)
-  sampCountySRSDat10 = numeric(2 + 2 + includeCluster + 2)
-  sampCountySRSDat90 = numeric(2 + 2 + includeCluster + 2)
-  names(sampCountySRSDatPar) = parNames
-  names(sampCountySRSDatSD) = parNames
-  names(sampCountySRSDat10) = parNames
-  names(sampCountySRSDat90) = parNames
+  sampCountyMortPar = numeric(5 + includeUrban + includeCluster)
+  sampCountyMortSD = numeric(5 + includeUrban + includeCluster)
+  sampCountyMort10 = numeric(5 + includeUrban + includeCluster)
+  sampCountyMort90 = numeric(5 + includeUrban + includeCluster)
   
-    # Extract data
-    mort$admin1 = factor(mort$admin1)
+  names(sampCountyMortPar) = parNames
+  names(sampCountyMortSD) = parNames
+  names(sampCountyMort10) = parNames
+  names(sampCountyMort90) = parNames
+  
+  # Extract data
+  mort$admin1 = factor(mort$admin1)
+  
+  # INLA data
+  dat = list(y = mort$y,
+             Ntrials = mort$n,
+             rural = 1-mort$urban,
+             idx = as.numeric(mort$admin1),
+             idxEps = 1:length(mort$y))
+  
+  # Add unobserved data to make sampling easier
+  dat$y = c(rep(NA, 47*2), dat$y)
+  dat$Ntrials = c(rep(1, 47*2), dat$Ntrials)
+  dat$rural = c(rep(c(0,1), each = 47), dat$rural)
+  dat$idx = c(rep(1:47, 2), dat$idx)
+  dat$idxEps = c(rep(NA, 47*2), dat$idxEps)
+  
+  # Run model
+  print("fitting BYM model...")
+  result = inla(formula = formula, 
+                family="binomial",
+                Ntrials = Ntrials,
+                data=dat, 
+                control.compute = list(config = TRUE), 
+                quantiles=c(0.1, 0.5, 0.9))
+  
+  ## include parameter estimates in the table
+  # fixed effects
+  sampCountyMortPar[1:(1 + includeUrban)] = result$summary.fixed[,1]
+  sampCountyMortSD[1:(1 + includeUrban)] = result$summary.fixed[,2]
+  sampCountyMort10[1:(1 + includeUrban)] = result$summary.fixed[,3]
+  sampCountyMort90[1:(1 + includeUrban)] = result$summary.fixed[,5]
+  
+  # BYM2 hyperparameter phi
+  sampCountyMortPar[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,1]
+  sampCountyMortSD[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,2]
+  sampCountyMort10[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,3]
+  sampCountyMort90[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,5]
+  
+  ## transformed hyperparameters
+  # sample the hyperparameters, using the marginals to improve the sampling
+  out = inla.hyperpar.sample(1000, result, improve.marginals=TRUE)
+  transformFunction = function(x) {c(1/x[1], 1/x[1]*x[2], 1/x[1]*(1-x[2]), 1/x[3])}
+  if(!includeCluster)
+    transformFunction = function(x) {c(1/x[1], 1/x[1]*x[2], 1/x[1]*(1-x[2]))}
+  transformedOut = apply(out, 1, transformFunction)
+  
+  # now calculate the summary statistics of the transformed BYM2 hyperparameters
+  sampCountyMortPar[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = rowMeans(transformedOut[1:3,])
+  sampCountyMortSD[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = apply(transformedOut[1:3,], 1, sd)
+  sampCountyMort10[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = apply(transformedOut[1:3,], 1, quantile, probs=.1)
+  sampCountyMort90[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = apply(transformedOut[1:3,], 1, quantile, probs=.9)
+  
+  # calculate summary statistics for cluster variance if necessary
+  if(includeCluster) {
+    sampCountyMortPar[2 + includeUrban] = mean(transformedOut[4,])
+    sampCountyMortSD[2 + includeUrban] = sd(transformedOut[4,])
+    sampCountyMort10[2 + includeUrban] = quantile(transformedOut[4,], probs=.1)
+    sampCountyMort90[2 + includeUrban] = quantile(transformedOut[4,], probs=.9)
+  }
+  
+  if(includeCluster)
+    sampClusterSigmaSRS = 1:Nsim
+  
+  # Simulate from posterior
+  if(includeUrbanRural) {
+    samp = inla.posterior.sample(n = Nsim, result = result)
+    sampRural = matrix(NA, nrow = 47, ncol = Nsim)
+    sampUrban = matrix(NA, nrow = 47, ncol = Nsim)
+    sampRuralMod = matrix(NA, nrow = 47, ncol = Nsim)
+    sampUrbanMod = matrix(NA, nrow = 47, ncol = Nsim)
     
-    # INLA data
-    dat = list(y = mort$died,
-               Ntrials = mort$numChildren,
-               rural = 1-mort$urban,
-               idx = as.numeric(mort$admin1),
-               idxEps = 1:length(mort$died))
-    
-    # Add unobserved data to make sampling easier
-    dat$y = c(rep(NA, 47*2), dat$y)
-    dat$Ntrials = c(rep(1, 47*2), dat$Ntrials)
-    dat$rural = c(rep(c(0,1), each = 47), dat$rural)
-    dat$idx = c(rep(1:47, 2), dat$idx)
-    dat$idxEps = c(rep(NA, 47*2), dat$idxEps)
-    
-    # Run model
-    print("fitting BYM model...")
-    result = inla(formula = formula, 
-                  family="binomial",
-                  Ntrials = Ntrials,
-                  data=dat, 
-                  control.compute = list(config = TRUE))
-    
-    ## include parameter estimates in the table
-    # fixed effects
-    sampCountySRSDatPar[1:2] = result$summary.fixed[,1]
-    sampCountySRSDatSD[1:2] = result$summary.fixed[,2]
-    sampCountySRSDat10[1:2] = result$summary.fixed[,3]
-    sampCountySRSDat90[1:2] = result$summary.fixed[,5]
-    
-    # hyperparameters
-    sampCountySRSDatPar[3:(4 + includeCluster)] = result$summary.hyperpar[,1]
-    sampCountySRSDatSD[3:(4 + includeCluster)] = result$summary.hyperpar[,2]
-    sampCountySRSDat10[3:(4 + includeCluster)] = result$summary.hyperpar[,3]
-    sampCountySRSDat90[3:(4 + includeCluster)] = result$summary.hyperpar[,5]
-    
-    ## transformed hyperparameters
-    # sample the hyperparameters, using the marginals to improve the sampling
-    out = inla.hyperpar.sample(1000, result, improve.marginals=TRUE)
-    transformedOut = apply(out, 1, function(x) {c(1/x[1]*x[2], 1/x[1]*(1-x[2]))})
-    
-    if(includeCluster)
-      sampClusterSigmaSRS = 1:Nsim
-    
-    # Simulate from posterior
-    if(includeUrbanRural) {
-      samp = inla.posterior.sample(n = Nsim, result = result)
-      sampRural = matrix(NA, nrow = 47, ncol = Nsim)
-      sampUrban = matrix(NA, nrow = 47, ncol = Nsim)
-      sampRuralMod = matrix(NA, nrow = 47, ncol = Nsim)
-      sampUrbanMod = matrix(NA, nrow = 47, ncol = Nsim)
-      
-      for(j in 1:Nsim){
-        sampRural[, j] = samp[[j]]$latent[47 + (1:47)]
-        sampUrban[, j] = samp[[j]]$latent[1:47]
-        if(includeCluster) {
-          # if cluster effect is included, must debias predictions in each modeled strata
-          clusterSigma = sqrt(1/samp[[j]]$hyperpar[3])
-          muSigmaMatRural = cbind(sampRural[, j], clusterSigma)
-          muSigmaMatUrban = cbind(sampUrban[, j], clusterSigma)
-          sampRuralMod[, j] = logitNormMean(muSigmaMat = muSigmaMatRural)
-          sampUrbanMod[, j] = logitNormMean(muSigmaMat = muSigmaMatUrban)
-        }
+    for(j in 1:Nsim){
+      sampRural[, j] = samp[[j]]$latent[47 + (1:47)]
+      sampUrban[, j] = samp[[j]]$latent[1:47]
+      if(includeCluster) {
+        # if cluster effect is included, must debias predictions in each modeled strata
+        clusterSigma = sqrt(1/samp[[j]]$hyperpar[3])
+        muSigmaMatRural = cbind(sampRural[, j], clusterSigma)
+        muSigmaMatUrban = cbind(sampUrban[, j], clusterSigma)
+        sampRuralMod[, j] = logitNormMean(muSigmaMat = muSigmaMatRural)
+        sampUrbanMod[, j] = logitNormMean(muSigmaMat = muSigmaMatUrban)
       }
-      sampCountySRSDat = logit(expit(sampUrban)*urbRatio + expit(sampRural)*(1-urbRatio))
-      sampCountySRSDatMod = logit(sampUrbanMod*urbRatio + sampRuralMod*(1-urbRatio))
-    } else {
-      samp = inla.posterior.sample(n = Nsim, result = result)
-      sampCounty = matrix(NA, nrow = 47, ncol = Nsim)
-      sampCountyMod = matrix(NA, nrow = 47, ncol = Nsim)
-      for(j in 1:Nsim){
-        sampCounty[, j] = samp[[j]]$latent[1:47]
-        if(includeCluster) {
-          # if cluster effect is included, must debias predictions in each modeled strata
-          clusterSigma = sqrt(1/samp[[j]]$hyperpar[3])
-          muSigmaMat = cbind(sampCounty[, j], clusterSigma)
-          sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMat)
-        }
-      }
-      sampCountySRSDat = sampCounty
-      sampCountySRSDatMod = logit(sampCountyMod)
     }
+    sampCountyMort = logit(expit(sampUrban)*urbRatio + expit(sampRural)*(1-urbRatio))
+    sampCountyMortMod = logit(sampUrbanMod*urbRatio + sampRuralMod*(1-urbRatio))
+  } else {
+    samp = inla.posterior.sample(n = Nsim, result = result)
+    sampCounty = matrix(NA, nrow = 47, ncol = Nsim)
+    sampCountyMod = matrix(NA, nrow = 47, ncol = Nsim)
+    for(j in 1:Nsim){
+      sampCounty[, j] = samp[[j]]$latent[1:47]
+      if(includeCluster) {
+        # if cluster effect is included, must debias predictions in each modeled strata
+        clusterSigma = sqrt(1/samp[[j]]$hyperpar[3])
+        muSigmaMat = cbind(sampCounty[, j], clusterSigma)
+        sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMat)
+      }
+    }
+    sampCountyMort = sampCounty
+    sampCountyMortMod = logit(sampCountyMod)
+  }
   
   processSamples = function(samp){
     # 80% credible intervals
@@ -642,67 +692,62 @@ runBYM2Mort = function(dat=mort, includeUrbanRural=TRUE, includeCluster=TRUE) {
                 prob = list(CI = exp(CI))))
   }
   
-  ## SRSdata
+  ## generate predictions
   Q10 = numeric(47)
   Q50 = numeric(47)
   Q90 = numeric(47)
   mm = numeric(47)
   ss = numeric(47)
   
-  tmp = processSamples(sampCountySRSDat)
+  tmp = processSamples(sampCountyMort)
   Q10 = tmp$logit$CI[,1]
   Q50 = tmp$logit$CI[,2]
   Q90 = tmp$logit$CI[,3]
   mm = tmp$logit$mean
   ss = tmp$logit$stddev
-    
-  resSRSdat = list(Q10 = Q10,
-                   Q50 = Q50,
-                   Q90 = Q90,
-                   mean = mm,
-                   stddev = ss)
+  
+  resMort = list(Q10 = Q10,
+                 Q50 = Q50,
+                 Q90 = Q90,
+                 mean = mm,
+                 stddev = ss)
   
   if(includeCluster) {
-    tmp = processSamples(sampCountySRSDatMod)
-      Q10 = tmp$logit$CI[,1]
-      Q50 = tmp$logit$CI[,2]
-      Q90 = tmp$logit$CI[,3]
-      mm = tmp$logit$mean
-      ss = tmp$logit$stddev
-    resSRSdatMod = list(Q10 = Q10,
-                        Q50 = Q50,
-                        Q90 = Q90,
-                        mean = mm,
-                        stddev = ss)
+    tmp = processSamples(sampCountyMortMod)
+    Q10 = tmp$logit$CI[,1]
+    Q50 = tmp$logit$CI[,2]
+    Q90 = tmp$logit$CI[,3]
+    mm = tmp$logit$mean
+    ss = tmp$logit$stddev
+    resMortMod = list(Q10 = Q10,
+                      Q50 = Q50,
+                      Q90 = Q90,
+                      mean = mm,
+                      stddev = ss)
   } else {
-    resSRSdatMod = NULL
+    resMortMod = NULL
   }
   
   ## now collect the parameters
-  # first invert precision to variance, make rural parameter the urban parameter
-  precIds = 3
-  if(includeCluster)
-    precIds = c(precIds, 5)
-  sampCountySRSDatPar[precIds, ] = 1 / sampCountySRSDatPar[precIds, ]
-  sampCountySRSDatSD[precIds, ] = 1 / sampCountySRSDatSD[precIds, ]
-  sampCountySRSDat10[precIds, ] = 1 / sampCountySRSDat10[precIds, ]
-  sampCountySRSDat90[precIds, ] = 1 / sampCountySRSDat90[precIds, ]
-  sampCountySRSDatPar[2, ] = -sampCountySRSDatPar[2, ]
-  sampCountySRSDatSD[2, ] = -sampCountySRSDatSD[2, ]
-  sampCountySRSDat10[2, ] = -sampCountySRSDat10[2, ]
-  sampCountySRSDat90[2, ] = -sampCountySRSDat90[2, ]
-  mm = rowMeans(sampCountySRSDatPar)
-  ss = rowMeans(sampCountySRSDatSD)
-  Q10 = rowMeans(sampCountySRSDat10)
-  Q90 = rowMeans(sampCountySRSDat90)
-  resSRSdatPar = data.frame(list(Q10 = Q10,
-                                 Q90 = Q90,
-                                 mean = mm,
-                                 stddev = ss))
+  # make rural parameter the urban parameter
+  if(includeUrban) {
+    sampCountyMortPar[2] = -sampCountyMortPar[2]
+    sampCountyMortSD[2] = -sampCountyMortSD[2]
+    sampCountyMort10[2] = -sampCountyMort10[2]
+    sampCountyMort90[2] = -sampCountyMort90[2]
+  }
+  mm = sampCountyMortPar
+  ss = sampCountyMortSD
+  Q10 = sampCountyMort10
+  Q90 = sampCountyMort90
+  resMortPar = data.frame(list(Q10 = Q10,
+                               Q90 = Q90,
+                               mean = mm,
+                               stddev = ss))
   
   # Full result
-  designRes = list(predictions = resSRSdat,
-                   parameters = resSRSdatPar)
+  designRes = list(predictions = resMort,
+                   parameters = resMortPar)
   # save(file = 'kenyaSpatialDesignResultNew.RData', designRes = designRes)
   # save(file = paste0('kenyaSpatialDesignResultNewTausq0UrbRur', 
   #                      includeUrbanRural, '.RData'), designRes = designRes)
@@ -712,14 +757,15 @@ runBYM2Mort = function(dat=mort, includeUrbanRural=TRUE, includeCluster=TRUE) {
   
   # include the debiased results if cluster effect is included
   if(includeCluster) {
-    designRes = list(predictions = resSRSdatMod,
-                     parameters = resSRSdatPar)
+    designRes = list(predictions = resMortMod,
+                     parameters = resMortPar)
     
     save(file = paste0('bym2MortUrbRur',includeUrbanRural, 'Cluster', includeCluster, 'debiased.RData'), 
          designRes = designRes)
   }
   
-  invisible(NULL)
+  designRes = list(predictions = resMortMod,
+                   parameters = resMortPar)
 }
 
 runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluster=TRUE) {
@@ -985,10 +1031,10 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
       ss[,i] = tmp$logit$stddev
     }
     resSRSdatMod = list(Q10 = Q10,
-                     Q50 = Q50,
-                     Q90 = Q90,
-                     mean = mm,
-                     stddev = ss)
+                        Q50 = Q50,
+                        Q90 = Q90,
+                        mean = mm,
+                        stddev = ss)
   } else {
     resSRSdatMod = NULL
   }
@@ -1008,10 +1054,10 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
     ss[,i] = tmp$logit$stddev
   }
   resOverSampDat = list(Q10 = Q10,
-                       Q50 = Q50,
-                       Q90 = Q90,
-                       mean = mm,
-                       stddev = ss)
+                        Q50 = Q50,
+                        Q90 = Q90,
+                        mean = mm,
+                        stddev = ss)
   
   if(includeCluster) {
     Q10 = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDatMod)[3])
@@ -1028,10 +1074,10 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
       ss[,i] = tmp$logit$stddev
     }
     resOverSampDatMod = list(Q10 = Q10,
-                         Q50 = Q50,
-                         Q90 = Q90,
-                         mean = mm,
-                         stddev = ss)
+                             Q50 = Q50,
+                             Q90 = Q90,
+                             mean = mm,
+                             stddev = ss)
   } else {
     resOverSampDatMod = NULL
   }

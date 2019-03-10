@@ -4,9 +4,11 @@ source("neonatalSimStudyWeighted.R")
 # script for analyzing the neonatal mortality dataset
 
 # first name elements of mort to be the same as the corresponding elements of the simulated datasets
-mort$num
+mort$numChildren = mort$n
+mort$died = mort$y
 
 ##### first generate results for direct and naïve models
+startIMort = 1
 for(i in 1:nrow(mort)) {
   if(i %% 100 == 1)
     print(paste0("i: ", i))
@@ -28,7 +30,7 @@ for(i in 1:nrow(mort)) {
 }
 
 # add in RegionRural interaction
-resMort$regionRural <- with(resMort, interaction(admin1, urbanRural), drop=TRUE)
+resMort$regionRural <- with(resMort, interaction(admin1, urban), drop=TRUE)
 
 # save the resulting data frame
 save(resMort, file=paste0("data4directMort.RData"))
@@ -38,12 +40,12 @@ directEstMort = naiveMort = list()
 
 # analyse the unstratified sampling scenario
 childBirths_obj2 = resMort
-res2 = defineSurvey(childBirths_obj2, 
+res2 = defineSurveyMort(childBirths_obj2, 
                     stratVar=childBirths_obj2$regionRural,
                     useSamplingWeights = TRUE)
 directEstMort = res2
 
-resnA2 = run_naive(childBirths_obj2)
+resnA2 = run_naiveMort(childBirths_obj2)
 
 naiveMort = resnA2
 
@@ -66,42 +68,24 @@ mercerMort = resMort
 save(mercerMort, file=paste0("resultsMercerMort.RData"))
 
 ##### run BYM models
+source("designBased.R")
 runBYM2Mort(mort, includeUrbanRural = FALSE, includeCluster = FALSE)
 runBYM2Mort(mort, includeUrbanRural = FALSE, includeCluster = TRUE)
-runBYM2Mort(mort, includeUrbanRural = FALSE, includeCluster = FALSE)
+runBYM2Mort(mort, includeUrbanRural = TRUE, includeCluster = FALSE)
 runBYM2Mort(mort, includeUrbanRural = TRUE, includeCluster = TRUE)
 
 ##### run SPDE 
-# get prediction locations from population grid
-# popGrid = makeInterpPopGrid()
-load("popGrid.RData")
-predCoords = cbind(popGrid$east, popGrid$north)
-predUrban = popGrid$urban
-# if(genEALevel) {
-#   # Must predict at enumeration areas as well. Include enumeration areas as 
-#   # first rows of prediction coordinates and prediction urban/rural
-#   predCoords = rbind(cbind(eaDat$east, eaDat$north), predCoords)
-#   predUrban = c(eaDat$urban, predUrban)
-# }
-# we only care about the probability, not counts, so not used except for the purposes 
-# of calling inla:
-# predNs = rep(25, nrow(predCoords))
-predNs = rep(1, nrow(predCoords))
-
-# get observations from dataset
-obsCoords = cbind(mort$east, mort$north)
-obsNs = mort$numChildren
-obsCounts = mort$died
-obsUrban = mort$urban
-
 argList = list(list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = FALSE), 
                list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = TRUE), 
                list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = FALSE), 
                list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = TRUE))
-resultsSPDEmort()
+
 for(i in 1:length(argList)) {
-  args = argList[i]
-  do.call("resultsSPDEmort", args)
+  args = argList[[i]]
+  spdeResults = do.call("resultsSPDEmort", args)
+  fileName = paste0("resultsSPDEmort_includeClustEffect", includeClustEffect, 
+                    "_urbanEffect", urbanEffect)
+  save(spdeResults, file=fileName)
 }
 
 

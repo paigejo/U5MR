@@ -52,11 +52,12 @@ extendDataMort <- function(clustDatRow, v001, divideWeight=TRUE){
   # the only things we need are admin1 and sampling weight, but we must get rid of 
   # urban, died, and the number of children since those will be recalculated
   # tmp = data.frame(clustDatRow[c(1, 6:16)])
-  tmp = data.frame(clustDatRow[c(1, c(4, 6:ncol(clustDatRow)))])
+  # tmp = data.frame(clustDatRow[c(1, c(4, 6:ncol(clustDatRow)))])
+  tmp = data.frame(clustDatRow[c(1, c(4, 6:(ncol(clustDatRow) - 2)))])
   tmp$v001 = v001
   
   ageMonth = rep(0, nC)
-  ageGrpD = rep("[0,1)", nC)
+  # ageGrpD = rep("[0,1)", nC)
   v001 = rep(v001, nC)
   # there is only one child and one mother per household.
   # All 25 households are sampled
@@ -70,7 +71,8 @@ extendDataMort <- function(clustDatRow, v001, divideWeight=TRUE){
   }
   # admin1 = rep(clustDatRow$admin1, nC)
   
-  res = merge(data.frame(died, ageMonth, ageGrpD, v001, v002, urbanRural), tmp, by="v001")
+  # res = merge(data.frame(died, ageMonth, ageGrpD, v001, v002, urbanRural), tmp, by="v001")
+  res = merge(data.frame(died, ageMonth, v001, v002, urbanRural), tmp, by="v001")
   
   # the below line was commented out since each cluster only has one type of admin and urban level. 
   # The equivalent line has been added into the parent function
@@ -115,6 +117,33 @@ region.time.HT<-function(dataobj, svydesign, area){
   tmp<-subset(svydesign, (admin1==area))
   
   tt2 <- tryCatch(glmob<-svyglm(died.x~1,
+                                design=tmp,family=quasibinomial, maxit=50), 
+                  error=function(e) e, warning=function(w) w)
+  
+  if(is(tt2, "warning")){
+    if(grepl("agegroups", tt2)){
+      res <- get.est(glmob)
+      res = c(res, 2)
+    } else {
+      res = c(rep(NA, 5), 3)
+    }
+    return(res)
+  }
+  if(is(tt2,"error")){
+    res = c(rep(NA, 5), 1)
+    return(res)
+  } else {
+    res <- get.est(glmob)
+    res = c(res, 0)
+    return(res)
+  }
+}
+
+region.time.HTMort<-function(dataobj, svydesign, area){
+  
+  tmp<-subset(svydesign, (admin1==area))
+  
+  tt2 <- tryCatch(glmob<-svyglm(died~1,
                                 design=tmp,family=quasibinomial, maxit=50), 
                   error=function(e) e, warning=function(w) w)
   
@@ -188,6 +217,55 @@ defineSurvey <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE){
   return(results)
 }
 
+defineSurveyMort <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE){
+  
+  options(survey.lonely.psu="adjust")
+  
+  # --- setting up a place to store results --- #
+  regions <- sort(unique(childBirths_obj$admin1))
+  regions_num  <- 1:length(regions)
+  
+  results<-data.frame(admin1=rep(regions,each=1))
+  results$var.est<-results$logit.est<-results$upper<-results$lower<-results$u1m<-NA
+  results$converge <- NA
+  
+  if(useSamplingWeights){
+    childBirths_obj$wt <- childBirths_obj$samplingWeight
+  } else {
+    childBirths_obj$wt <- NULL
+  }
+  
+  if(is.null(stratVar)){
+    # --- setting up the design object --- #
+    ## NOTE: -the v001 denote
+    ##        one stage cluster design (v001 is cluster)
+    ##       -This call below specifies our survey design
+    ##        nest = T argument nests clusters within strata
+    my.svydesign <- svydesign(id= ~v001,
+                              strata =NULL,
+                              weights=NULL, data=childBirths_obj)
+  } else {
+    ## not in all surveys does v022 contain the correct sampling strata
+    ## Thus, the correct vector has to be provided externally
+    childBirths_obj$strat <- stratVar
+    
+    # --- setting up the design object --- #
+    ## NOTE: -the v001 denote
+    ##        one stage cluster design (v001 is cluster)
+    ##       -This call below specifies our survey design
+    ##        nest = T argument nests clusters within strata
+    my.svydesign <- svydesign(id= ~v001,
+                              strata=~strat, nest=T, 
+                              weights=~wt, data=childBirths_obj)
+  }
+  
+  for(i in 1:nrow(results)){
+    results[i, 2:7] <- region.time.HTMort(dataobj=childBirths_obj, svydesign=my.svydesign, 
+                                      area=results$admin1[i])
+  }
+  return(results)
+}
+
 # Set childBirths_obj$admin1 to be something else for different kinds of aggregations
 run_naive <- function(childBirths_obj){
   regions <- sort(unique(childBirths_obj$admin1))
@@ -199,6 +277,28 @@ run_naive <- function(childBirths_obj){
   
   for(i in 1:nrow(results)){
     my.glm <- glm(died.x~1, family=binomial, 
+                  data=childBirths_obj, 
+                  subset = admin1 == results$admin1[i] ) 
+    # newdat = childBirths_obj[childBirths_obj$admin1==results$admin1[i], ]
+    # my.glm2 <- glm(died.x~1, family=binomial, 
+    #               data=newdat) 
+    
+    results[i, 2:7] <- c(get.est(my.glm),0)
+  }
+  return(results)
+}
+
+# running the analysis for the actual mortality dataset is slightly different
+run_naiveMort <- function(childBirths_obj){
+  regions <- sort(unique(childBirths_obj$admin1))
+  regions_num  <- 1:length(regions)
+  
+  results<-data.frame(admin1=rep(regions,each=1))
+  results$var.est<-results$logit.est<-results$upper<-results$lower<-results$u1m<-NA
+  results$converge <- NA
+  
+  for(i in 1:nrow(results)){
+    my.glm <- glm(died~1, family=binomial, 
                   data=childBirths_obj, 
                   subset = admin1 == results$admin1[i] ) 
     # newdat = childBirths_obj[childBirths_obj$admin1==results$admin1[i], ]
