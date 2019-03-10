@@ -43,45 +43,11 @@ makeSpdeCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarV
   
   save(spdeCommandArgs, file="spdeCommandArgs.RData")
 }
-# spdeCommandArgs = list(list(tausq=0.1^2, test=TRUE,  includeUrbanRural=FALSE), 
-#                        list(tausq=0.1^2, test=TRUE,  includeUrbanRural=FALSE, includeClustEffect=FALSE), 
-#                        list(tausq=0.1^2, test=TRUE,  includeUrbanRural=TRUE), 
-#                        list(tausq=0.1^2, test=TRUE,  includeUrbanRural=TRUE, includeClustEffect=FALSE), 
-#                        list(tausq=0, test=TRUE,  includeUrbanRural=FALSE), 
-#                        list(tausq=0, test=TRUE,  includeUrbanRural=FALSE, includeClustEffect=FALSE), 
-#                        list(tausq=0, test=TRUE,  includeUrbanRural=TRUE), 
-#                        list(tausq=0, test=TRUE,  includeUrbanRural=TRUE, includeClustEffect=FALSE), 
-#                        list(tausq=0.1^2, test=FALSE,  includeUrbanRural=FALSE), 
-#                        list(tausq=0.1^2, test=FALSE,  includeUrbanRural=FALSE, includeClustEffect=FALSE), 
-#                        list(tausq=0.1^2, test=FALSE,  includeUrbanRural=TRUE), 
-#                        list(tausq=0.1^2, test=FALSE,  includeUrbanRural=TRUE, includeClustEffect=FALSE), 
-#                        list(tausq=0, test=FALSE,  includeUrbanRural=FALSE), 
-#                        list(tausq=0, test=FALSE,  includeUrbanRural=FALSE, includeClustEffect=FALSE), 
-#                        list(tausq=0, test=FALSE,  includeUrbanRural=TRUE), 
-#                        list(tausq=0, test=FALSE,  includeUrbanRural=TRUE, includeClustEffect=FALSE), 
-#                        
-#                        list(margVar=0, tausq=0.1^2, test=TRUE,  includeUrbanRural=FALSE), 
-#                        list(margVar=0, tausq=0.1^2, test=TRUE,  includeUrbanRural=FALSE, includeClustEffect=FALSE), 
-#                        list(margVar=0, tausq=0.1^2, test=TRUE,  includeUrbanRural=TRUE), 
-#                        list(margVar=0, tausq=0.1^2, test=TRUE,  includeUrbanRural=TRUE, includeClustEffect=FALSE), 
-#                        list(margVar=0, tausq=0, test=TRUE,  includeUrbanRural=FALSE), 
-#                        list(margVar=0, tausq=0, test=TRUE,  includeUrbanRural=FALSE, includeClustEffect=FALSE), 
-#                        list(margVar=0, tausq=0, test=TRUE,  includeUrbanRural=TRUE), 
-#                        list(margVar=0, tausq=0, test=TRUE,  includeUrbanRural=TRUE, includeClustEffect=FALSE), 
-#                        list(margVar=0, tausq=0.1^2, test=FALSE,  includeUrbanRural=FALSE), 
-#                        list(margVar=0, tausq=0.1^2, test=FALSE,  includeUrbanRural=FALSE, includeClustEffect=FALSE), 
-#                        list(margVar=0, tausq=0.1^2, test=FALSE,  includeUrbanRural=TRUE), 
-#                        list(margVar=0, tausq=0.1^2, test=FALSE,  includeUrbanRural=TRUE, includeClustEffect=FALSE), 
-#                        list(margVar=0, tausq=0, test=FALSE,  includeUrbanRural=FALSE), 
-#                        list(margVar=0, tausq=0, test=FALSE,  includeUrbanRural=FALSE, includeClustEffect=FALSE), 
-#                        list(margVar=0, tausq=0, test=FALSE,  includeUrbanRural=TRUE), 
-#                        list(margVar=0, tausq=0, test=FALSE,  includeUrbanRural=TRUE, includeClustEffect=FALSE))
-# save(spdeCommandArgs, file="spdeCommandArgs.RData")
 
 # tausq=0.1^2, big=TRUE, test
 # make the command arguments file for runDirectAll.R
 makeDirectCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarVec=c(0, 0.15^2), 
-                                 bigVec=c(FALSE, TRUE), testVec=c(FALSE, TRUE)) {
+                                 bigVec=c(FALSE, TRUE), testVec=c(FALSE)) {
   directCommandArgs = list()
   i = 1
   for(i1 in 1:length(tausqVec)) {
@@ -124,7 +90,7 @@ makeDirectCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVa
 
 # make the command arguments file for runMercerAll.R
 makeMercerCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarVec=c(0, 0.15^2), 
-                                 testVec=c(FALSE, TRUE)) {
+                                 testVec=c(FALSE)) {
   mercerCommandArgs = list()
   i = 1
   for(i1 in 1:length(tausqVec)) {
@@ -162,7 +128,7 @@ makeMercerCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVa
 
 # make the command arguments file for runBYM2All.R
 makeBYM2CommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarVec=c(0, 0.15^2), 
-                               testVec=c(FALSE, TRUE), includeUrbanRuralVec=c(FALSE, TRUE), 
+                               testVec=c(FALSE), includeUrbanRuralVec=c(FALSE, TRUE), 
                                includeClusterVec=c(FALSE, TRUE), aggregateByPopulationVec=c(FALSE, TRUE)) {
   bym2CommandArgs = list()
   i = 1
@@ -211,4 +177,64 @@ makeBYM2CommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarV
   }
   
   save(bym2CommandArgs, file="bym2CommandArgs.RData")
+}
+
+makeCompareModelArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarVec=c(0, 0.15^2), 
+                                resultTypeVec=c("county", "pixel", "EA"), testVec=c(FALSE), 
+                                samplingVec=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:9, 
+                                produceFigures=FALSE, big=FALSE, printIEvery=50, 
+                                maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=FALSE, 
+                                xtable.args=list(digits=c(0, 1, 1, 1, 1, 0, 1), display=rep("f", 7), auto=TRUE), 
+                                tableFormat=c("2", "1"), colScale=c(10^4, 10^5, 100^2, 10^3, 100, 100), 
+                                colUnits=c(" ($\\times 10^{-4}$)", " ($\\times 10^{-5}$)", " ($\\times 10^{-4}$)", 
+                                           " ($\\times 10^{-3}$)", " ($\\times 10^{-2}$)", " ($\\times 10^{-2}$)"), 
+                                colDigits=c(1, 1, 1, 1, 0, 1)) {
+  
+  compareModelCommandArgs = list()
+  i = 1
+  for(i1 in 1:length(tausqVec)) {
+    tausq=tausqVec[i1]
+    
+    for(i2 in 1:length(gammaVec)) {
+      gamma = gammaVec[i2]
+      
+      for(i3 in 1:length(margVarVec)) {
+        margVar = margVarVec[i3]
+        
+        # check to make sure this dataset even exists
+        included = c(margVar != 0, gamma != 0, tausq != 0)
+        if(!included[1]) {
+          if(any(included[2:3]))
+            next
+        }
+        if(!included[2]) {
+          if(included[3])
+            next
+        }
+        
+        for(i4 in 1:length(testVec)) {
+          test = testVec[i4]
+          
+          for(i5 in 1:length(resultTypeVec)) {
+            resultType = resultTypeVec[i5]
+            
+            for(i6 in 1:length(samplingVec)) {
+              sampling = samplingVec[i6]
+              
+              compareModelCommandArgs[[i]] = list(tausq=tausq, gamma=gamma, margVar=margVar, test=test, 
+                                                  resultType=resultType, sampling=sampling, 
+                                                  recomputeTruth=recomputeTruth, modelsI=modelsI, 
+                                                  produceFigures=produceFigures, big=big, printIEvery=printIEvery, 
+                                                  maxDataSets=maxDataSets, nsim=nsim, saveResults=saveResults, loadResults=loadResults, 
+                                                  xtable.args=xtable.args, tableFormat=tableFormat, colScale=colScale, 
+                                                  colUnits=colUnits, colDigits=colDigits)
+              i = i + 1
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  save(compareModelCommandArgs, file="compareModelCommandArgs.RData")
 }

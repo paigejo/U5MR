@@ -1,2 +1,2 @@
 #!/bin/bash
-sbatch --array=1-16 runDirectAll.sbatch
+sbatch --array=1-8 runDirectAll.sbatch

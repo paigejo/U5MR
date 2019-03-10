@@ -1,2 +1,2 @@
 #!/bin/bash
-sbatch --array=1-8 runMercerAll.sbatch
+sbatch --array=1-4 runMercerAll.sbatch
