@@ -181,7 +181,7 @@ makeBYM2CommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarV
 
 makeCompareModelArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarVec=c(0, 0.15^2), 
                                 resultTypeVec=c("county", "pixel", "EA"), testVec=c(FALSE), 
-                                samplingVec=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsIList=list(1:2, 1:9), 
+                                samplingVec=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsIList=list(1:2, 1:9, 1:15), 
                                 produceFigures=FALSE, bigVec=c(FALSE, TRUE), printIEvery=50, 
                                 maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=FALSE, 
                                 xtable.args=list(digits=c(0, 1, 1, 1, 1, 0, 1), display=rep("f", 7), auto=TRUE), 
@@ -192,37 +192,40 @@ makeCompareModelArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVar
   
   compareModelCommandArgs = list()
   i = 1
-  for(i1 in 1:length(tausqVec)) {
-    tausq=tausqVec[i1]
+  
+  # include modelsIList on the outside so that we can run a sequence of indices all at once 
+  # corresponding to a given set of models
+  for(i7 in 1:length(modelsIList)) {
+    modelsI = modelsIList[[i7]]
     
-    for(i2 in 1:length(gammaVec)) {
-      gamma = gammaVec[i2]
+    for(i1 in 1:length(tausqVec)) {
+      tausq=tausqVec[i1]
       
-      for(i3 in 1:length(margVarVec)) {
-        margVar = margVarVec[i3]
+      for(i2 in 1:length(gammaVec)) {
+        gamma = gammaVec[i2]
         
-        # check to make sure this dataset even exists
-        included = c(margVar != 0, gamma != 0, tausq != 0)
-        if(!included[1]) {
-          if(any(included[2:3]))
-            next
-        }
-        if(!included[2]) {
-          if(included[3])
-            next
-        }
-        
-        for(i4 in 1:length(testVec)) {
-          test = testVec[i4]
+        for(i3 in 1:length(margVarVec)) {
+          margVar = margVarVec[i3]
           
-          for(i5 in 1:length(resultTypeVec)) {
-            resultType = resultTypeVec[i5]
+          # check to make sure this dataset even exists
+          included = c(margVar != 0, gamma != 0, tausq != 0)
+          if(!included[1]) {
+            if(any(included[2:3]))
+              next
+          }
+          if(!included[2]) {
+            if(included[3])
+              next
+          }
+          
+          for(i4 in 1:length(testVec)) {
+            test = testVec[i4]
             
-            for(i6 in 1:length(samplingVec)) {
-              sampling = samplingVec[i6]
+            for(i5 in 1:length(resultTypeVec)) {
+              resultType = resultTypeVec[i5]
               
-              for(i7 in 1:length(modelsIList)) {
-                modelsI = modelsIList[[i7]]
+              for(i6 in 1:length(samplingVec)) {
+                sampling = samplingVec[i6]
                 
                 for(i8 in 1:length(bigVec)) {
                   big = bigVec[i8]
