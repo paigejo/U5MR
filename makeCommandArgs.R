@@ -181,8 +181,8 @@ makeBYM2CommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarV
 
 makeCompareModelArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarVec=c(0, 0.15^2), 
                                 resultTypeVec=c("county", "pixel", "EA"), testVec=c(FALSE), 
-                                samplingVec=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:9, 
-                                produceFigures=FALSE, big=FALSE, printIEvery=50, 
+                                samplingVec=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsIList=list(1:2, 1:9), 
+                                produceFigures=FALSE, bigVec=c(FALSE, TRUE), printIEvery=50, 
                                 maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=FALSE, 
                                 xtable.args=list(digits=c(0, 1, 1, 1, 1, 0, 1), display=rep("f", 7), auto=TRUE), 
                                 tableFormat=c("2", "1"), colScale=c(10^4, 10^5, 100^2, 10^3, 100, 100), 
@@ -221,14 +221,28 @@ makeCompareModelArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVar
             for(i6 in 1:length(samplingVec)) {
               sampling = samplingVec[i6]
               
-              compareModelCommandArgs[[i]] = list(tausq=tausq, gamma=gamma, margVar=margVar, test=test, 
-                                                  resultType=resultType, sampling=sampling, 
-                                                  recomputeTruth=recomputeTruth, modelsI=modelsI, 
-                                                  produceFigures=produceFigures, big=big, printIEvery=printIEvery, 
-                                                  maxDataSets=maxDataSets, nsim=nsim, saveResults=saveResults, loadResults=loadResults, 
-                                                  xtable.args=xtable.args, tableFormat=tableFormat, colScale=colScale, 
-                                                  colUnits=colUnits, colDigits=colDigits)
-              i = i + 1
+              for(i7 in 1:length(modelsIList)) {
+                modelsI = modelsIList[[i7]]
+                
+                for(i8 in 1:length(bigVec)) {
+                  big = bigVec[i8]
+                  
+                  # only use the big data sets for the naive and direct models
+                  if(!identical(modelsI, 1:2) && big)
+                    next
+                  if(identical(modelsI, 1:2) && !big)
+                    next
+                  
+                  compareModelCommandArgs[[i]] = list(tausq=tausq, gamma=gamma, margVar=margVar, test=test, 
+                                                      resultType=resultType, sampling=sampling, 
+                                                      recomputeTruth=recomputeTruth, modelsI=modelsI, 
+                                                      produceFigures=produceFigures, big=big, printIEvery=printIEvery, 
+                                                      maxDataSets=maxDataSets, nsim=nsim, saveResults=saveResults, loadResults=loadResults, 
+                                                      xtable.args=xtable.args, tableFormat=tableFormat, colScale=colScale, 
+                                                      colUnits=colUnits, colDigits=colDigits)
+                  i = i + 1
+                }
+              }
             }
           }
         }
