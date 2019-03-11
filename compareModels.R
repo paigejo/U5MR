@@ -26,8 +26,9 @@ source("scores.R")
 # xtable.args: the arguments passed to xtable for printing results
 # tableFormat: If "1", binomial scores are considered the same model as non-binomial scores. 
 #              If "2", binomial scores are put on extra rows of the printed table
-runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixel", "EA"), 
-                            sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:9, 
+runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1, 
+                             beta0=-1.75, resultType=c("county", "pixel", "EA"), 
+                            sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:15, 
                             produceFigures=FALSE, big=FALSE, printIEvery=50, 
                             maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=FALSE, 
                             xtable.args=list(digits=c(0, 1, 1, 1, 1, 0, 1), display=rep("f", 7), auto=TRUE), 
@@ -48,15 +49,12 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
   # load the true superpopulation
   testText = ifelse(test, "Test", "")
   bigText = ifelse(big, "Big", "")
-  if(tausq == .1^2 || tausq == .01) {
-    out = load(paste0("simDataMultiBeta-1.75margVar0.0225tausq0.01gamma-1HHoldVar0urbanOverSamplefrac0", testText, bigText, ".RData"))
-  }
-  else {
-    if(tausq != 0)
-      stop("tausq can only be equal to .1^2 or 0")
-    
-    out = load(paste0("simDataMultiBeta-1.75margVar0.0225tausq0gamma-1HHoldVar0urbanOverSamplefrac0", testText, bigText, ".RData"))
-  }
+  if(!test)
+    load(paste0("simDataMultiBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                "HHoldVar0urbanOverSamplefrac0", bigText, ".RData"))
+  else
+    load(paste0("simDataMultiBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                "HHoldVar0urbanOverSamplefrac0Test", bigText, ".RData"))
   eaDat = SRSDat$eaDat
   
   if(sampling == "SRS") {
@@ -66,15 +64,21 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
   }
   maxDataSets = ifelse(is.null(maxDataSets), length(clustDat$clustDat), maxDataSets)
   
-  allModels = c("naive", "direct", "mercer", "bym", "bymMod", "bymNoUrb", "bymNoUrbMod", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
+  # allModels = c("naive", "direct", "mercer", "bym", "bymMod", "bymNoUrb", "bymNoUrbMod", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
   # allNames = c("Naive", "Direct ", "Mercer et al.", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
   # allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer et al. Binom.", "BYM Binom. (no urb/clust)", "BYM Binom. (no urb)", "BYM Binom. (no clust)", "BYM Binom.", "SPDE Binom. (no urb)", "SPDE Binom.")
-  allNames = c("Naive", "Direct", "Mercer", "BYM 1", "BYM 2", "BYM 2'", "BYM 3", "BYM 4", "BYM 4'", "SPDE 1", "SPDE 2")
-  allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer Binom.", "BYM 1 Binom.", "BYM 2 Binom.", "BYM 2' Binom.", "BYM 3 Binom.", "BYM 4 Binom.", "BYM 4' Binom.", "SPDE 1 Binom.", "SPDE 2 Binom.")
+  allNames = c("Naive", "Direct", "Mercer", "BYM 1", "BYM 2", "BYM 2'", "BYM 3", "BYM 4", "BYM 4'", 
+               "BYM Pop 1", "BYM Pop 2", "BYM Pop 2'", "BYM Pop 3", "BYM Pop 4", "BYM Pop 4'", 
+               "SPDE 1", "SPDE 2", "SPDE 3", "SPDE 4")
+  allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer Binom.", "BYM 1 Binom.", "BYM 2 Binom.", "BYM 2' Binom.", "BYM 3 Binom.", "BYM 4 Binom.", "BYM 4' Binom.", 
+                       "BYM Pop 1 Binom.", "BYM Pop 2 Binom.", "BYM Pop 2' Binom.", "BYM Pop 3 Binom.", "BYM Pop 4 Binom.", "BYM Pop 4' Binom.", 
+                       "SPDE 1 Binom.", "SPDE 2 Binom.", "SPDE 3 Binom.", "SPDE 4")
+  # allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer Binom.", "BYM 1 Binom.", "BYM 2 Binom.", "BYM 2' Binom.", "BYM 3 Binom.", "BYM 4 Binom.", "BYM 4' Binom.", "SPDE 1 Binom.", "SPDE 2 Binom.")
   models = allModels[modelsI]
   
   # this string carries all the information about the run
-  runId = paste0("Tausq", round(tausq, 3), testText, bigText, sampling, 
+  runId = paste0("Tausq", round(tausq, 3), "margVar", round(margVar, 3), "gamma", round(gamma, 3), 
+                 testText, bigText, sampling, 
                  "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
   
   # compute the results if necessary
@@ -103,7 +107,8 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, resultType=c("county", "pix
     tauText = ifelse(tausq == 0, "0", "0.01")
     testText = ifelse(test, "Test", "")
     if("naive" %in% models || "direct" %in% models) {
-      out = load(paste0("resultsDirectNaiveTausq", tauText, testText, bigText, ".RData")) # this is the only case that uses the big dataset
+      out = load(paste0("resultsDirectNaiveBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                       "HHoldVar0urbanOverSamplefrac0Test", bigText, ".RData"))
       if(sampling == "SRS") {
         directEst = directEstSRS
         naive = naiveSRS

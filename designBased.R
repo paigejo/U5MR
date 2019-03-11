@@ -484,7 +484,8 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   
   testText = ifelse(test, "Test", "")
   save(file = paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
-                     includeUrbanRural, 'Cluster', includeCluster, "maxDataSets", maxDataSets, testText, '.RData'), 
+                     includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 
+                     maxDataSets, testText, '.RData'), 
        designRes = designRes)
   
   # include the debiased results if cluster effect is included
@@ -495,7 +496,8 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
                      SRSdatPar = resSRSdatPar)
     
     save(file = paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
-                       includeUrbanRural, 'Cluster', includeCluster, 'debiasedMaxDataSets', maxDataSets, testText, '.RData'), 
+                       includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, 'debiasedMaxDataSets', 
+                       maxDataSets, testText, '.RData'), 
          designRes = designRes)
   }
   
