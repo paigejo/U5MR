@@ -59,8 +59,8 @@ print(paste0("Average first year mortality: ", averageFirstYearMortality))
 subdata <- data.frame(data[,c('b2', 'b1', 'b5', 'b7', 'v024', 'v025', 'v001', 'v002', 'v005', 'v006', 'v007')])
 
 # extract births in the range 2005 to 2010 (most recent five years)
-lowYear <- 2005
-highYear <- 2009
+lowYear <- 2010
+highYear <- 2014
 subdata <- subdata[(subdata[,'b2'] >= lowYear & subdata[,'b2'] <= highYear),]
 
 # only consider children that died within their first month

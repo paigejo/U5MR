@@ -40,6 +40,22 @@ getSPDEMeshGrid = function(locs=NULL, max.n=100, doPlot=TRUE,
   mesh
 }
 
+getSPDEMeshGrid2 = function(locs=cbind(mort$east, mort$north), n=1500, max.n=2000, doPlot=TRUE, max.edge=c(35, 250), 
+                           offset=-.08, cutoff=15) {
+  
+  
+  # generate mesh on R2
+  mesh = inla.mesh.2d(loc=locs, n=n, max.n=max.n, offset=offset, cutoff=cutoff, max.edge=max.edge)
+  
+  # plot the mesh if user wants
+  if(doPlot) {
+    plot(mesh)
+    plotMapDat(project=TRUE, border="blue")
+  }
+  
+  mesh
+}
+
 # generate default priors for SPDE model
 # from Lindgren Rue (2015) "Bayesian Spatial Modelling with R-INLA"
 # sigma0: field standard deviation
@@ -1073,7 +1089,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          predictionType=c("median", "mean"), eaDat=NULL, nSamplePixel=10, 
                          truthByPixel=NULL, truthByCounty=NULL, truthByRegion=NULL, 
                          truthByEa=NULL, clusterEffect=FALSE, significance=.8, 
-                         onlyInexact=FALSE, allPixels=FALSE) {
+                         onlyInexact=FALSE, allPixels=FALSE, newMesh=FALSE) {
   
   # match the prediction type
   predictionType = match.arg(predictionType)
@@ -1089,7 +1105,10 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   
   # make default mesh
   if(is.null(mesh)) {
-    mesh = getSPDEMeshGrid(doPlot = FALSE)
+    if(newMesh)
+      mesh = getSPDEMeshGrid2(doPlot = FALSE)
+    else
+      mesh = getSPDEMeshGrid(doPlot = FALSE)
   }
   
   # make default prior
@@ -1260,7 +1279,6 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     print("Aggregating over counties")
     
     predCountiesPixel = popGrid$admin1
-    predCountiesEa = eaDat$admin1
     
     getCountyIntegrationMatrix = function(integrateByPixel=TRUE) {
       counties = as.character(counties)
@@ -1275,17 +1293,19 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
       sweep(mat, 1, 1/rowSums(mat), "*")
     }
     
-    countyBinomialIntegration = function(countyName) {
-      countyI = predCountiesEa == countyName
-      binomialIntegration(countyI)
-    }
-    
     # integrate over the pixels to get aggregated predictions
     countyPredMatInexact <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE), TRUE)
     cat(".")
     
     # integrate over the EAs to get aggregated predictions
     if(genEALevel && !onlyInexact) {
+      predCountiesEa = eaDat$admin1
+      
+      countyBinomialIntegration = function(countyName) {
+        countyI = predCountiesEa == countyName
+        binomialIntegration(countyI)
+      }
+      
       # the following are respectively a matrix of probability draws from the county 
       # distributions and a list of county probability distributions
       if(is.null(eaDat))
@@ -1309,9 +1329,8 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     
     ## generate region level predictions
     predCountiesPixel = popGrid$admin1
-    predCountiesEa = eaDat$admin1
     predRegionsPixel = countyToRegion(predCountiesPixel)
-    predRegionsEa = countyToRegion(predCountiesEa)
+    
     
     getRegionIntegrationMatrix = function(integrateByPixel=TRUE) {
       
@@ -1337,6 +1356,10 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     
     # integrate over the EAs to get aggregated predictions
     if(genEALevel && !onlyInexact) {
+      
+      predCountiesEa = eaDat$admin1
+      predRegionsEa = countyToRegion(predCountiesEa)
+      
       # the following are respectively a matrix of probability draws from the county 
       # distributions and a list of county probability distributions
       if(is.null(eaDat))
@@ -1355,9 +1378,13 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   }
   
   # generate pixel level predictions if necessary
-  eaToPixel = eaDat$pixelI
   # pixelsWithData = sort(unique(eaToPixel))
-  pixelsWithData = unique(eaToPixel) # don't sort so that these indices matchup with the indices in truth
+  if(!onlyInexact) {
+    eaToPixel = eaDat$pixelI
+    pixelsWithData = unique(eaToPixel) # don't sort so that these indices matchup with the indices in truth
+  }
+  else
+    pixelsWithData = NULL
   pixelPreds = NULL
   if(keepPixelPreds) {
     print("Aggregating over pixels")
@@ -1387,7 +1414,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     }
     
     # integrate over the pixels to get aggregated predictions
-    if(!allPixels)
+    if(!allPixels && !onlyInexact)
       pixelPredMatInexact <- expit(predMat[pixelsWithData,1:nSamplePixel])
     else
       pixelPredMatInexact <- expit(predMat[,1:nSamplePixel])
@@ -1405,8 +1432,8 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
       pixelPredMatExactB <- lapply(pixelToEA, pixelBinomialIntegration)
       cat(".")
     } else {
-      countyPredMatExact = NULL
-      countyPredMatExactB = NULL
+      pixelPredMatExact = NULL
+      pixelPredMatExactB = NULL
     }
     
     pixelPreds <- list(pixelPredMatInexact=pixelPredMatInexact, pixelPredMatExact=pixelPredMatExact, 

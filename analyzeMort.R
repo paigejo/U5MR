@@ -83,8 +83,10 @@ argList = list(list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = F
 for(i in 1:length(argList)) {
   args = argList[[i]]
   spdeResults = do.call("resultsSPDEmort", args)
+  includeClustEffect = args$includeClustEffect
+  urbanEffect = args$urbanEffect
   fileName = paste0("resultsSPDEmort_includeClustEffect", includeClustEffect, 
-                    "_urbanEffect", urbanEffect)
+                    "_urbanEffect", urbanEffect, ".RData")
   save(spdeResults, file=fileName)
 }
 

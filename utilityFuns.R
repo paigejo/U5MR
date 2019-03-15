@@ -5,9 +5,9 @@
 #          using projKenya function.  This can be used when plotting the projected `east' 
 #          and `north' variables in kenyaEAs for instance.
 # ...: arguments to polygon function
-plotMapDat = function(mapDat = adm0, plotVar=NULL, varCounties=as.character(unique(mort$admin1)), zlim=NULL, project=FALSE, cols=tim.colors(), 
-                      legend.mar=6, new=FALSE, plotArgs=NULL, main=NULL, xlim=NULL, xlab=NULL, 
-                      ylim=NULL, ylab=NULL, ...) {
+plotMapDat = function(mapDat = adm0, plotVar=NULL, varCounties=sort(as.character(unique(mort$admin1))), zlim=NULL, project=FALSE, cols=tim.colors(), 
+                      legend.mar=7, new=FALSE, plotArgs=NULL, main=NULL, xlim=NULL, xlab=NULL, scaleFun = function(x) {x}, scaleFunInverse = function(x) {x}, 
+                      ylim=NULL, ylab=NULL, n.ticks=5, min.n=5, ticks=NULL, tickLabels=NULL, ...) {
   # do setup for ploting data by county if necessary
   if(!is.null(plotVar)) {
     if(is.null(zlim)) {
@@ -58,6 +58,7 @@ plotMapDat = function(mapDat = adm0, plotVar=NULL, varCounties=as.character(uniq
         main = ""
       plotArgs = list(main=main, xlab=xlab, ylab=ylab, xlim=xlim, ylim=ylim)
     }
+    # par( oma=c( 0,0,0,6)) # leave room for the legend
     do.call("plot", c(list(1, 2, type="n"), plotArgs))
   }
   
@@ -77,7 +78,7 @@ plotMapDat = function(mapDat = adm0, plotVar=NULL, varCounties=as.character(uniq
       thisI = which(varCounties == regionNames[i])
       
       # get color to plot
-      vals = c(zlim, plotVar[thisI])
+      vals = c(zlim, scaleFun(plotVar[thisI]))
       vals = vals-vals[1]
       vals = vals/(vals[2] - vals[1])
       col = cols[round(vals[3]*(length(cols)-1))+1]
@@ -93,8 +94,20 @@ plotMapDat = function(mapDat = adm0, plotVar=NULL, varCounties=as.character(uniq
   
   if(!is.null(plotVar)) {
     # add legend
-    image.plot(zlim=zlim, nlevel=length(cols), legend.only=TRUE, horizontal=FALSE, 
-               col=cols, add = TRUE)
+    # par( oma=c(0,0,0,2))
+    if(is.null(ticks))
+      ticks = scaleFun(pretty(scaleFunInverse(zlim), n=n.ticks, min.n=min.n))
+    else
+      ticks = scaleFun(ticks)
+    if(is.null(tickLabels))
+      tickLabels = scaleFunInverse(ticks)
+    # par( oma=c( 0,0,0,3))
+    image.plot(zlim=zlim, nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
+               col=cols, add = TRUE, axis.args=list(at=ticks, labels=tickLabels), 
+               legend.mar=legend.mar)
+    
+    # image.plot(zlim=zlim, nlevel=length(cols), legend.only=TRUE, horizontal=FALSE, 
+    #            col=cols, add = TRUE)
   }
   invisible(NULL)
 }

@@ -1210,11 +1210,11 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
 
 # Based on resultsSPDEHelper, but use for analyzing a single mortality rate data set
 resultsSPDEmort = function(clustDat=mort, nPostSamples=1000, verbose=FALSE, 
-                              includeClustEffect=FALSE, int.strategy="eb", 
-                              genRegionLevel=TRUE, keepPixelPreds=TRUE, 
-                              urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
-                              predictionType=c("mean", "median"), parClust=cl, 
-                              significance=.8) {
+                           includeClustEffect=FALSE, int.strategy="eb", 
+                           genRegionLevel=TRUE, keepPixelPreds=TRUE, 
+                           urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
+                           predictionType=c("mean", "median"), parClust=cl, 
+                           significance=.8) {
   
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
@@ -1243,20 +1243,21 @@ resultsSPDEmort = function(clustDat=mort, nPostSamples=1000, verbose=FALSE,
   
   # get observations from dataset
   obsCoords = cbind(clustDat$east, clustDat$north)
-  obsNs = clustDat$numChildren
-  obsCounts = clustDat$died
+  obsNs = clustDat$n
+  obsCounts = clustDat$y
   obsUrban = clustDat$urban
   
   # fit model, get all predictions for each areal level and each posterior sample
   fit = fitSPDEModel3(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
                       predUrban, clusterIndices=1:nrow(mort), genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
                       verbose = verbose, clusterEffect=includeClustEffect, 
-                      int.strategy=int.strategy, genRegionLevel=genRegionLevel, 
-                      keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
-                      urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
-                      eaDat=eaDat, truthByCounty=truthByCounty, truthByRegion=truthByRegion, 
-                      truthByPixel=truthByPixel, nSamplePixel=nSamplePixel, 
-                      significance=significance, onlyInexact=TRUE, allPixels=TRUE)
+                      int.strategy=int.strategy, genRegionLevel=TRUE, counties=sort(unique(kenyaEAs$admin1)), 
+                      keepPixelPreds=keepPixelPreds, genEALevel=TRUE, regions=sort(unique(kenyaEAs$region)), 
+                      urbanEffect=urbanEffect, eaIndices=1:nrow(mort), 
+                      eaDat=eaDat, truthByCounty=TRUE, truthByRegion=TRUE, 
+                      truthByPixel=TRUE, nSamplePixel=nSamplePixel, 
+                      significance=significance, onlyInexact=TRUE, allPixels=TRUE, 
+                      newMesh=TRUE)
   
   countyPreds = fit$countyPreds
   regionPreds = fit$regionPreds
@@ -1266,7 +1267,7 @@ resultsSPDEmort = function(clustDat=mort, nPostSamples=1000, verbose=FALSE,
   ## calculate model fit properties for each level of predictions
   generatePredictions = function(probMat) {
     pred = rowMeans(probMat)
-    sds = apply(probMat, 1, sd)
+    sds = apply(logit(probMat), 1, sd) # remember that the standard deviations are calculated on the logit scale
     lower = apply(probMat, 1, function(x) {quantile(probs=0.1, x)})
     upper = apply(probMat, 1, function(x) {quantile(probs=0.9, x)})
     
@@ -1289,43 +1290,48 @@ resultsSPDEmort = function(clustDat=mort, nPostSamples=1000, verbose=FALSE,
   ## collect parameter means, sds, and quantiles
   # for fixed effects
   interceptQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.fixed[[1]])
+  interceptQuants = c(quant10=interceptQuants[1], quant50=interceptQuants[2], quant90=interceptQuants[3])
   interceptMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.fixed[[1]])
-  interceptSummary = c(interceptMoments[1], sqrt(interceptMoments[2] - interceptMoments[1]^2), interceptMoments[2] - interceptMoments[1]^2, interceptQuants, interceptQuants[3] - interceptQuants[1])
+  interceptSummary = c(est=interceptMoments[1], sd=sqrt(interceptMoments[2] - interceptMoments[1]^2), var=interceptMoments[2] - interceptMoments[1]^2, interceptQuants, width=interceptQuants[3] - interceptQuants[1])
   
   urbanSummary = NULL
   if(urbanEffect) {
     urbanQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.fixed[[2]])
+    urbanQuants = c(quant10=urbanQuants[1], quant50=urbanQuants[2], quant90=urbanQuants[3])
     urbanMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.fixed[[2]])
-    urbanSummary = c(urbanMoments[1], sqrt(urbanMoments[2] - urbanMoments[1]^2), urbanMoments[2] - urbanMoments[1]^2, urbanQuants, urbanQuants[3] - urbanQuants[1])
+    urbanSummary = c(est=urbanMoments[1], sd=sqrt(urbanMoments[2] - urbanMoments[1]^2), var=urbanMoments[2] - urbanMoments[1]^2, urbanQuants, width=urbanQuants[3] - urbanQuants[1])
   }
   
   # for hyperparameters
   rangeQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
+  rangeQuants = c(quant10=rangeQuants[1], quant50=rangeQuants[2], quant90=rangeQuants[3])
   sdQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
+  sdQuants = c(quant10=sdQuants[1], quant50=sdQuants[2], quant90=sdQuants[3])
   varQuants = sdQuants^2
   varMarg = inla.tmarginal(function(x) {x^2}, fit$mod$marginals.hyperpar[[2]])
   rangeMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[1]])
-  rangeSummary = c(rangeMoments[1], sqrt(rangeMoments[2] - rangeMoments[1]^2), rangeMoments[2] - rangeMoments[1]^2, rangeQuants, rangeQuants[3] - rangeQuants[1])
+  rangeSummary = c(est=rangeMoments[1], sd=sqrt(rangeMoments[2] - rangeMoments[1]^2), var=rangeMoments[2] - rangeMoments[1]^2, rangeQuants, width=rangeQuants[3] - rangeQuants[1])
   sdMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[2]])
-  sdSummary = c(sdMoments[1], sqrt(sdMoments[2] - sdMoments[1]^2), sdMoments[2] - sdMoments[1]^2, sdQuants, sdQuants[3] - sdQuants[1])
+  sdSummary = c(est=sdMoments[1], sd=sqrt(sdMoments[2] - sdMoments[1]^2), var=sdMoments[2] - sdMoments[1]^2, sdQuants, width=sdQuants[3] - sdQuants[1])
   varMoments = inla.emarginal(function(x) {c(x, x^2)}, varMarg)
-  varSummary = c(varMoments[1], sqrt(varMoments[2] - varMoments[1]^2), varMoments[2] - varMoments[1]^2, varQuants, varQuants[3] - varQuants[1])
+  varSummary = c(est=varMoments[1], sd=sqrt(varMoments[2] - varMoments[1]^2), var=varMoments[2] - varMoments[1]^2, varQuants, width=varQuants[3] - varQuants[1])
   nuggetVarSummary = NULL
   nuggetSDSummary = NULL
   if(includeClustEffect) {
     nuggetPrecQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[3]])
     nuggetVarQuants = 1/nuggetPrecQuants
+    nuggetVarQuants = c(quant10=nuggetVarQuants[3], quant50=nuggetVarQuants[2], quant90=nuggetVarQuants[1])
     nuggetSDQuants = sqrt(nuggetVarQuants)
     nuggetVarMarg = inla.tmarginal(function(x) {1/x}, fit$mod$marginals.hyperpar[[3]])
     nuggetSDMarg = inla.tmarginal(function(x) {1/sqrt(x)}, fit$mod$marginals.hyperpar[[3]])
     nuggetVarMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetVarMarg)
     nuggetSDMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetSDMarg)
     
-    nuggetVarSummary = c(nuggetVarMoments[1], sqrt(nuggetVarMoments[2] - nuggetVarMoments[1]^2), nuggetVarMoments[2] - nuggetVarMoments[1]^2, nuggetVarQuants, nuggetVarQuants[3] - nuggetVarQuants[1])
-    nuggetSDSummary = c(nuggetSDMoments[1], sqrt(nuggetSDMoments[2] - nuggetSDMoments[1]^2), nuggetSDMoments[2] - nuggetSDMoments[1]^2, nuggetSDQuants, nuggetSDQuants[3] - nuggetSDQuants[1])
+    nuggetVarSummary = c(est=nuggetVarMoments[1], sd=sqrt(nuggetVarMoments[2] - nuggetVarMoments[1]^2), var=nuggetVarMoments[2] - nuggetVarMoments[1]^2, nuggetVarQuants, width=nuggetVarQuants[3] - nuggetVarQuants[1])
+    nuggetSDSummary = c(est=nuggetSDMoments[1], sd=sqrt(nuggetSDMoments[2] - nuggetSDMoments[1]^2), var=nuggetSDMoments[2] - nuggetSDMoments[1]^2, nuggetSDQuants, width=nuggetSDQuants[3] - nuggetSDQuants[1])
   }
   
-  list(resultsEa, resultsPixel, resultsCounty, resultsRegion, 
+  list(resultsPixel=resultsPixel, resultsCounty=resultsCounty, resultsRegion=resultsRegion, 
        interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
        rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
        nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary)

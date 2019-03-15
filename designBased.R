@@ -400,7 +400,6 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   # make rural parameter the urban parameter
   if(includeUrbanRural) {
     sampCountySRSDatPar[2,] = -sampCountySRSDatPar[2,]
-    sampCountySRSDatSD[2,] = -sampCountySRSDatSD[2,]
     sampCountySRSDat10[2,] = -sampCountySRSDat10[2,]
     sampCountySRSDat90[2,] = -sampCountySRSDat90[2,]
   }
@@ -460,7 +459,6 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   # make rural parameter the urban parameter
   if(includeUrbanRural) {
     sampCountyOverSampDatPar[2,] = -sampCountyOverSampDatPar[2,]
-    sampCountyOverSampDatSD[2,] = -sampCountyOverSampDatSD[2,]
     sampCountyOverSampDat10[2,] = -sampCountyOverSampDat10[2,]
     sampCountyOverSampDat90[2,] = -sampCountyOverSampDat90[2,]
   }
@@ -505,7 +503,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
 }
 
 # same as runBYM2, except fits a single data set (the mort global data frame)
-runBYM2Mort = function(dat=mort, includeUrbanRural=TRUE, includeCluster=TRUE) {
+runBYM2Mort = function(dat=mort, includeUrbanRural=TRUE, includeCluster=TRUE, saveResults=TRUE) {
   includeUrban = includeUrbanRural
   
   # Get true ratios of urban/rural
@@ -734,7 +732,6 @@ runBYM2Mort = function(dat=mort, includeUrbanRural=TRUE, includeCluster=TRUE) {
   # make rural parameter the urban parameter
   if(includeUrban) {
     sampCountyMortPar[2] = -sampCountyMortPar[2]
-    sampCountyMortSD[2] = -sampCountyMortSD[2]
     sampCountyMort10[2] = -sampCountyMort10[2]
     sampCountyMort90[2] = -sampCountyMort90[2]
   }
@@ -753,17 +750,20 @@ runBYM2Mort = function(dat=mort, includeUrbanRural=TRUE, includeCluster=TRUE) {
   # save(file = 'kenyaSpatialDesignResultNew.RData', designRes = designRes)
   # save(file = paste0('kenyaSpatialDesignResultNewTausq0UrbRur', 
   #                      includeUrbanRural, '.RData'), designRes = designRes)
-  
-  save(file = paste0('bym2MortUrbRur',includeUrbanRural, 'Cluster', includeCluster, '.RData'), 
-       designRes = designRes)
+  if(saveResults) {
+    save(file = paste0('bym2MortUrbRur',includeUrbanRural, 'Cluster', includeCluster, '.RData'), 
+         designRes = designRes)
+  }
   
   # include the debiased results if cluster effect is included
   if(includeCluster) {
     designRes = list(predictions = resMortMod,
                      parameters = resMortPar)
     
-    save(file = paste0('bym2MortUrbRur',includeUrbanRural, 'Cluster', includeCluster, 'debiased.RData'), 
-         designRes = designRes)
+    if(saveResults) {
+      save(file = paste0('bym2MortUrbRur',includeUrbanRural, 'Cluster', includeCluster, 'debiased.RData'), 
+           designRes = designRes)
+    }
   }
   
   designRes = list(predictions = resMortMod,

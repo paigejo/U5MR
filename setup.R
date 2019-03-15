@@ -99,7 +99,7 @@ load("kenyaEAs.RData")
 # mort$east = tmp[,1]
 # mort$north = tmp[,2]
 # save(mort, file="mortProj.RData")
-load("mortProj.RData")
+# load("mortProj.RData")
 
 # Bernoulli datasets
 out = load("data4direct.RData")

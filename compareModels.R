@@ -67,11 +67,12 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   # allModels = c("naive", "direct", "mercer", "bym", "bymMod", "bymNoUrb", "bymNoUrbMod", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
   # allNames = c("Naive", "Direct ", "Mercer et al.", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
   # allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer et al. Binom.", "BYM Binom. (no urb/clust)", "BYM Binom. (no urb)", "BYM Binom. (no clust)", "BYM Binom.", "SPDE Binom. (no urb)", "SPDE Binom.")
-  allNames = c("Naive", "Direct", "Mercer", "BYM 1", "BYM 2", "BYM 2'", "BYM 3", "BYM 4", "BYM 4'", 
-               "BYM Pop 1", "BYM Pop 2", "BYM Pop 2'", "BYM Pop 3", "BYM Pop 4", "BYM Pop 4'", 
+  # BYM models are in order of complexity: no urban/cluster, no urban, no cluster, full
+  allNames = c("Naive", "Direct", "Mercer", "BYM2 1", "BYM2 2", "BYM2 2'", "BYM2 3", "BYM2 4", "BYM2 4'", 
+               "BYM2 Pop 1", "BYM2 Pop 2", "BYM2 Pop 2'", "BYM2 Pop 3", "BYM2 Pop 4", "BYM2 Pop 4'", 
                "SPDE 1", "SPDE 2", "SPDE 3", "SPDE 4")
-  allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer Binom.", "BYM 1 Binom.", "BYM 2 Binom.", "BYM 2' Binom.", "BYM 3 Binom.", "BYM 4 Binom.", "BYM 4' Binom.", 
-                       "BYM Pop 1 Binom.", "BYM Pop 2 Binom.", "BYM Pop 2' Binom.", "BYM Pop 3 Binom.", "BYM Pop 4 Binom.", "BYM Pop 4' Binom.", 
+  allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer Binom.", "BYM2 1 Binom.", "BYM2 2 Binom.", "BYM2 2' Binom.", "BYM2 3 Binom.", "BYM2 4 Binom.", "BYM2 4' Binom.", 
+                       "BYM2 Pop 1 Binom.", "BYM2 Pop 2 Binom.", "BYM2 Pop 2' Binom.", "BYM2 Pop 3 Binom.", "BYM2 Pop 4 Binom.", "BYM2 Pop 4' Binom.", 
                        "SPDE 1 Binom.", "SPDE 2 Binom.", "SPDE 3 Binom.", "SPDE 4")
   # allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer Binom.", "BYM 1 Binom.", "BYM 2 Binom.", "BYM 2' Binom.", "BYM 3 Binom.", "BYM 4 Binom.", "BYM 4' Binom.", "SPDE 1 Binom.", "SPDE 2 Binom.")
   models = allModels[modelsI]
@@ -119,14 +120,24 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       }
     }
     if("mercer" %in% models) {
-      out = load(paste0("resultsMercerTausq", tauText, tolower(testText), ".RData"))
+      if(!test)
+        load(paste0("resultsMercerBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                                                    "HHoldVar0urbanOverSamplefrac0.RData"))
+      else
+        load(paste0("resultsMercerBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                                                    "HHoldVar0urbanOverSamplefrac0Test.RData"))
       if(sampling == "SRS")
         mercer = mercerSRS
       else
         mercer = merceroverSamp
     }
     if("bymNoUrb" %in% models) {
-      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterTRUE", testText, ".RData"))
+      includeUrbanRural = FALSE
+      includeCluster = TRUE
+      aggregateByPopulation = FALSE
+      load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
+                         includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
+      # out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterTRUE", testText, ".RData"))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
