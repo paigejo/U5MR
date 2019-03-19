@@ -838,8 +838,11 @@ for(i in 1:length(argList)) {
   notBothText = ifelse(both, "", " ")
   typeText = paste0(notBothText, urbanText, clusterText)
   
+  # add on interval width
+  designRes$parameters$width = designRes$parameters$Q90 - designRes$parameters$Q10
+  
   print(nameRoot)
-  print(round(designRes$parameters, 4))
+  print(xtable(designRes$parameters, digits=3))
 }
 
 # SPDE

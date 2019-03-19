@@ -139,13 +139,22 @@ region.time.HT<-function(dataobj, svydesign, area){
   }
 }
 
-region.time.HTMort<-function(dataobj, svydesign, area){
+region.time.HTMort<-function(dataobj, svydesign, area, nationalEstimate){
   
-  tmp<-subset(svydesign, (admin1==area))
-  
-  tt2 <- tryCatch(glmob<-svyglm(died~1,
-                                design=tmp,family=quasibinomial, maxit=50), 
-                  error=function(e) e, warning=function(w) w)
+  if(!nationalEstimate) {
+    
+    tmp<-subset(svydesign, (admin1==area))
+    
+    tt2 <- tryCatch(glmob<-svyglm(died~1,
+                                  design=tmp,family=quasibinomial, maxit=50), 
+                    error=function(e) e, warning=function(w) w)
+  } else {
+    thisUrban = area == 1
+    tmp<-subset(svydesign, (urban==thisUrban))
+    tt2 <- tryCatch(glmob<-svyglm(died~1,
+                                  design=tmp,family=quasibinomial, maxit=50), 
+                    error=function(e) e, warning=function(w) w)
+  }
   
   if(is(tt2, "warning")){
     if(grepl("agegroups", tt2)){
@@ -217,7 +226,8 @@ defineSurvey <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE){
   return(results)
 }
 
-defineSurveyMort <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE){
+defineSurveyMort <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE, nationalEstimate=FALSE, 
+                             getContrast=nationalEstimate){
   
   options(survey.lonely.psu="adjust")
   
@@ -225,9 +235,16 @@ defineSurveyMort <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE)
   regions <- sort(unique(childBirths_obj$admin1))
   regions_num  <- 1:length(regions)
   
-  results<-data.frame(admin1=rep(regions,each=1))
-  results$var.est<-results$logit.est<-results$upper<-results$lower<-results$u1m<-NA
-  results$converge <- NA
+  if(!nationalEstimate) {
+    results<-data.frame(admin1=rep(regions,each=1))
+    results$var.est<-results$logit.est<-results$upper<-results$lower<-results$u1m<-NA
+    results$converge <- NA
+  }
+  else {
+    results<-data.frame(urban=c(TRUE, FALSE))
+    results$var.est<-results$logit.est<-results$upper<-results$lower<-results$u1m<-NA
+    results$converge <- NA
+  }
   
   if(useSamplingWeights){
     childBirths_obj$wt <- childBirths_obj$samplingWeight
@@ -260,10 +277,31 @@ defineSurveyMort <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE)
   }
   
   for(i in 1:nrow(results)){
-    results[i, 2:7] <- region.time.HTMort(dataobj=childBirths_obj, svydesign=my.svydesign, 
-                                      area=results$admin1[i])
+    if(!nationalEstimate) {
+      results[i, 2:7] <- region.time.HTMort(dataobj=childBirths_obj, svydesign=my.svydesign, 
+                                            area=results$admin1[i], nationalEstimate=nationalEstimate)
+    }
+    else {
+      results[i, 2:7] <- region.time.HTMort(dataobj=childBirths_obj, svydesign=my.svydesign, 
+                                            area=i, nationalEstimate=nationalEstimate)
+    }
   }
-  return(results)
+  
+  if(getContrast) {
+    # out = svyby(~died, by = ~urban, design = svydesign, svymean)
+    glmob<-svyglm(died~urban,
+                  design=my.svydesign,family=quasibinomial, maxit=50)
+    
+    # get contrast mean and variance
+    est = glmob$coefficients[2]
+    urbanVar = vcov(glmob)[2,2]
+    
+    # get confidence interval
+    lower = est + qnorm(0.025, sd=sqrt(urbanVar))
+    upper = est + qnorm(0.975, sd=sqrt(urbanVar))
+    contrastStats = list(est=est, sd=sqrt(urbanVar), lower95=lower, upper95=upper)
+  }
+  return(list(results=results, contrastStats=contrastStats))
 }
 
 # Set childBirths_obj$admin1 to be something else for different kinds of aggregations
