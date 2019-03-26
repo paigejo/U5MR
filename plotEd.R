@@ -1,17 +1,17 @@
-# script for plotting predictions for neonatal mortality in Kenya
+# script for plotting predictions for secondary education completion in Kenya
 
 ##### before we make any plots, put all of them on the same scale
 ##### make multiple scales, two for estimates and quantiles, and two
 ##### for standard deviations. For each type of scale, make one that 
 ##### includes the naive and direct estimates, on anther that does not
 # naive and direct
-out = load("resultsDirectNaiveMort.RData")
-meanRange = range(c(expit(naiveMort$upper),expit(naiveMort$lower) ))
-meanRange = range(c(meanRange, expit(naiveMort$upper),expit(naiveMort$lower)))
-zlim = range(c(expit(directEstMort$upper),expit(directEstMort$lower) ))
+out = load("resultsDirectNaiveEd.RData")
+meanRange = range(c(expit(naiveEd$upper),expit(naiveEd$lower) ))
+meanRange = range(c(meanRange, expit(naiveEd$upper),expit(naiveEd$lower)))
+zlim = range(c(expit(directEstEd$upper),expit(directEstEd$lower) ))
 meanRange = range(c(meanRange, zlim))
-sdRange = range(sqrt(naiveMort$var.est))
-zlim = range(sqrt(directEstMort$var.est))
+sdRange = range(sqrt(naiveEd$var.est))
+zlim = range(sqrt(directEstEd$var.est))
 sdRange = range(c(sdRange, zlim))
 
 # make scales specialized for the direct and naive models
@@ -24,12 +24,12 @@ meanTicksND = meanTicksND[-which(meanTicksND == 0)]
 meanTickLabelsND = as.character(meanTicksND)
 
 # mercer
-out = load("resultsMercerMort.RData")
-zlim = range(c(expit(mercerMort$lower.mercer),expit(mercerMort$upper.mercer)))
+out = load("resultsMercerEd.RData")
+zlim = range(c(expit(mercerEd$lower.mercer),expit(mercerEd$upper.mercer)))
 meanRange = range(c(meanRange, zlim))
-sdRange = range(c(sdRange, sqrt(mercerMort$var.est.mercer)))
+sdRange = range(c(sdRange, sqrt(mercerEd$var.est.mercer)))
 meanRange2 = zlim
-sdRange2 = range(sqrt(mercerMort$var.est.mercer))
+sdRange2 = range(sqrt(mercerEd$var.est.mercer))
 
 # bym2
 argList = list(list(includeUrbanRural = FALSE, includeCluster = FALSE), 
@@ -42,17 +42,17 @@ for(i in 1:length(argList)) {
   includeCluster = args$includeCluster
   clusterText = ifelse(includeCluster, "", "NoClust")
   
-  nameRoot = paste0('bym2MortUrbRur',includeUrban, 'Cluster', includeCluster)
+  nameRoot = paste0('bym2EdUrbRur',includeUrban, 'Cluster', includeCluster)
   out = load(paste0(nameRoot, '.RData'))
   zlim = range(c(expit(designRes$predictions$Q10),expit(designRes$predictions$Q90)))
   meanRange = range(c(meanRange, zlim))
   sdRange = range(c(sdRange, designRes$predictions$stddev))
   meanRange2 = range(c(meanRange2, zlim))
-  sdRange2 = range(c(sdRange2, sqrt(mercerMort$var.est.mercer)))
+  sdRange2 = range(c(sdRange2, sqrt(mercerEd$var.est.mercer)))
   
   if(includeCluster) {
     # also gather and plot the debiased results
-    nameRoot = paste0('bym2MortUrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
+    nameRoot = paste0('bym2EdUrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
     out = load(paste0(nameRoot, '.RData'))
     
     zlim = range(c(expit(designRes$predictions$Q10),expit(designRes$predictions$Q90)))
@@ -64,17 +64,17 @@ for(i in 1:length(argList)) {
 }
 
 # spde
-argList = list(list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = FALSE), 
-               list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = TRUE), 
-               list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = FALSE), 
-               list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = TRUE))
+argList = list(list(clustDat = ed, includeClustEffect = FALSE, urbanEffect = FALSE), 
+               list(clustDat = ed, includeClustEffect = FALSE, urbanEffect = TRUE), 
+               list(clustDat = ed, includeClustEffect = TRUE, urbanEffect = FALSE), 
+               list(clustDat = ed, includeClustEffect = TRUE, urbanEffect = TRUE))
 for(i in 1:length(argList)) {
   args = argList[[i]]
   includeUrban = args$urbanEffect
   includeCluster = args$includeClustEffect
   clusterText = ifelse(includeCluster, "", "NoClust")
   
-  nameRoot = paste0("SPDEmort_includeClustEffect", includeCluster, 
+  nameRoot = paste0("SPDEed_includeClustEffect", includeCluster, 
                     "_urbanEffect", includeUrban)
   out = load(paste0("results", nameRoot, '.RData'))
   
@@ -98,56 +98,62 @@ for(i in 1:length(argList)) {
 # set plot tick marks to be reasonable on logit and log scales
 sdTicks = pretty(c(.1, sdRange[2]))
 sdTickLabels = as.character(sdTicks)
-sdTickLabels[c(5, 7)] = ""
+# sdTickLabels[c(5, 7)] = ""
 meanTicks = pretty(c(.01, meanRange[2]), n=10)
+meanTicks = meanTicks[-1]
 meanTickLabels = as.character(meanTicks)
-meanTickLabels[c(5, 7, 9, 11, 13)] = ""
+# meanTickLabels[c(5, 7, 9, 11, 13)] = ""
 sdTicks2 = pretty(sdRange2)
 sdTickLabels2 = as.character(sdTicks2)
-meanTicks2 = pretty(meanRange2, n=5)
+meanTicks2 = pretty(meanRange2, n=10)
+meanTicks2 = c(0.01, meanTicks2[-1])
 meanTickLabels2 = as.character(meanTicks2)
-meanTicksSPDE = pretty(meanRangeSPDE)
-sdTicksSPDE = pretty(sdRangeSPDE)
+meanTicksSPDE = pretty(meanRangeSPDE, n=11)
+meanTicksSPDE = meanTicksSPDE[-1]
+sdTicksSPDE = pretty(sdRangeSPDE, n=10)
+sdTicksSPDE = c(0.05, sdTicksSPDE[-1])
 meanTickLabelsSPDE = as.character(meanTicksSPDE)
 sdTickLabelsSPDE = as.character(sdTicksSPDE)
 
 # add in a few extra tick marks
-meanTicks = c(.005, meanTicks)
-meanTickLabels = c("0.005", meanTickLabels)
-sdTicks = c(0.005, 0.01, 0.05, sdTicks)
-sdTickLabels = c("0.005", "0.01", "0.05", sdTickLabels)
+meanTicks = c(.01, meanTicks)
+meanTickLabels = c("0.01", meanTickLabels)
+sdTicks = c(0.05, sdTicks)
+sdTickLabels = c("0.05", sdTickLabels)
 sdTicks2 = c(0.005, 0.01, 0.05, sdTicks2)
 sdTickLabels2 = c("0.005", "0.01", "0.05", sdTickLabels2)
+meanTicksSPDE = c(0.005, 0.01, 0.05, meanTicksSPDE)
+meanTickLabelsSPDE = as.character(meanTicksSPDE)
 
 # plot the actual data
 png(file="figures/EAsUrban.png", width=500, height=500)
 par(oma=c( 0,0,0,3), mar=c(5.1, 4.1, 4.1, 6))
-urban = mort$urban
-plot(mort$lon[!urban], mort$lat[!urban], pch=19, col="green", main=TeX("Urban vs. rural clusters"), xlim=kenyaLonRange, 
+urban = ed$urban
+plot(ed$lon[!urban], ed$lat[!urban], pch=19, col="green", main=TeX("Urban vs. rural clusters"), xlim=kenyaLonRange, 
      ylim=kenyaLatRange, xlab="Longitude", ylab="Latitude", cex=.2)
-points(mort$lon[urban], mort$lat[urban], pch=19, col="blue", cex=.2)
+points(ed$lon[urban], ed$lat[urban], pch=19, col="blue", cex=.2)
 # world(add=TRUE)
 plotMapDat(adm1)
 dev.off()
 
-png(file="figures/empiricalMortality.png", width=500, height=500)
+png(file="figures/empiricalEducation.png", width=500, height=500)
 par(oma=c( 0,0,0,3), mar=c(5.1, 4.1, 4.1, 6))
-quilt.plot(mort$lon, mort$lat, mort$y / mort$n, nx=150, ny=150, ylim=kenyaLatRange, xlim=kenyaLonRange, 
-           xlab="Longitude", ylab="Latitude", main=TeX("Empirical neonatal mortality rates"))
+quilt.plot(ed$lon, ed$lat, ed$y / ed$n, nx=150, ny=150, ylim=kenyaLatRange, xlim=kenyaLonRange, 
+           xlab="Longitude", ylab="Latitude", main=TeX("Empirical secondary education completion"))
 # world(add=TRUE)
 plotMapDat(adm1)
 dev.off()
 
-png(file="figures/empiricalMortalityLogit.png", width=500, height=500)
+png(file="figures/empiricalEducationLogit.png", width=500, height=500)
 par(oma=c( 0,0,0,3), mar=c(5.1, 4.1, 4.1, 6))
 cols = tim.colors(30)
-ticks = pretty(seq(0, max(mort$y / mort$n), l=5))
-ticks = logit(ticks[-1])
+ticks = pretty(seq(0, max(ed$y / ed$n), l=10), n=10)
+ticks = logit(ticks[-c(1, 11)])
 varRange = expit(range(ticks))
 # par( oma=c( 0,0,0,5)) # save some room for the legend
-plot(cbind(mort$lon, mort$lat), type="n", main=TeX("Kenya empirical mortality rates"), ylim=kenyaLatRange, 
+plot(cbind(ed$lon, ed$lat), type="n", main=TeX("Kenya empirical secondary education completion"), ylim=kenyaLatRange, 
      xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude")
-quilt.plot(cbind(mort$lon, mort$lat), logit(mort$y / mort$n), 
+quilt.plot(cbind(ed$lon, ed$lat), logit(ed$y / ed$n), 
            nx=100, ny=100, add.legend=FALSE, add=TRUE, zlim=logit(varRange))
 plotMapDat(adm1, lwd=.5)
 world(add=TRUE)
@@ -156,23 +162,23 @@ image.plot(zlim=logit(varRange), nlevel=length(cols), legend.only=TRUE, horizont
            col=cols, add = TRUE, axis.args=list(at=ticks, labels=expit(ticks)))
 dev.off()
 
-png(file="figures/empiricalMortalityDiscrete.png", width=500, height=500)
+png(file="figures/empiricalEducationDiscrete.png", width=500, height=500)
 par(oma=c( 0,0,0,3), mar=c(5.1, 4.1, 4.1, 6))
-totals = aggregate(mort$n, list(mort$admin1), FUN=sum)
-counts = aggregate(mort$y, list(mort$admin1), FUN=sum)
-plotMapDat(adm1, plotVar=counts$x / totals$x, new = TRUE, main="Empirical neonatal mortality rates")
+totals = aggregate(ed$n, list(ed$admin1), FUN=sum)
+counts = aggregate(ed$y, list(ed$admin1), FUN=sum)
+plotMapDat(adm1, plotVar=counts$x / totals$x, new = TRUE, main="Empirical secondary education completion")
 dev.off()
 
 png(file="figures/denominatorsDiscrete.png", width=500, height=500)
 par(oma=c( 0,0,0,3), mar=c(5.1, 4.1, 4.1, 6))
-plotMapDat(adm1, plotVar=totals$x, new = TRUE, main="Number of children in sample")
+plotMapDat(adm1, plotVar=totals$x, new = TRUE, main="Number of women in sample")
 dev.off()
 
-png(file="figures/empiricalMortalityDiscreteLogit.png", width=500, height=500)
+png(file="figures/empiricalEducationDiscreteLogit.png", width=500, height=500)
 par(oma=c( 0,0,0,3), mar=c(5.1, 4.1, 4.1, 6))
-totals = aggregate(mort$n, list(mort$admin1), FUN=sum)
-counts = aggregate(mort$y, list(mort$admin1), FUN=sum)
-plotMapDat(adm1, plotVar=counts$x / totals$x, new = TRUE, main="Empirical neonatal mortality rates", 
+totals = aggregate(ed$n, list(ed$admin1), FUN=sum)
+counts = aggregate(ed$y, list(ed$admin1), FUN=sum)
+plotMapDat(adm1, plotVar=counts$x / totals$x, new = TRUE, main="Empirical secondary education completion", 
            zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
 dev.off()
 
@@ -184,11 +190,12 @@ par(oma=c( 0,0,0,3), mar=c(5.1, 4.1, 4.1, 6))
 plotMapDat(adm1, plotVar=countyPops, new = TRUE, main="Total population")
 dev.off()
 
-out = load("data4directMort.RData")
-png(file="figures/extendedMortalityDiscrete.png", width=500, height=500)
-testDied = aggregate(resMort$died, list(resMort$admin1), FUN=sum)
-testN = aggregate(rep(1, nrow(resMort)), list(resMort$admin1), FUN=sum)
-plotMapDat(adm1, plotVar=testDied$x / testN$x, new = TRUE, main="Extended neonatal mortality rates")
+# entirely for testing the extendData function
+out = load("data4directEd.RData")
+png(file="figures/extendedEducationDiscrete.png", width=500, height=500)
+testY = aggregate(resEd$y, list(resEd$admin1), FUN=sum)
+testN = aggregate(rep(1, nrow(resEd)), list(resEd$admin1), FUN=sum)
+plotMapDat(adm1, plotVar=testY$x / testN$x, new = TRUE, main="Extended secondary education completion")
 dev.off()
 
 cols = tim.colors(64)
@@ -221,7 +228,7 @@ dev.off()
 # quilt.plot(cbind(popGrid$lon, popGrid$lat), log(spdeResults$resultsPixel$sds), 
 #            nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(log(sdRange2)))
 # plotMapDat(adm1, lwd=.5)
-# points(mort$lon, mort$lat, pch=".")
+# points(ed$lon, ed$lat, pch=".")
 # image.plot(zlim=range(log(sdRange2)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
 #            col=cols, add = TRUE, axis.args=list(at=log(sdTicks2), labels=sdTickLabels2), legend.mar = 0)
 
@@ -230,84 +237,84 @@ tab$x = counts$x / totals$x
 tab
 
 ##### Naive and direct estimates
-# save(directEstMort, naiveMort, file="resultsDirectNaiveMort.RData")
-out = load("resultsDirectNaiveMort.RData")
-plotName = "MortPreds"
+# save(directEstEd, naiveEd, file="resultsDirectNaiveEd.RData")
+out = load("resultsDirectNaiveEd.RData")
+plotName = "EdPreds"
 png(file=paste0("figures/naive", plotName, ".png"), width=1000, height=1200)
 par(mfrow=c(2,2))
-zlim = range(c(expit(naiveMort$upper),expit(naiveMort$lower) ))
-plotMapDat(adm1, plotVar=naiveMort$u1m, new = TRUE, main="Naive model estimates", zlim=meanRange)
-plotMapDat(adm1, plotVar=sqrt(naiveMort$var.est), new = TRUE, main="Naive model logit predictive SDs", zlim=sdRange)
-plotMapDat(adm1, plotVar=expit(naiveMort$upper), new = TRUE, main="Naive model 10th percentile", zlim=meanRange)
-plotMapDat(adm1, plotVar=expit(naiveMort$lower), new = TRUE, main="Naive model 90th percentile", zlim=meanRange)
+zlim = range(c(expit(naiveEd$upper),expit(naiveEd$lower) ))
+plotMapDat(adm1, plotVar=naiveEd$est, new = TRUE, main="Naive model estimates", zlim=meanRange)
+plotMapDat(adm1, plotVar=sqrt(naiveEd$var.est), new = TRUE, main="Naive model logit predictive SDs", zlim=sdRange)
+plotMapDat(adm1, plotVar=expit(naiveEd$upper), new = TRUE, main="Naive model 10th percentile", zlim=meanRange)
+plotMapDat(adm1, plotVar=expit(naiveEd$lower), new = TRUE, main="Naive model 90th percentile", zlim=meanRange)
 dev.off()
 png(file=paste0("figures/naive", plotName, "Logit.png"), width=1000, height=1200)
 par(mfrow=c(2,2), oma=c( 0,0,0,4))
-zlim = range(c(expit(naiveMort$upper),expit(naiveMort$lower) ))
-plotMapDat(adm1, plotVar=naiveMort$u1m, new = TRUE, main="Naive model estimates", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
-plotMapDat(adm1, plotVar=sqrt(naiveMort$var.est), new = TRUE, main="Naive model logit predictive SDs", zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels)
-plotMapDat(adm1, plotVar=expit(naiveMort$upper), new = TRUE, main="Naive model 10th percentile", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
-plotMapDat(adm1, plotVar=expit(naiveMort$lower), new = TRUE, main="Naive model 90th percentile", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
+zlim = range(c(expit(naiveEd$upper),expit(naiveEd$lower) ))
+plotMapDat(adm1, plotVar=naiveEd$est, new = TRUE, main="Naive model estimates", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
+plotMapDat(adm1, plotVar=sqrt(naiveEd$var.est), new = TRUE, main="Naive model logit predictive SDs", zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels)
+plotMapDat(adm1, plotVar=expit(naiveEd$upper), new = TRUE, main="Naive model 10th percentile", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
+plotMapDat(adm1, plotVar=expit(naiveEd$lower), new = TRUE, main="Naive model 90th percentile", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
 dev.off()
 png(file=paste0("figures/direct", plotName, ".png"), width=800, height=1000)
 par(mfrow=c(2,2))
-zlim = range(c(expit(directEstMort$upper),expit(directEstMort$lower) ))
-plotMapDat(adm1, plotVar=directEstMort$u1m, new = TRUE, main="Direct model estimates", zlim=meanRange)
-plotMapDat(adm1, plotVar=sqrt(directEstMort$var.est), new = TRUE, main="Direct model logit predictive SDs", zlim=sdRange)
-plotMapDat(adm1, plotVar=expit(directEstMort$upper), new = TRUE, main="Direct model 10th percentile", zlim=meanRange)
-plotMapDat(adm1, plotVar=expit(directEstMort$lower), new = TRUE, main="Direct model 90th percentile", zlim=meanRange)
+zlim = range(c(expit(directEstEd$upper),expit(directEstEd$lower) ))
+plotMapDat(adm1, plotVar=directEstEd$est, new = TRUE, main="Direct model estimates", zlim=meanRange)
+plotMapDat(adm1, plotVar=sqrt(directEstEd$var.est), new = TRUE, main="Direct model logit predictive SDs", zlim=sdRange)
+plotMapDat(adm1, plotVar=expit(directEstEd$upper), new = TRUE, main="Direct model 10th percentile", zlim=meanRange)
+plotMapDat(adm1, plotVar=expit(directEstEd$lower), new = TRUE, main="Direct model 90th percentile", zlim=meanRange)
 dev.off()
 png(file=paste0("figures/direct", plotName, "Logit.png"), width=800, height=1000)
 par(mfrow=c(2,2), oma=c( 0,0,0,4))
-plotMapDat(adm1, plotVar=directEstMort$u1m, new = TRUE, main="Direct model estimates", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
-plotMapDat(adm1, plotVar=sqrt(directEstMort$var.est), new = TRUE, main="Direct model logit predictive SDs", zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels)
-plotMapDat(adm1, plotVar=expit(directEstMort$upper), new = TRUE, main="Direct model 10th percentile", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
-plotMapDat(adm1, plotVar=expit(directEstMort$lower), new = TRUE, main="Direct model 90th percentile", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
+plotMapDat(adm1, plotVar=directEstEd$est, new = TRUE, main="Direct model estimates", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
+plotMapDat(adm1, plotVar=sqrt(directEstEd$var.est), new = TRUE, main="Direct model logit predictive SDs", zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels)
+plotMapDat(adm1, plotVar=expit(directEstEd$upper), new = TRUE, main="Direct model 10th percentile", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
+plotMapDat(adm1, plotVar=expit(directEstEd$lower), new = TRUE, main="Direct model 90th percentile", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
 dev.off()
 
 ##### Mercer et al. estimates
-# save(mercerMort, file=paste0("resultsMercerMort.RData"))
-plotName = "mercerMortPreds"
-out = load("resultsMercerMort.RData")
-zlim = range(c(expit(mercerMort$lower.mercer),expit(mercerMort$upper.mercer)))
+# save(mercerEd, file=paste0("resultsMercerEd.RData"))
+plotName = "mercerEdPreds"
+out = load("resultsMercerEd.RData")
+zlim = range(c(expit(mercerEd$lower.mercer),expit(mercerEd$upper.mercer)))
 png(file=paste0("figures/", plotName, ".png"), width=800, height=1000)
 par(mfrow=c(2,2))
-plotMapDat(adm1, plotVar=mercerMort$u1m.mercer, new = TRUE, main="Mercer et al. model estimates", zlim=meanRange)
-plotMapDat(adm1, plotVar=sqrt(mercerMort$var.est.mercer), new = TRUE, main="Mercer et al. model logit predictive SDs", zlim=sdRange)
-plotMapDat(adm1, plotVar=expit(mercerMort$lower.mercer), new = TRUE, main="Mercer et al. model 10th percentile", zlim=meanRange)
-plotMapDat(adm1, plotVar=expit(mercerMort$upper.mercer), new = TRUE, main="Mercer et al. model 90th percentile", zlim=meanRange)
+plotMapDat(adm1, plotVar=mercerEd$est.mercer, new = TRUE, main="Mercer et al. model estimates", zlim=meanRange)
+plotMapDat(adm1, plotVar=sqrt(mercerEd$var.est.mercer), new = TRUE, main="Mercer et al. model logit predictive SDs", zlim=sdRange)
+plotMapDat(adm1, plotVar=expit(mercerEd$lower.mercer), new = TRUE, main="Mercer et al. model 10th percentile", zlim=meanRange)
+plotMapDat(adm1, plotVar=expit(mercerEd$upper.mercer), new = TRUE, main="Mercer et al. model 90th percentile", zlim=meanRange)
 dev.off()
 
 png(file=paste0("figures/", plotName, "Logit.png"), width=800, height=1000)
 par(mfrow=c(2,2), oma=c( 0,0,0,4))
-plotMapDat(adm1, plotVar=mercerMort$u1m.mercer, new = TRUE, main="Mercer et al. model estimates", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
-plotMapDat(adm1, plotVar=sqrt(mercerMort$var.est.mercer), new = TRUE, main="Mercer et al. model logit predictive SDs", zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels)
-plotMapDat(adm1, plotVar=expit(mercerMort$lower.mercer), new = TRUE, main="Mercer et al. model 10th percentile", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
-plotMapDat(adm1, plotVar=expit(mercerMort$upper.mercer), new = TRUE, main="Mercer et al. model 90th percentile", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
+plotMapDat(adm1, plotVar=mercerEd$est.mercer, new = TRUE, main="Mercer et al. model estimates", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
+plotMapDat(adm1, plotVar=sqrt(mercerEd$var.est.mercer), new = TRUE, main="Mercer et al. model logit predictive SDs", zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels)
+plotMapDat(adm1, plotVar=expit(mercerEd$lower.mercer), new = TRUE, main="Mercer et al. model 10th percentile", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
+plotMapDat(adm1, plotVar=expit(mercerEd$upper.mercer), new = TRUE, main="Mercer et al. model 90th percentile", zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels)
 dev.off()
 
-zlim = range(c(expit(mercerMort$lower.mercer),expit(mercerMort$upper.mercer)))
+zlim = range(c(expit(mercerEd$lower.mercer),expit(mercerEd$upper.mercer)))
 png(file=paste0("figures/", plotName, "2.png"), width=800, height=1000)
 par(mfrow=c(2,2))
-plotMapDat(adm1, plotVar=mercerMort$u1m.mercer, new = TRUE, main="Mercer et al. model estimates", zlim=meanRange2)
-plotMapDat(adm1, plotVar=sqrt(mercerMort$var.est.mercer), new = TRUE, main="Mercer et al. model logit predictive SDs", zlim=sdRange2)
-plotMapDat(adm1, plotVar=expit(mercerMort$lower.mercer), new = TRUE, main="Mercer et al. model 10th percentile", zlim=meanRange2)
-plotMapDat(adm1, plotVar=expit(mercerMort$upper.mercer), new = TRUE, main="Mercer et al. model 90th percentile", zlim=meanRange2)
+plotMapDat(adm1, plotVar=mercerEd$est.mercer, new = TRUE, main="Mercer et al. model estimates", zlim=meanRange2)
+plotMapDat(adm1, plotVar=sqrt(mercerEd$var.est.mercer), new = TRUE, main="Mercer et al. model logit predictive SDs", zlim=sdRange2)
+plotMapDat(adm1, plotVar=expit(mercerEd$lower.mercer), new = TRUE, main="Mercer et al. model 10th percentile", zlim=meanRange2)
+plotMapDat(adm1, plotVar=expit(mercerEd$upper.mercer), new = TRUE, main="Mercer et al. model 90th percentile", zlim=meanRange2)
 dev.off()
 
 png(file=paste0("figures/", plotName, "Logit2.png"), width=800, height=1000)
 par(mfrow=c(2,2), oma=c( 0,0,0,4))
-plotMapDat(adm1, plotVar=mercerMort$u1m.mercer, new = TRUE, main="Mercer et al. model estimates", zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
-plotMapDat(adm1, plotVar=sqrt(mercerMort$var.est.mercer), new = TRUE, main="Mercer et al. model logit predictive SDs", zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2)
-plotMapDat(adm1, plotVar=expit(mercerMort$lower.mercer), new = TRUE, main="Mercer et al. model 10th percentile", zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
-plotMapDat(adm1, plotVar=expit(mercerMort$upper.mercer), new = TRUE, main="Mercer et al. model 90th percentile", zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
+plotMapDat(adm1, plotVar=mercerEd$est.mercer, new = TRUE, main="Mercer et al. model estimates", zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
+plotMapDat(adm1, plotVar=sqrt(mercerEd$var.est.mercer), new = TRUE, main="Mercer et al. model logit predictive SDs", zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2)
+plotMapDat(adm1, plotVar=expit(mercerEd$lower.mercer), new = TRUE, main="Mercer et al. model 10th percentile", zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
+plotMapDat(adm1, plotVar=expit(mercerEd$upper.mercer), new = TRUE, main="Mercer et al. model 90th percentile", zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
 dev.off()
 
 ##### BYM2 estimates
-# save(file = paste0('bym2MortUrbRur',includeUrbanRural, 'Cluster', includeCluster, '.RData'), 
+# save(file = paste0('bym2EdUrbRur',includeUrbanRural, 'Cluster', includeCluster, '.RData'), 
 #      designRes = designRes)
 # if(includeCluster) {
-#   save(file = paste0('bym2MortUrbRur',includeUrbanRural, 'Cluster', includeCluster, 'debiased.RData'), 
+#   save(file = paste0('bym2EdUrbRur',includeUrbanRural, 'Cluster', includeCluster, 'debiased.RData'), 
 #        designRes = designRes)
 # }
 argList = list(list(includeUrbanRural = FALSE, includeCluster = FALSE), 
@@ -320,7 +327,7 @@ for(i in 1:length(argList)) {
   includeCluster = args$includeCluster
   clusterText = ifelse(includeCluster, "", "NoClust")
   
-  nameRoot = paste0('bym2MortUrbRur',includeUrban, 'Cluster', includeCluster)
+  nameRoot = paste0('bym2EdUrbRur',includeUrban, 'Cluster', includeCluster)
   out = load(paste0(nameRoot, '.RData'))
   
   urbanText = ifelse(includeUrban, "", "noUrb")
@@ -364,7 +371,7 @@ for(i in 1:length(argList)) {
   
   if(includeCluster) {
     # also gather and plot the debiased results
-    nameRoot = paste0('bym2MortUrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
+    nameRoot = paste0('bym2EdUrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
     out = load(paste0(nameRoot, '.RData'))
     
     urbanText = ifelse(includeUrban, "", "noUrb")
@@ -411,17 +418,17 @@ for(i in 1:length(argList)) {
 }
 
 ##### SPDE estimates
-argList = list(list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = FALSE), 
-               list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = TRUE), 
-               list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = FALSE), 
-               list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = TRUE))
+argList = list(list(clustDat = ed, includeClustEffect = FALSE, urbanEffect = FALSE), 
+               list(clustDat = ed, includeClustEffect = FALSE, urbanEffect = TRUE), 
+               list(clustDat = ed, includeClustEffect = TRUE, urbanEffect = FALSE), 
+               list(clustDat = ed, includeClustEffect = TRUE, urbanEffect = TRUE))
 for(i in 1:length(argList)) {
   args = argList[[i]]
   includeUrban = args$urbanEffect
   includeCluster = args$includeClustEffect
   clusterText = ifelse(includeCluster, "", "NoClust")
   
-  nameRoot = paste0("SPDEmort_includeClustEffect", includeCluster, 
+  nameRoot = paste0("SPDEed_includeClustEffect", includeCluster, 
                     "_urbanEffect", includeUrban)
   out = load(paste0("results", nameRoot, '.RData'))
   
@@ -490,7 +497,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$pred), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(logit(meanRange)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(logit(meanRange)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=logit(meanTicks), labels=meanTickLabels), legend.mar = 0)
   
@@ -499,7 +506,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), log(spdeResults$resultsPixel$sds), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(log(sdRange)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(log(sdRange)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=log(sdTicks), labels=sdTickLabels), legend.mar = 0)
   
@@ -508,7 +515,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$lower), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(logit(meanRange)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(logit(meanRange)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=logit(meanTicks), labels=meanTickLabels), legend.mar = 0)
   
@@ -517,7 +524,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$upper), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(logit(meanRange)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(logit(meanRange)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=logit(meanTicks), labels=meanTickLabels), legend.mar = 5)
   dev.off()
@@ -529,7 +536,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$pred), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(logit(meanRange2)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(logit(meanRange2)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=logit(meanTicks2), labels=meanTickLabels2), legend.mar = 0)
   
@@ -538,7 +545,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), log(spdeResults$resultsPixel$sds), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(log(sdRange2)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(log(sdRange2)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=log(sdTicks2), labels=sdTickLabels2), legend.mar = 0)
   
@@ -547,7 +554,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$lower), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(logit(meanRange2)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(logit(meanRange2)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=logit(meanTicks2), labels=meanTickLabels2), legend.mar = 0)
   
@@ -556,7 +563,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$upper), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(logit(meanRange2)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(logit(meanRange2)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=logit(meanTicks2), labels=meanTickLabels2), legend.mar = 5)
   dev.off()
@@ -568,7 +575,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$pred), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(logit(meanRangeSPDE)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(logit(meanRangeSPDE)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=logit(meanTicksSPDE), labels=meanTickLabelsSPDE), legend.mar = 0)
   
@@ -577,7 +584,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), log(spdeResults$resultsPixel$sds), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(log(sdRangeSPDE)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(log(sdRangeSPDE)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=log(sdTicksSPDE), labels=sdTickLabelsSPDE), legend.mar = 0)
   
@@ -586,7 +593,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$lower), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(logit(meanRangeSPDE)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(logit(meanRangeSPDE)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=logit(meanTicksSPDE), labels=meanTickLabelsSPDE), legend.mar = 0)
   
@@ -595,7 +602,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$upper), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(logit(meanRangeSPDE)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(logit(meanRangeSPDE)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=logit(meanTicksSPDE), labels=meanTickLabelsSPDE), legend.mar = 5)
   dev.off()
@@ -609,18 +616,18 @@ for(i in 1:length(argList)) {
 ## make three by four plot with these three models and lower, mean, and upper bounds, and SDs
 
 ## Plot 1: direct and naive models
-out = load("resultsDirectNaiveMort.RData")
+out = load("resultsDirectNaiveEd.RData")
 
 png(file=paste0("figures/fullDirectNaive.png"), width=800, height=1200)
 par(mfrow=c(4,2), oma=c( 0,0,0,4))
-plotMapDat(adm1, plotVar=naiveMort$u1m, new = TRUE, main="Naive model estimates", zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND)
-plotMapDat(adm1, plotVar=directEstMort$u1m, new = TRUE, main="Direct model estimates", zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND)
-plotMapDat(adm1, plotVar=sqrt(naiveMort$var.est), new = TRUE, main="Naive model logit predictive SDs", zlim=log(sdRangeND), scaleFun=log, scaleFunInverse=exp, ticks=sdTicksND, tickLabels=sdTickLabelsND)
-plotMapDat(adm1, plotVar=sqrt(directEstMort$var.est), new = TRUE, main="Direct model logit predictive SDs", zlim=log(sdRangeND), scaleFun=log, scaleFunInverse=exp, ticks=sdTicksND, tickLabels=sdTickLabelsND)
-plotMapDat(adm1, plotVar=expit(naiveMort$upper), new = TRUE, main="Naive model 10th percentile", zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND)
-plotMapDat(adm1, plotVar=expit(directEstMort$upper), new = TRUE, main="Direct model 10th percentile", zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND)
-plotMapDat(adm1, plotVar=expit(naiveMort$lower), new = TRUE, main="Naive model 90th percentile", zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND)
-plotMapDat(adm1, plotVar=expit(directEstMort$lower), new = TRUE, main="Direct model 90th percentile", zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND)
+plotMapDat(adm1, plotVar=naiveEd$est, new = TRUE, main="Naive model estimates", zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND)
+plotMapDat(adm1, plotVar=directEstEd$est, new = TRUE, main="Direct model estimates", zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND)
+plotMapDat(adm1, plotVar=sqrt(naiveEd$var.est), new = TRUE, main="Naive model logit predictive SDs", zlim=log(sdRangeND), scaleFun=log, scaleFunInverse=exp, ticks=sdTicksND, tickLabels=sdTickLabelsND)
+plotMapDat(adm1, plotVar=sqrt(directEstEd$var.est), new = TRUE, main="Direct model logit predictive SDs", zlim=log(sdRangeND), scaleFun=log, scaleFunInverse=exp, ticks=sdTicksND, tickLabels=sdTickLabelsND)
+plotMapDat(adm1, plotVar=expit(naiveEd$upper), new = TRUE, main="Naive model 10th percentile", zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND)
+plotMapDat(adm1, plotVar=expit(directEstEd$upper), new = TRUE, main="Direct model 10th percentile", zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND)
+plotMapDat(adm1, plotVar=expit(naiveEd$lower), new = TRUE, main="Naive model 90th percentile", zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND)
+plotMapDat(adm1, plotVar=expit(directEstEd$lower), new = TRUE, main="Direct model 90th percentile", zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND)
 dev.off()
 
 ## Plot 2: mercer, BYM2 with urban and cluster effects, SPDE with urban and cluster effects
@@ -630,7 +637,7 @@ includeUrban = TRUE
 includeCluster = TRUE
 clusterText = ifelse(includeCluster, "", "NoClust")
 
-nameRoot = paste0('bym2MortUrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
+nameRoot = paste0('bym2EdUrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
 out = load(paste0(nameRoot, '.RData'))
 
 urbanText = ifelse(includeUrban, "", "noUrb")
@@ -643,7 +650,7 @@ includeUrban = TRUE
 includeCluster = TRUE
 clusterText = ifelse(includeCluster, "", "NoClust")
 
-nameRoot = paste0("SPDEmort_includeClustEffect", includeCluster, 
+nameRoot = paste0("SPDEed_includeClustEffect", includeCluster, 
                   "_urbanEffect", includeUrban)
 out = load(paste0("results", nameRoot, '.RData'))
 
@@ -653,28 +660,28 @@ both = includeUrban && includeUrban
 notBothText = ifelse(both, "", " ")
 typeTextSPDE = paste0(notBothText, urbanText, clusterText)
 
-plotMapDat(adm1, plotVar=mercerMort$u1m.mercer, new = TRUE, main="Mercer et al. model estimates", zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
+plotMapDat(adm1, plotVar=mercerEd$est.mercer, new = TRUE, main="Mercer et al. model estimates", zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
 plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 model estimates", typeTextBYM), zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
 plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE model estimates", typeTextSPDE), zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
 
-plotMapDat(adm1, plotVar=sqrt(mercerMort$var.est.mercer), new = TRUE, main="Mercer et al. model logit predictive SDs", zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2)
+plotMapDat(adm1, plotVar=sqrt(mercerEd$var.est.mercer), new = TRUE, main="Mercer et al. model logit predictive SDs", zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2)
 plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 model logit predictive SDs", typeTextBYM), zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2)
 plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE model logit predictive SDs", typeTextSPDE), zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2)
 
-plotMapDat(adm1, plotVar=expit(mercerMort$lower.mercer), new = TRUE, main="Mercer et al. model 10th percentile", zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
+plotMapDat(adm1, plotVar=expit(mercerEd$lower.mercer), new = TRUE, main="Mercer et al. model 10th percentile", zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
 plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 model 10th percentile", typeTextBYM), zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
 plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE model 10th percentile", typeTextSPDE), zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
 
-plotMapDat(adm1, plotVar=expit(mercerMort$upper.mercer), new = TRUE, main="Mercer et al. model 90th percentile", zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
+plotMapDat(adm1, plotVar=expit(mercerEd$upper.mercer), new = TRUE, main="Mercer et al. model 90th percentile", zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
 plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 model 90th percentile", typeTextBYM), zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
 plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE model 90th percentile", typeTextSPDE), zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2)
 dev.off()
 
 ## Plot 3: plot all of the SPDE plots together (4 x 4 plot)
-argList = list(list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = FALSE), 
-               list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = TRUE), 
-               list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = FALSE), 
-               list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = TRUE))
+argList = list(list(clustDat = ed, includeClustEffect = FALSE, urbanEffect = FALSE), 
+               list(clustDat = ed, includeClustEffect = FALSE, urbanEffect = TRUE), 
+               list(clustDat = ed, includeClustEffect = TRUE, urbanEffect = FALSE), 
+               list(clustDat = ed, includeClustEffect = TRUE, urbanEffect = TRUE))
 cols = tim.colors(64)
 png(file=paste0("figures/preds", nameRoot, "ContinuousTogetherSelf.png"), width=1400, height=1400)
 par(mfrow=c(4,4), oma=c( 0,0,0,1.5), mar=c(5.1, 4.1, 4.1, 6))
@@ -684,7 +691,7 @@ for(i in 1:length(argList)) {
   includeCluster = args$includeClustEffect
   clusterText = ifelse(includeCluster, "", "NoClust")
   
-  nameRoot = paste0("SPDEmort_includeClustEffect", includeCluster, 
+  nameRoot = paste0("SPDEed_includeClustEffect", includeCluster, 
                     "_urbanEffect", includeUrban)
   out = load(paste0("results", nameRoot, '.RData'))
   
@@ -699,7 +706,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$pred), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(logit(meanRangeSPDE)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(logit(meanRangeSPDE)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=logit(meanTicksSPDE), labels=meanTickLabelsSPDE), legend.mar = 0)
 }
@@ -710,7 +717,7 @@ for(i in 1:length(argList)) {
   includeCluster = args$includeClustEffect
   clusterText = ifelse(includeCluster, "", "NoClust")
   
-  nameRoot = paste0("SPDEmort_includeClustEffect", includeCluster, 
+  nameRoot = paste0("SPDEed_includeClustEffect", includeCluster, 
                     "_urbanEffect", includeUrban)
   out = load(paste0("results", nameRoot, '.RData'))
   
@@ -725,7 +732,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), log(spdeResults$resultsPixel$sds), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(log(sdRangeSPDE)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(log(sdRangeSPDE)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=log(sdTicksSPDE), labels=sdTickLabelsSPDE), legend.mar = 0)
 }
@@ -736,7 +743,7 @@ for(i in 1:length(argList)) {
   includeCluster = args$includeClustEffect
   clusterText = ifelse(includeCluster, "", "NoClust")
   
-  nameRoot = paste0("SPDEmort_includeClustEffect", includeCluster, 
+  nameRoot = paste0("SPDEed_includeClustEffect", includeCluster, 
                     "_urbanEffect", includeUrban)
   out = load(paste0("results", nameRoot, '.RData'))
   
@@ -751,7 +758,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$lower), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(logit(meanRangeSPDE)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(logit(meanRangeSPDE)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=logit(meanTicksSPDE), labels=meanTickLabelsSPDE), legend.mar = 0)
 }
@@ -762,7 +769,7 @@ for(i in 1:length(argList)) {
   includeCluster = args$includeClustEffect
   clusterText = ifelse(includeCluster, "", "NoClust")
   
-  nameRoot = paste0("SPDEmort_includeClustEffect", includeCluster, 
+  nameRoot = paste0("SPDEed_includeClustEffect", includeCluster, 
                     "_urbanEffect", includeUrban)
   out = load(paste0("results", nameRoot, '.RData'))
   
@@ -777,7 +784,7 @@ for(i in 1:length(argList)) {
   quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$upper), 
              nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(logit(meanRangeSPDE)))
   plotMapDat(adm1, lwd=.5)
-  points(mort$lon, mort$lat, pch=".")
+  points(ed$lon, ed$lat, pch=".")
   image.plot(zlim=range(logit(meanRangeSPDE)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
              col=cols, add = TRUE, axis.args=list(at=logit(meanTicksSPDE), labels=meanTickLabelsSPDE), legend.mar = 5)
 }
@@ -788,13 +795,16 @@ dev.off()
 # estimates
 library("colorspace")
 # pal <-choose_palette()
-cols=diverging_hcl(101, h1=265, h2=101, c1=100, l1=50, l2=92, p1=0.6, p2=1.5)
+# cols=diverging_hcl(101, h1=265, h2=101, c1=100, l1=50, l2=92, p1=0.6, p2=1.5)
+ncols = 29
+nPerSide = (ncols - 1) / 2
+cols=diverging_hcl(ncols, h1=265, h2=17, c1=100, l1=50, l2=92, p1=0.6)
 png(file=paste0("figures/fullRelative.png"), width=800, height=1000)
 par(mfrow=c(2, 2), oma=c( 0,0,0,4))
 
-zlim = range(c((plotVar=naiveMort$u1m - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), 
-               (directEstMort$u1m - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), 
-               (mercerMort$u1m.mercer - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), 
+zlim = range(c((plotVar=naiveEd$est - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), 
+               (directEstEd$est - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), 
+               (mercerEd$est.mercer - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), 
                (spdeResults$resultsCounty$pred - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean)))
 lengthUp = zlim[2] - 0
 lengthDown = 0 - zlim[1]
@@ -807,12 +817,12 @@ if(lengthUp >= lengthDown) {
   propUp = lengthUp / lengthDown
 }
 # cols = pal(101) # keep an extra color in the middle for 0
-numDown = round(50 * propDown)
-numUp = round(50 * propUp)
-cols = c(cols[(51-numDown):50], cols[51], cols[52:(51 + numUp)])
-plotMapDat(adm1, plotVar=(plotVar=naiveMort$u1m - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), new = TRUE, main="Naive model relative to BYM2 estimates", zlim=zlim, col=cols)
-plotMapDat(adm1, plotVar=(directEstMort$u1m - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), new = TRUE, main="Direct model relative to BYM2 estimates", zlim=zlim, col=cols)
-plotMapDat(adm1, plotVar=(mercerMort$u1m.mercer - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), new = TRUE, main="Mercer et al. model relative to BYM2 estimates", zlim=zlim, col=cols)
+numDown = round(nPerSide * propDown)
+numUp = round(nPerSide * propUp)
+cols = c(cols[(nPerSide + 1-numDown):nPerSide], cols[nPerSide + 1], cols[(nPerSide + 2):(nPerSide + 1 + numUp)])
+plotMapDat(adm1, plotVar=(plotVar=naiveEd$est - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), new = TRUE, main="Naive model relative to BYM2 estimates", zlim=zlim, col=cols)
+plotMapDat(adm1, plotVar=(directEstEd$est - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), new = TRUE, main="Direct model relative to BYM2 estimates", zlim=zlim, col=cols)
+plotMapDat(adm1, plotVar=(mercerEd$est.mercer - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), new = TRUE, main="Mercer et al. model relative to BYM2 estimates", zlim=zlim, col=cols)
 plotMapDat(adm1, plotVar=(spdeResults$resultsCounty$pred - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), new = TRUE, main=paste0("SPDE model relative to BYM2 estimates", typeTextSPDE), zlim=zlim, col=cols)
 dev.off()
 
@@ -829,7 +839,7 @@ for(i in 1:length(argList)) {
   includeCluster = args$includeCluster
   clusterText = ifelse(includeCluster, "", "NoClust")
   
-  nameRoot = paste0('bym2MortUrbRur',includeUrban, 'Cluster', includeCluster)
+  nameRoot = paste0('bym2EdUrbRur',includeUrban, 'Cluster', includeCluster)
   out = load(paste0(nameRoot, '.RData'))
   
   urbanText = ifelse(includeUrban, "", "noUrb")
@@ -847,17 +857,17 @@ for(i in 1:length(argList)) {
 
 # SPDE
 
-argList = list(list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = FALSE), 
-               list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = TRUE), 
-               list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = FALSE), 
-               list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = TRUE))
+argList = list(list(clustDat = ed, includeClustEffect = FALSE, urbanEffect = FALSE), 
+               list(clustDat = ed, includeClustEffect = FALSE, urbanEffect = TRUE), 
+               list(clustDat = ed, includeClustEffect = TRUE, urbanEffect = FALSE), 
+               list(clustDat = ed, includeClustEffect = TRUE, urbanEffect = TRUE))
 for(i in 1:length(argList)) {
   args = argList[[i]]
   includeUrban = args$urbanEffect
   includeCluster = args$includeClustEffect
   clusterText = ifelse(includeCluster, "", "NoClust")
   
-  nameRoot = paste0("SPDEmort_includeClustEffect", includeCluster, 
+  nameRoot = paste0("SPDEed_includeClustEffect", includeCluster, 
                     "_urbanEffect", includeUrban)
   out = load(paste0("results", nameRoot, '.RData'))
   

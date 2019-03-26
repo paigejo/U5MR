@@ -35,6 +35,7 @@ setwd("~/git/U5MR/")
 
 # load Kenya data
 out = load("kenyaData.RData")
+out = load("kenyaDataEd.RData")
 # out = load("kenyaPop.RData")
 # tmp = projKenya(kenyaPop$lon, kenyaPop$lat)
 # kenyaPop$east = tmp[,1]

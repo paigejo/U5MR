@@ -14,72 +14,72 @@ logit<-function(x){
 extendData <- function(clustDatRow, v001, divideWeight=TRUE){
   
   # add extra columns for ageMonth, ageGrpD, v001, v002
-  nC = clustDatRow$numChildren
+  n = clustDatRow$n
   # tmp = data.frame(clustDatRow[c(1, 6:16)])
   tmp = data.frame(clustDatRow[c(1, c(4, 6:ncol(clustDatRow)))])
   tmp$v001 = v001
 
-  ageMonth = rep(0, nC)
-  ageGrpD = rep("[0,1)", nC)
-  v001 = rep(v001, nC)
+  ageMonth = rep(0, n)
+  ageGrpD = rep("[0,1)", n)
+  v001 = rep(v001, n)
   # there is only one child and one mother per household.
   # All 25 households are sampled
-  v002 = 1:nC
+  v002 = 1:n
   
-  died = c(rep(0,nC-clustDatRow$died), rep(1, clustDatRow$died))
+  y = c(rep(0,n-clustDatRow$y), rep(1, clustDatRow$y))
   if(clustDatRow["urban"][1,1]){
-    urbanRural = rep("urban", nC)
+    urbanRural = rep("urban", n)
   } else {
-    urbanRural = rep("rural", nC)
+    urbanRural = rep("rural", n)
   }
-  # admin1 = rep(clustDatRow$admin1, nC)
+  # admin1 = rep(clustDatRow$admin1, n)
 
-  res = merge(data.frame(died, ageMonth, ageGrpD, v001, v002, urbanRural), tmp, by="v001")
+  res = merge(data.frame(y, ageMonth, ageGrpD, v001, v002, urbanRural), tmp, by="v001")
   
   # the below line was commented out since each cluster only has one type of admin and urban level. 
   # The equivalent line has been added into the parent function
   # res$regionRural <- with(res, interaction(admin1, urbanRural), drop=TRUE)
   
   if(divideWeight)
-    res$samplingWeight = res$samplingWeight / nC
+    res$samplingWeight = res$samplingWeight / n
   return(res)
 }
 
-extendDataMort <- function(clustDatRow, v001, divideWeight=TRUE){
+extendDataEd <- function(clustDatRow, v001, divideWeight=TRUE){
   
   # add extra columns for ageMonth, ageGrpD, v001, v002
-  nC = clustDatRow$numChildren
+  n = clustDatRow$n
   # the only things we need are admin1 and sampling weight, but we must get rid of 
-  # urban, died, and the number of children since those will be recalculated
+  # urban, y, and the number of women since those will be recalculated
   # tmp = data.frame(clustDatRow[c(1, 6:16)])
   # tmp = data.frame(clustDatRow[c(1, c(4, 6:ncol(clustDatRow)))])
   tmp = data.frame(clustDatRow[c(1, c(4, 6:(ncol(clustDatRow) - 2)))])
   tmp$v001 = v001
   
-  ageMonth = rep(0, nC)
-  # ageGrpD = rep("[0,1)", nC)
-  v001 = rep(v001, nC)
+  ageMonth = rep(0, n)
+  # ageGrpD = rep("[0,1)", n)
+  v001 = rep(v001, n)
   # there is only one child and one mother per household.
   # All 25 households are sampled
-  v002 = 1:nC
+  v002 = 1:n
   
-  died = c(rep(0,nC-clustDatRow$died), rep(1, clustDatRow$died))
+  y = c(rep(0,n-clustDatRow$y), rep(1, clustDatRow$y))
   if(clustDatRow["urban"][1,1]){
-    urbanRural = rep("urban", nC)
+    urbanRural = rep("urban", n)
   } else {
-    urbanRural = rep("rural", nC)
+    urbanRural = rep("rural", n)
   }
-  # admin1 = rep(clustDatRow$admin1, nC)
+  # admin1 = rep(clustDatRow$admin1, n)
   
-  # res = merge(data.frame(died, ageMonth, ageGrpD, v001, v002, urbanRural), tmp, by="v001")
-  res = merge(data.frame(died, ageMonth, v001, v002, urbanRural), tmp, by="v001")
+  # res = merge(data.frame(y, ageMonth, ageGrpD, v001, v002, urbanRural), tmp, by="v001")
+  res = merge(data.frame(y, ageMonth, v001, v002, urbanRural), tmp, by="v001")
   
   # the below line was commented out since each cluster only has one type of admin and urban level. 
   # The equivalent line has been added into the parent function
   # res$regionRural <- with(res, interaction(admin1, urbanRural), drop=TRUE)
   
   if(divideWeight)
-    res$samplingWeight = res$samplingWeight / nC
+    res$samplingWeight = res$samplingWeight / n
   return(res)
 }
 
@@ -95,13 +95,13 @@ get.est<-function(glm.ob){
 
   beta<-summary(glm.ob)$coef[,1]
  
-  u1m.est <-expit(beta)
+  ed.est <-expit(beta)
   var.est <- vcov(glm.ob)[1,1]
   
   # compute 80% CI intervals
-  lower <- logit(u1m.est)+qnorm(c(0.9))*sqrt(var.est)
-  upper <- logit(u1m.est)+qnorm(c(0.1))*sqrt(var.est)
-  return(c(u1m.est,lower, upper,logit(u1m.est),var.est))
+  lower <- logit(ed.est)+qnorm(c(0.9))*sqrt(var.est)
+  upper <- logit(ed.est)+qnorm(c(0.1))*sqrt(var.est)
+  return(c(ed.est,lower, upper,logit(ed.est),var.est))
 }
 
 # -- a function to subset the design based on a region and time period -- #
@@ -116,7 +116,7 @@ region.time.HT<-function(dataobj, svydesign, area){
   
   tmp<-subset(svydesign, (admin1==area))
   
-  tt2 <- tryCatch(glmob<-svyglm(died.x~1,
+  tt2 <- tryCatch(glmob<-svyglm(y.x~1,
                                 design=tmp,family=quasibinomial, maxit=50), 
                   error=function(e) e, warning=function(w) w)
   
@@ -139,19 +139,19 @@ region.time.HT<-function(dataobj, svydesign, area){
   }
 }
 
-region.time.HTMort<-function(dataobj, svydesign, area, nationalEstimate){
+region.time.HTEd<-function(dataobj, svydesign, area, nationalEstimate){
   
   if(!nationalEstimate) {
     
     tmp<-subset(svydesign, (admin1==area))
     
-    tt2 <- tryCatch(glmob<-svyglm(died~1,
+    tt2 <- tryCatch(glmob<-svyglm(y~1,
                                   design=tmp,family=quasibinomial, maxit=50), 
                     error=function(e) e, warning=function(w) w)
   } else {
     thisUrban = area == 1
     tmp<-subset(svydesign, (urban==thisUrban))
-    tt2 <- tryCatch(glmob<-svyglm(died~1,
+    tt2 <- tryCatch(glmob<-svyglm(y~1,
                                   design=tmp,family=quasibinomial, maxit=50), 
                     error=function(e) e, warning=function(w) w)
   }
@@ -177,22 +177,22 @@ region.time.HTMort<-function(dataobj, svydesign, area, nationalEstimate){
 
 
 
-defineSurvey <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE){
+defineSurvey <- function(education_obj, stratVar, useSamplingWeights=TRUE){
   
   options(survey.lonely.psu="adjust")
   
   # --- setting up a place to store results --- #
-  regions <- sort(unique(childBirths_obj$admin1))
+  regions <- sort(unique(education_obj$admin1))
   regions_num  <- 1:length(regions)
   
   results<-data.frame(admin1=rep(regions,each=1))
-  results$var.est<-results$logit.est<-results$upper<-results$lower<-results$u1m<-NA
+  results$var.est<-results$logit.est<-results$upper<-results$lower<-results$est<-NA
   results$converge <- NA
   
   if(useSamplingWeights){
-    childBirths_obj$wt <- childBirths_obj$samplingWeight
+    education_obj$wt <- education_obj$samplingWeight
   } else {
-    childBirths_obj$wt <- NULL
+    education_obj$wt <- NULL
   }
 
   if(is.null(stratVar)){
@@ -203,11 +203,11 @@ defineSurvey <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE){
     ##        nest = T argument nests clusters within strata
     my.svydesign <- svydesign(id= ~v001,
                               strata =NULL,
-                              weights=NULL, data=childBirths_obj)
+                              weights=NULL, data=education_obj)
   } else {
     ## not in all surveys does v022 contain the correct sampling strata
     ## Thus, the correct vector has to be provided externally
-    childBirths_obj$strat <- stratVar
+    education_obj$strat <- stratVar
   
     # --- setting up the design object --- #
     ## NOTE: -the v001 denote
@@ -216,40 +216,40 @@ defineSurvey <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE){
     ##        nest = T argument nests clusters within strata
     my.svydesign <- svydesign(id= ~v001,
                               strata=~strat, nest=T, 
-                              weights=~wt, data=childBirths_obj)
+                              weights=~wt, data=education_obj)
   }
   
   for(i in 1:nrow(results)){
-    results[i, 2:7] <- region.time.HT(dataobj=childBirths_obj, svydesign=my.svydesign, 
+    results[i, 2:7] <- region.time.HT(dataobj=education_obj, svydesign=my.svydesign, 
                                       area=results$admin1[i])
   }
   return(results)
 }
 
-defineSurveyMort <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE, nationalEstimate=FALSE, 
+defineSurveyEd <- function(education_obj, stratVar, useSamplingWeights=TRUE, nationalEstimate=FALSE, 
                              getContrast=nationalEstimate){
   
   options(survey.lonely.psu="adjust")
   
   # --- setting up a place to store results --- #
-  regions <- sort(unique(childBirths_obj$admin1))
+  regions <- sort(unique(education_obj$admin1))
   regions_num  <- 1:length(regions)
   
   if(!nationalEstimate) {
     results<-data.frame(admin1=rep(regions,each=1))
-    results$var.est<-results$logit.est<-results$upper<-results$lower<-results$u1m<-NA
+    results$var.est<-results$logit.est<-results$upper<-results$lower<-results$est<-NA
     results$converge <- NA
   }
   else {
     results<-data.frame(urban=c(TRUE, FALSE))
-    results$var.est<-results$logit.est<-results$upper<-results$lower<-results$u1m<-NA
+    results$var.est<-results$logit.est<-results$upper<-results$lower<-results$est<-NA
     results$converge <- NA
   }
   
   if(useSamplingWeights){
-    childBirths_obj$wt <- childBirths_obj$samplingWeight
+    education_obj$wt <- education_obj$samplingWeight
   } else {
-    childBirths_obj$wt <- NULL
+    education_obj$wt <- NULL
   }
   
   if(is.null(stratVar)){
@@ -260,11 +260,11 @@ defineSurveyMort <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE,
     ##        nest = T argument nests clusters within strata
     my.svydesign <- svydesign(id= ~v001,
                               strata =NULL,
-                              weights=NULL, data=childBirths_obj)
+                              weights=NULL, data=education_obj)
   } else {
     ## not in all surveys does v022 contain the correct sampling strata
     ## Thus, the correct vector has to be provided externally
-    childBirths_obj$strat <- stratVar
+    education_obj$strat <- stratVar
     
     # --- setting up the design object --- #
     ## NOTE: -the v001 denote
@@ -273,23 +273,23 @@ defineSurveyMort <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE,
     ##        nest = T argument nests clusters within strata
     my.svydesign <- svydesign(id= ~v001,
                               strata=~strat, nest=T, 
-                              weights=~wt, data=childBirths_obj)
+                              weights=~wt, data=education_obj)
   }
   
   for(i in 1:nrow(results)){
     if(!nationalEstimate) {
-      results[i, 2:7] <- region.time.HTMort(dataobj=childBirths_obj, svydesign=my.svydesign, 
+      results[i, 2:7] <- region.time.HTEd(dataobj=education_obj, svydesign=my.svydesign, 
                                             area=results$admin1[i], nationalEstimate=nationalEstimate)
     }
     else {
-      results[i, 2:7] <- region.time.HTMort(dataobj=childBirths_obj, svydesign=my.svydesign, 
+      results[i, 2:7] <- region.time.HTEd(dataobj=education_obj, svydesign=my.svydesign, 
                                             area=i, nationalEstimate=nationalEstimate)
     }
   }
   
   if(getContrast) {
-    # out = svyby(~died, by = ~urban, design = svydesign, svymean)
-    glmob<-svyglm(died~urban,
+    # out = svyby(~y, by = ~urban, design = svydesign, svymean)
+    glmob<-svyglm(y~urban,
                   design=my.svydesign,family=quasibinomial, maxit=50)
     
     # get contrast mean and variance
@@ -300,25 +300,28 @@ defineSurveyMort <- function(childBirths_obj, stratVar, useSamplingWeights=TRUE,
     lower = est + qnorm(0.025, sd=sqrt(urbanVar))
     upper = est + qnorm(0.975, sd=sqrt(urbanVar))
     contrastStats = list(est=est, sd=sqrt(urbanVar), lower95=lower, upper95=upper)
+    return(list(results=results, contrastStats=contrastStats))
+  } else {
+    return(results)
   }
-  return(list(results=results, contrastStats=contrastStats))
+  
 }
 
-# Set childBirths_obj$admin1 to be something else for different kinds of aggregations
-run_naive <- function(childBirths_obj){
-  regions <- sort(unique(childBirths_obj$admin1))
+# Set education_obj$admin1 to be something else for different kinds of aggregations
+run_naive <- function(education_obj){
+  regions <- sort(unique(education_obj$admin1))
   regions_num  <- 1:length(regions)
   
   results<-data.frame(admin1=rep(regions,each=1))
-  results$var.est<-results$logit.est<-results$upper<-results$lower<-results$u1m<-NA
+  results$var.est<-results$logit.est<-results$upper<-results$lower<-results$est<-NA
   results$converge <- NA
   
   for(i in 1:nrow(results)){
-    my.glm <- glm(died.x~1, family=binomial, 
-                  data=childBirths_obj, 
+    my.glm <- glm(y.x~1, family=binomial, 
+                  data=education_obj, 
                   subset = admin1 == results$admin1[i] ) 
-    # newdat = childBirths_obj[childBirths_obj$admin1==results$admin1[i], ]
-    # my.glm2 <- glm(died.x~1, family=binomial, 
+    # newdat = education_obj[education_obj$admin1==results$admin1[i], ]
+    # my.glm2 <- glm(y.x~1, family=binomial, 
     #               data=newdat) 
     
     results[i, 2:7] <- c(get.est(my.glm),0)
@@ -327,20 +330,20 @@ run_naive <- function(childBirths_obj){
 }
 
 # running the analysis for the actual mortality dataset is slightly different
-run_naiveMort <- function(childBirths_obj){
-  regions <- sort(unique(childBirths_obj$admin1))
+run_naiveEd <- function(education_obj){
+  regions <- sort(unique(education_obj$admin1))
   regions_num  <- 1:length(regions)
   
   results<-data.frame(admin1=rep(regions,each=1))
-  results$var.est<-results$logit.est<-results$upper<-results$lower<-results$u1m<-NA
+  results$var.est<-results$logit.est<-results$upper<-results$lower<-results$est<-NA
   results$converge <- NA
   
   for(i in 1:nrow(results)){
-    my.glm <- glm(died~1, family=binomial, 
-                  data=childBirths_obj, 
+    my.glm <- glm(y~1, family=binomial, 
+                  data=education_obj, 
                   subset = admin1 == results$admin1[i] ) 
-    # newdat = childBirths_obj[childBirths_obj$admin1==results$admin1[i], ]
-    # my.glm2 <- glm(died.x~1, family=binomial, 
+    # newdat = education_obj[education_obj$admin1==results$admin1[i], ]
+    # my.glm2 <- glm(y.x~1, family=binomial, 
     #               data=newdat) 
     
     results[i, 2:7] <- c(get.est(my.glm),0)

@@ -12,8 +12,23 @@ quantile(effect, c(0.025, 0.975))
 # 0.5016154 1.8766063 
 
 # get PC prior for the cluster effect variance
-Mortality = 0.04 # Kenya's first year mortality rate is approximately 4% for 2005-2009
-mu = log(Mortality/(1-Mortality))
+# Mortality = 0.04 # Kenya's first year mortality rate is approximately 4% for 2005-2009
+# mu = log(Mortality/(1-Mortality))
+# N = 1000000
+# U = 3
+# alpha = 0.01
+# prec = inla.pc.rprec(alpha = alpha, u = U, n = N)
+# sig = 1/sqrt(prec)
+# z = rnorm(N, mean = rep(mu, N), sd = sig)
+# p = 1/(1+exp(-z))
+# y = matrix(rbinom(n = 2*N, size = 1, prob = rep(p,each = 2)), ncol = 2, byrow = T)
+# print(cor(y)[1,2])
+# # 0.1130728
+
+# Kenya's secondary education completion rate is approximately 20% and 40% for 
+# urban and rural areas respectively 2010-2014, women aged 20-29
+edRate = 0.4
+mu = log(edRate/(1-edRate))
 N = 1000000
 U = 3
 alpha = 0.01
@@ -23,4 +38,5 @@ z = rnorm(N, mean = rep(mu, N), sd = sig)
 p = 1/(1+exp(-z))
 y = matrix(rbinom(n = 2*N, size = 1, prob = rep(p,each = 2)), ncol = 2, byrow = T)
 print(cor(y)[1,2])
-# 0.1130728
+# [1] 0.1021545
+# nearly the same for edRate = 0.4

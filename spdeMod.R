@@ -7,16 +7,16 @@
 # offset: argument to inla.mesh.create
 # doGlobe: if TRUE, makes grid on the sphere, assumes coordinates are lat/lon.  
 #          Otherwise, assumes coordinates are esting/northing.  If FALSE, a good default 
-#          for locs is locs=projKenya(mort$lon, mort$lat)
+#          for locs is locs=projKenya(ed$lon, ed$lat)
 # cutoff: minimum leg size of trianglation
 getSPDEMeshGrid = function(locs=NULL, max.n=100, doPlot=TRUE, 
                            doGlobe=FALSE, offset=-.18, cutoff=ifelse(doGlobe, .15, 15)) {
   # base mesh off of actual DHS dataset unless user specifies otherwise
   if(is.null(locs)) {
-    locs = cbind(mort$lon, mort$lat)
+    locs = cbind(ed$lon, ed$lat)
     if(!doGlobe) {
       # locs = projKenya(locs)
-      locs = cbind(mort$east, mort$north)
+      locs = cbind(ed$east, ed$north)
     }
   }
   
@@ -40,7 +40,7 @@ getSPDEMeshGrid = function(locs=NULL, max.n=100, doPlot=TRUE,
   mesh
 }
 
-getSPDEMeshGrid2 = function(locs=cbind(mort$east, mort$north), n=1500, max.n=2000, doPlot=TRUE, max.edge=c(35, 250), 
+getSPDEMeshGrid2 = function(locs=cbind(ed$east, ed$north), n=1500, max.n=2000, doPlot=TRUE, max.edge=c(25, 250), 
                            offset=-.08, cutoff=15) {
   
   
@@ -80,7 +80,7 @@ getSPDEPrior = function(mesh, sigma0=1) {
 # Inputs:
 # obsCoords: coordinates of the observations
 # obsNs: the binomial n of the observations
-# obsCounts: the response, mortality counts
+# obsCounts: the response, education counts
 # obsUrban: whether the observations were urban or knot
 # predCoords: the spatial coordinates of the predictions: first the EAs, then the pixels
 # predNs: the binomial n of the predictions
@@ -287,7 +287,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
     postSamples = inla.posterior.sample(nPostSamples, mod)
     latentMat = sapply(postSamples, function(x) x$latent)
     
-    # get logit mortality rates at the prediction locations
+    # get logit education rates at the prediction locations
     index.pred <- inla.stack.index(stack.full,tag="pred")$data
     predMat <- latentMat[index.pred,]
     
@@ -392,7 +392,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
       postSamples = inla.posterior.sample(nPostSamples, mod)
       latentMat = sapply(postSamples, function(x) x$latent)
       
-      # get logit mortality rates at the prediction locations
+      # get logit education rates at the prediction locations
       index.pred <- inla.stack.index(stack.full,tag="pred")$data
       predMat <- latentMat[index.pred,]
       
@@ -503,7 +503,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
           # if we have more than one EAs in the pixel, approximate the convolution of binomials with 
           # the pearson distribution
           
-          # get matrix of EA simulated joint distribution mortality probabilities for this pixel. 
+          # get matrix of EA simulated joint distribution education probabilities for this pixel. 
           # Only use a small amount of posterior samples for efficient computation
           pixelProbMat = matrix(thisEaMat[pixelI,], nrow=sum(pixelI))
           
@@ -546,7 +546,7 @@ fitSPDEModel = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, ob
 # Inputs:
 # obsCoords: coordinates of the observations
 # obsNs: the binomial n of the observations
-# obsCounts: the response, mortality counts
+# obsCounts: the response, education counts
 # obsUrban: whether the observations were urban or knot
 # predCoords: the spatial coordinates of the predictions: first the EAs, then the pixels
 # predNs: the binomial n of the predictions
@@ -753,7 +753,7 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   postSamples = inla.posterior.sample(nPostSamples, mod)
   latentMat = sapply(postSamples, function(x) x$latent)
   
-  # get logit mortality rates at the prediction locations
+  # get logit education rates at the prediction locations
   index.pred <- inla.stack.index(stack.full,tag="pred")$data
   predMat <- latentMat[index.pred,]
   
@@ -776,7 +776,7 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   #   postSamples = inla.posterior.sample(nPostSamples, mod)
   #   latentMat = sapply(postSamples, function(x) x$latent)
   #   
-  #   # get logit mortality rates at the prediction locations
+  #   # get logit education rates at the prediction locations
   #   index.pred <- inla.stack.index(stack.full,tag="pred")$data
   #   predMat <- latentMat[index.pred,]
   #   
@@ -1046,7 +1046,7 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
 # Inputs:
 # obsCoords: coordinates of the observations
 # obsNs: the binomial n of the observations
-# obsCounts: the response, mortality counts
+# obsCounts: the response, secondary education completion counts
 # obsUrban: whether the observations were urban or knot
 # predCoords: the spatial coordinates of the predictions: first the EAs, then the pixels
 # predNs: the binomial n of the predictions
@@ -1089,7 +1089,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          predictionType=c("median", "mean"), eaDat=NULL, nSamplePixel=10, 
                          truthByPixel=NULL, truthByCounty=NULL, truthByRegion=NULL, 
                          truthByEa=NULL, clusterEffect=FALSE, significance=.8, 
-                         onlyInexact=FALSE, allPixels=FALSE, newMesh=FALSE) {
+                         onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE) {
   
   # match the prediction type
   predictionType = match.arg(predictionType)
@@ -1534,7 +1534,7 @@ testFitSPDEModel = function(predCoords=NULL, nPredPts=NULL, predUrban=NULL, seed
   plotMapDat(project=TRUE)
   dev.off()
   
-  # get difference between urban and rural mortality
+  # get difference between urban and rural education
   urbanDiff = mean(preds[obsInds][!obsUrban]) - mean(preds[obsInds][obsUrban])
   print(paste0("mean urban prediction difference: ", urbanDiff))
   
@@ -1566,7 +1566,7 @@ testFitSPDEModel = function(predCoords=NULL, nPredPts=NULL, predUrban=NULL, seed
   
   countyMeans = rowMeans(countyPredMat)
   pdf("figures/spdeTestCountyPreds.pdf", width=5, height=5)
-  plotMapDat(plotVar=countyMeans, adm1, project=TRUE, new=TRUE, main="Predicted mortality rate")
+  plotMapDat(plotVar=countyMeans, adm1, project=TRUE, new=TRUE, main="Predicted secondary education completion rate")
   dev.off()
   
   # print summary
@@ -1663,7 +1663,7 @@ testFitSPDEModel2 = function(predCoords=NULL, nPredPts=NULL, predUrban=NULL, see
   plotMapDat(project=TRUE)
   dev.off()
   
-  # get difference between urban and rural mortality
+  # get difference between urban and rural education
   urbanDiff = mean(preds[obsInds][!obsUrban]) - mean(preds[obsInds][obsUrban])
   print(paste0("mean urban prediction difference: ", urbanDiff))
   
@@ -1695,7 +1695,7 @@ testFitSPDEModel2 = function(predCoords=NULL, nPredPts=NULL, predUrban=NULL, see
   
   countyMeans = rowMeans(countyPredMat)
   pdf("figures/spdeTestCountyPreds.pdf", width=5, height=5)
-  plotMapDat(plotVar=countyMeans, adm1, project=TRUE, new=TRUE, main="Predicted mortality rate")
+  plotMapDat(plotVar=countyMeans, adm1, project=TRUE, new=TRUE, main="Predicted secondary education completion rate")
   dev.off()
   
   # print summary

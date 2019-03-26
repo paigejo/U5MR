@@ -74,65 +74,46 @@ source("setup.R")
 # urbanOverSamplefrac: the proportion with which to inflate the amount of urban samples in the surveys
 generateSimDataSets = function(nsim=100, nsimBig = 250, seeds=c(580252, 1234), beta0 = -1.75, margVar = .15^2, 
                                tausq = .1^2, gamma = -1, HHoldVar = 0, effRange = 150, 
-                               urbanOverSamplefrac = 0, plotOnly=FALSE) {
+                               urbanOverSamplefrac = 0) {
   set.seed(seeds[1])
   wd = getwd()
   setwd("~/Google Drive/UW/Wakefield/WakefieldShared/U5MR/")
   
-  # make strings representing the simulation with different numbers of effects
-  # full model
+  # make strings representing the simulation with and without cluster effects
   dataID = paste0("Beta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
                   round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar", HHoldVar, 
                   "urbanOverSamplefrac", round(urbanOverSamplefrac, 4))
-  # no cluster effect
   dataID0 = paste0("Beta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
                    round(0, 4), "gamma", round(gamma, 4), "HHoldVar", HHoldVar, 
                    "urbanOverSamplefrac", round(urbanOverSamplefrac, 4))
-  # no cluster or urban effects (constant plus the spatial effect only)
-  dataID02 = paste0("Beta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
-                    round(0, 4), "gamma", round(0, 4), "HHoldVar", HHoldVar, 
-                    "urbanOverSamplefrac", round(urbanOverSamplefrac, 4))
-  # constant effect only
-  dataID03 = paste0("Beta", round(beta0, 4), "margVar", round(0, 4), "tausq", 
-                    round(0, 4), "gamma", round(0, 4), "HHoldVar", HHoldVar, 
-                    "urbanOverSamplefrac", round(urbanOverSamplefrac, 4))
   
-  if(!plotOnly) {
-    # there should be 1 true data set, but many simulated cluster samples
-    load("empiricalDistributions.RData")
-    simulatedEAs = simDatEmpirical(empiricalDistributions, kenyaEAs, clustDat=NULL, nsim=1, 
-                                   beta0=beta0, margVar=margVar, urbanOverSamplefrac=urbanOverSamplefrac, 
-                                   tausq=tausq, gamma=gamma, HHoldVar=HHoldVar, effRange=effRange)
-    kenyaEAs = simulatedEAs$eaDat
-    kenyaEAs$eaIs = 1:nrow(kenyaEAs)
-    kenyaEAsLong = kenyaEAs[rep(1:nrow(kenyaEAs), kenyaEAs$nHH),]
-    
-    set.seed(seeds[2])
-    # simulate the cluster sampling and add to the data sets
-    overSampClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, urbanOverSamplefrac, verbose=FALSE)
-    overSampClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, urbanOverSamplefrac, verbose=FALSE)
-    clustList = genAndreaFormatFromEAIs(simulatedEAs$eaDat, overSampClustDat$eaIs, overSampClustDat$sampleWeights)
-    overSampDat = list(eaDat=kenyaEAs, clustDat=clustList)
-    
-    overSampClustDatTest = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, urbanOverSamplefrac, fixedPerStrata=TRUE, nPerStrata=3, verbose=FALSE)
-    clustListTest = genAndreaFormatFromEAIs(kenyaEAs, overSampClustDatTest$eaIs, overSampClustDatTest$sampleWeights)
-    overSampDatTest = list(eaDat=kenyaEAs, clustDat=clustListTest)
-    
-    SRSClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, SRS=TRUE, verbose=FALSE)
-    clustList = genAndreaFormatFromEAIs(kenyaEAs, SRSClustDat$eaIs, SRSClustDat$sampleWeights)
-    SRSDat = list(eaDat=kenyaEAs, clustDat=clustList) # the only thing different is the sampling of the clusters
-    
-    SRSClustDatTest = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, fixedPerStrata=TRUE, nPerStrata=3, SRS=TRUE, verbose=FALSE)
-    clustListTest = genAndreaFormatFromEAIs(kenyaEAs, SRSClustDatTest$eaIs, SRSClustDatTest$sampleWeights)
-    SRSDatTest = list(eaDat=kenyaEAs, clustDat=clustListTest) # the only thing different is the sampling of the clusters
-    
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID, "Big.RData"))
-    overSampDat = overSampDatTest
-    SRSDat = SRSDatTest
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID, "TestBig.RData"))
-  }
+  # there should be 1 true data set, but many simulated cluster samples
+  load("empiricalDistributions.RData")
+  simulatedEAs = simDatEmpirical(empiricalDistributions, kenyaEAs, clustDat=NULL, nsim=1, 
+                                 beta0=beta0, margVar=margVar, urbanOverSamplefrac=urbanOverSamplefrac, 
+                                 tausq=tausq, gamma=gamma, HHoldVar=HHoldVar, effRange=effRange)
+  kenyaEAs = simulatedEAs$eaDat
+  kenyaEAs$eaIs = 1:nrow(kenyaEAs)
+  kenyaEAsLong = kenyaEAs[rep(1:nrow(kenyaEAs), kenyaEAs$nHH),]
   
-  out = load(paste0("simDataMulti", dataID, "Big.RData"))
+  set.seed(seeds[2])
+  # simulate the cluster sampling and add to the data sets
+  overSampClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, urbanOverSamplefrac, verbose=FALSE)
+  overSampClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, urbanOverSamplefrac, verbose=FALSE)
+  clustList = genAndreaFormatFromEAIs(simulatedEAs$eaDat, overSampClustDat$eaIs, overSampClustDat$sampleWeights)
+  overSampDat = list(eaDat=kenyaEAs, clustDat=clustList)
+  
+  overSampClustDatTest = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, urbanOverSamplefrac, fixedPerStrata=TRUE, nPerStrata=3, verbose=FALSE)
+  clustListTest = genAndreaFormatFromEAIs(kenyaEAs, overSampClustDatTest$eaIs, overSampClustDatTest$sampleWeights)
+  overSampDatTest = list(eaDat=kenyaEAs, clustDat=clustListTest)
+  
+  SRSClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, SRS=TRUE, verbose=FALSE)
+  clustList = genAndreaFormatFromEAIs(kenyaEAs, SRSClustDat$eaIs, SRSClustDat$sampleWeights)
+  SRSDat = list(eaDat=kenyaEAs, clustDat=clustList) # the only thing different is the sampling of the clusters
+  
+  SRSClustDatTest = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, fixedPerStrata=TRUE, nPerStrata=3, SRS=TRUE, verbose=FALSE)
+  clustListTest = genAndreaFormatFromEAIs(kenyaEAs, SRSClustDatTest$eaIs, SRSClustDatTest$sampleWeights)
+  SRSDatTest = list(eaDat=kenyaEAs, clustDat=clustListTest) # the only thing different is the sampling of the clusters
   
   # plot the first simulation of the over sampled and simple random sample data sets
   clustDat = SRSDat$clustDat[[1]]
@@ -159,234 +140,74 @@ generateSimDataSets = function(nsim=100, nsimBig = 250, seeds=c(580252, 1234), b
   plotMapDat(project=TRUE)
   dev.off()
   
-  if(!plotOnly) {
-    # Now take only the first nsim simulations from the "big" dataset
-    overSampDat$clustDat = overSampDat$clustDat[1:nsim]
-    SRSDat$clustDat = SRSDat$clustDat[1:nsim]
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID, ".RData"))
-    overSampDat = overSampDatTest
-    SRSDat = SRSDatTest
-    overSampDat$clustDat = overSampDat$clustDat[1:nsim]
-    SRSDat$clustDat = SRSDat$clustDat[1:nsim]
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID, "Test.RData"))
-    
-    # reload the data
-    out = load(paste0("simDataMulti", dataID, "Big.RData"))
-    
-    # Now simulate the data without a cluster effect but with the same underlying probability surface otherwise
-    tausq = 0
-    overSampDat$eaDat$trueProbDeath = overSampDat$eaDat$trueProbDeathNoNug
-    SRSDat$eaDat$trueProbDeath = SRSDat$eaDat$trueProbDeathNoNug
-    overSampDat$eaDat$died = rbinom(nrow(overSampDat$eaDat), overSampDat$eaDat$numChildren, overSampDat$eaDat$trueProbDeathNoNug)
-    SRSDat$eaDat$died = overSampDat$eaDat$died
-    
-    overSampDatTest$eaDat$trueProbDeath = overSampDatTest$eaDat$trueProbDeathNoNug
-    SRSDatTest$eaDat$trueProbDeath = SRSDatTest$eaDat$trueProbDeathNoNug
-    overSampDatTest$eaDat$died = rbinom(nrow(overSampDatTest$eaDat), overSampDatTest$eaDat$numChildren, overSampDatTest$eaDat$trueProbDeathNoNug)
-    SRSDatTest$eaDat$died = overSampDatTest$eaDat$died
-    for(i in 1:nsimBig) {
-      overSampDat$clustDat[[i]]$trueProbDeath = overSampDat$clustDat[[i]]$trueProbDeathNoNug
-      SRSDat$clustDat[[i]]$trueProbDeath = SRSDat$clustDat[[i]]$trueProbDeathNoNug
-      overSampDatTest$clustDat[[i]]$trueProbDeath = overSampDatTest$clustDat[[i]]$trueProbDeathNoNug
-      SRSDatTest$clustDat[[i]]$trueProbDeath = SRSDatTest$clustDat[[i]]$trueProbDeathNoNug
-      
-      overSampDat$clustDat[[i]]$died = overSampDat$eaDat$died[overSampClustDat$eaIs[,i]]
-      SRSDat$clustDat[[i]]$died = SRSDat$eaDat$died[SRSClustDat$eaIs[,i]]
-      overSampDatTest$clustDat[[i]]$died = overSampDatTest$eaDat$died[overSampClustDatTest$eaIs[,i]]
-      SRSDatTest$clustDat[[i]]$died = SRSDatTest$eaDat$died[SRSClustDatTest$eaIs[,i]]
-    }
-    
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID0, "Big.RData"))
-    overSampDat = overSampDatTest
-    SRSDat = SRSDatTest
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID0, "TestBig.RData"))
-    load(paste0("simDataMulti", dataID0, "Big.RData"))
-    
-    # Again, take only the first nsim simulations from the "big" dataset
-    overSampDat$clustDat = overSampDat$clustDat[1:nsim]
-    SRSDat$clustDat = SRSDat$clustDat[1:nsim]
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID0, ".RData"))
-    overSampDat = overSampDatTest
-    SRSDat = SRSDatTest
-    overSampDat$clustDat = overSampDat$clustDat[1:nsim]
-    SRSDat$clustDat = SRSDat$clustDat[1:nsim]
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID0, "Test.RData"))
-  }
+  save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID, "Big.RData"))
+  overSampDat = overSampDatTest
+  SRSDat = SRSDatTest
+  save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID, "TestBig.RData"))
+  out = load(paste0("simDataMulti", dataID, "Big.RData"))
   
-  load(paste0("simDataMulti", dataID0, ".RData"))
+  # Now take only the first nsim simulations from the "big" dataset
+  overSampDat$clustDat = overSampDat$clustDat[1:nsim]
+  SRSDat$clustDat = SRSDat$clustDat[1:nsim]
+  save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID, ".RData"))
+  overSampDat = overSampDatTest
+  SRSDat = SRSDatTest
+  overSampDat$clustDat = overSampDat$clustDat[1:nsim]
+  SRSDat$clustDat = SRSDat$clustDat[1:nsim]
+  save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID, "Test.RData"))
   
-  clustDat = SRSDat$clustDat[[1]]
-  # clustDat = SRSDatTest$clustDat[[1]]
-  # clustDat = overSampDat$clustDat[[1]]
-  # clustDat = overSampDatTest$clustDat[[1]]
-  eaDat = overSampDat$eaDat
-  obsCoords = cbind(clustDat$east, clustDat$north)
-  obsNs = clustDat$numChildren
-  obsCounts = clustDat$died
-  
-  pdf(paste0("figures/exampleSRSSimulationNoNug", dataID0, ".pdf"), width=8, height=8)
-  par(mfrow =c(2, 2))
-  zlim = c(0, quantile(c(eaDat$died/eaDat$numChildren, clustDat$died/clustDat$numChildren, 
-                         eaDat$trueProbDeath), probs=.975))
-  quilt.plot(eaDat$east, eaDat$north, eaDat$died/eaDat$numChildren, main="All Empirical Mortality Rates", 
-             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
-  plotMapDat(project=TRUE)
-  quilt.plot(obsCoords, obsCounts/obsNs, main="Sample Empirical Mortality Rates", 
-             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
-  plotMapDat(project=TRUE)
-  quilt.plot(eaDat$east, eaDat$north, eaDat$trueProbDeath, main="All True Mortality Rates", 
-             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
-  plotMapDat(project=TRUE)
-  quilt.plot(obsCoords, clustDat$trueProbDeath, main="Sample True Mortality Rates", 
-             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
-  plotMapDat(project=TRUE)
-  dev.off()
-  
-  ##### do the same thing but removing the urban effect
   # reload the data
-  if(!plotOnly) {
-    out = load(paste0("simDataMulti", dataID, "Big.RData"))
-    
-    # Now simulate the data without a cluster effect or urban effect but with the same underlying probability surface otherwise
-    tausq = 0
-    overSampDat$eaDat$trueProbDeathNoNug = expit(logit(overSampDat$eaDat$trueProbDeathNoNug) - gamma*overSampDat$eaDat$urban)
-    overSampDat$eaDat$trueProbDeath = overSampDat$eaDat$trueProbDeathNoNug
-    SRSDat$eaDat$trueProbDeathNoNug = expit(logit(SRSDat$eaDat$trueProbDeathNoNug) - gamma*SRSDat$eaDat$urban)
-    SRSDat$eaDat$trueProbDeath = SRSDat$eaDat$trueProbDeathNoNug
-    overSampDat$eaDat$died = rbinom(nrow(overSampDat$eaDat), overSampDat$eaDat$numChildren, overSampDat$eaDat$trueProbDeathNoNug)
-    SRSDat$eaDat$died = overSampDat$eaDat$died
-    
-    overSampDatTest$eaDat$trueProbDeathNoNug = expit(logit(overSampDatTest$eaDat$trueProbDeathNoNug) - gamma*overSampDatTest$eaDat$urban)
-    overSampDatTest$eaDat$trueProbDeath = overSampDatTest$eaDat$trueProbDeathNoNug
-    SRSDatTest$eaDat$trueProbDeathNoNug = expit(logit(SRSDatTest$eaDat$trueProbDeathNoNug) - gamma*SRSDatTest$eaDat$urban)
-    SRSDatTest$eaDat$trueProbDeath = SRSDatTest$eaDat$trueProbDeathNoNug
-    overSampDatTest$eaDat$died = rbinom(nrow(overSampDatTest$eaDat), overSampDatTest$eaDat$numChildren, overSampDatTest$eaDat$trueProbDeathNoNug)
-    SRSDatTest$eaDat$died = overSampDatTest$eaDat$died
-    for(i in 1:nsimBig) {
-      overSampDat$clustDat[[i]]$trueProbDeathNoNug = expit(logit(overSampDat$clustDat[[i]]$trueProbDeathNoNug) - gamma*overSampDat$clustDat[[i]]$urban)
-      overSampDat$clustDat[[i]]$trueProbDeath = overSampDat$clustDat[[i]]$trueProbDeathNoNug
-      SRSDat$clustDat[[i]]$trueProbDeathNoNug = expit(logit(SRSDat$clustDat[[i]]$trueProbDeathNoNug) - gamma*SRSDat$clustDat[[i]]$urban)
-      SRSDat$clustDat[[i]]$trueProbDeath = SRSDat$clustDat[[i]]$trueProbDeathNoNug
-      overSampDatTest$clustDat[[i]]$trueProbDeathNoNug = expit(logit(overSampDatTest$clustDat[[i]]$trueProbDeathNoNug) - gamma*overSampDatTest$clustDat[[i]]$urban)
-      overSampDatTest$clustDat[[i]]$trueProbDeath = overSampDatTest$clustDat[[i]]$trueProbDeathNoNug
-      SRSDatTest$clustDat[[i]]$trueProbDeathNoNug = expit(logit(SRSDatTest$clustDat[[i]]$trueProbDeathNoNug) - gamma*SRSDatTest$clustDat[[i]]$urban)
-      SRSDatTest$clustDat[[i]]$trueProbDeath = SRSDatTest$clustDat[[i]]$trueProbDeathNoNug
-      
-      overSampDat$clustDat[[i]]$died = overSampDat$eaDat$died[overSampClustDat$eaIs[,i]]
-      SRSDat$clustDat[[i]]$died = SRSDat$eaDat$died[SRSClustDat$eaIs[,i]]
-      overSampDatTest$clustDat[[i]]$died = overSampDatTest$eaDat$died[overSampClustDatTest$eaIs[,i]]
-      SRSDatTest$clustDat[[i]]$died = SRSDatTest$eaDat$died[SRSClustDatTest$eaIs[,i]]
-    }
-    
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID02, "Big.RData"))
-    overSampDat = overSampDatTest
-    SRSDat = SRSDatTest
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID02, "TestBig.RData"))
-    load(paste0("simDataMulti", dataID02, "Big.RData"))
-    
-    # Again, take only the first nsim simulations from the "big"" dataset
-    overSampDat$clustDat = overSampDat$clustDat[1:nsim]
-    SRSDat$clustDat = SRSDat$clustDat[1:nsim]
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID02, ".RData"))
-    overSampDat = overSampDatTest
-    SRSDat = SRSDatTest
-    overSampDat$clustDat = overSampDat$clustDat[1:nsim]
-    SRSDat$clustDat = SRSDat$clustDat[1:nsim]
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID02, "Test.RData"))
-  }
-  load(paste0("simDataMulti", dataID02, ".RData"))
+  out = load(paste0("simDataMulti", dataID, "Big.RData"))
   
-  clustDat = SRSDat$clustDat[[1]]
+  # Now simulate the data without a cluster effect but with the same underlying probability surface otherwise
+  tausq = 0
+  overSampDat$eaDat$trueProbDeath = overSampDat$eaDat$trueProbDeathNoNug
+  SRSDat$eaDat$trueProbDeath = SRSDat$eaDat$trueProbDeathNoNug
+  overSampDat$eaDat$died = rbinom(nrow(overSampDat$eaDat), overSampDat$eaDat$numChildren, overSampDat$eaDat$trueProbDeathNoNug)
+  SRSDat$eaDat$died = overSampDat$eaDat$died
+  
+  overSampDatTest$eaDat$trueProbDeath = overSampDatTest$eaDat$trueProbDeathNoNug
+  SRSDatTest$eaDat$trueProbDeath = SRSDatTest$eaDat$trueProbDeathNoNug
+  overSampDatTest$eaDat$died = rbinom(nrow(overSampDatTest$eaDat), overSampDatTest$eaDat$numChildren, overSampDatTest$eaDat$trueProbDeathNoNug)
+  SRSDatTest$eaDat$died = overSampDatTest$eaDat$died
+  for(i in 1:nsimBig) {
+    overSampDat$clustDat[[i]]$trueProbDeath = overSampDat$clustDat[[i]]$trueProbDeathNoNug
+    SRSDat$clustDat[[i]]$trueProbDeath = SRSDat$clustDat[[i]]$trueProbDeathNoNug
+    overSampDatTest$clustDat[[i]]$trueProbDeath = overSampDatTest$clustDat[[i]]$trueProbDeathNoNug
+    SRSDatTest$clustDat[[i]]$trueProbDeath = SRSDatTest$clustDat[[i]]$trueProbDeathNoNug
+    
+    overSampDat$clustDat[[i]]$died = overSampDat$eaDat$died[overSampClustDat$eaIs[,i]]
+    SRSDat$clustDat[[i]]$died = SRSDat$eaDat$died[SRSClustDat$eaIs[,i]]
+    overSampDatTest$clustDat[[i]]$died = overSampDatTest$eaDat$died[overSampClustDatTest$eaIs[,i]]
+    SRSDatTest$clustDat[[i]]$died = SRSDatTest$eaDat$died[SRSClustDatTest$eaIs[,i]]
+  }
+  
+  save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID0, "Big.RData"))
+  overSampDat = overSampDatTest
+  SRSDat = SRSDatTest
+  save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID0, "TestBig.RData"))
+  load(paste0("simDataMulti", dataID0, "Big.RData"))
+  
+  # Again, take only the first nsim simulations from the "big"" dataset
+  overSampDat$clustDat = overSampDat$clustDat[1:nsim]
+  SRSDat$clustDat = SRSDat$clustDat[1:nsim]
+  save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID0, ".RData"))
+  overSampDat = overSampDatTest
+  SRSDat = SRSDatTest
+  overSampDat$clustDat = overSampDat$clustDat[1:nsim]
+  SRSDat$clustDat = SRSDat$clustDat[1:nsim]
+  save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID0, "Test.RData"))
+  
+  # clustDat = SRSDat$clustDat[[1]]
   # clustDat = SRSDatTest$clustDat[[1]]
   # clustDat = overSampDat$clustDat[[1]]
-  # clustDat = overSampDatTest$clustDat[[1]]
+  clustDat = overSampDatTest$clustDat[[1]]
   eaDat = overSampDat$eaDat
   obsCoords = cbind(clustDat$east, clustDat$north)
   obsNs = clustDat$numChildren
   obsCounts = clustDat$died
   
-  pdf(paste0("figures/exampleSRSSimulationNoUrban", dataID02, ".pdf"), width=8, height=8)
-  par(mfrow =c(2, 2))
-  zlim = c(0, quantile(c(eaDat$died/eaDat$numChildren, clustDat$died/clustDat$numChildren, 
-                         eaDat$trueProbDeath), probs=.975))
-  quilt.plot(eaDat$east, eaDat$north, eaDat$died/eaDat$numChildren, main="All Empirical Mortality Rates", 
-             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
-  plotMapDat(project=TRUE)
-  quilt.plot(obsCoords, obsCounts/obsNs, main="Sample Empirical Mortality Rates", 
-             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
-  plotMapDat(project=TRUE)
-  quilt.plot(eaDat$east, eaDat$north, eaDat$trueProbDeath, main="All True Mortality Rates", 
-             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
-  plotMapDat(project=TRUE)
-  quilt.plot(obsCoords, clustDat$trueProbDeath, main="Sample True Mortality Rates", 
-             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
-  plotMapDat(project=TRUE)
-  dev.off()
-  
-  if(!plotOnly) {
-    ##### do the same thing but now including only the intercept
-    # reload the data 
-    out = load(paste0("simDataMulti", dataID, "Big.RData"))
-    
-    # Now simulate the data without a cluster effect or urban effect but with the same underlying probability surface otherwise
-    tausq = 0
-    overSampDat$eaDat$trueProbDeathNoNug = expit(beta0)
-    overSampDat$eaDat$trueProbDeath = overSampDat$eaDat$trueProbDeathNoNug
-    SRSDat$eaDat$trueProbDeathNoNug = expit(beta0)
-    SRSDat$eaDat$trueProbDeath = SRSDat$eaDat$trueProbDeathNoNug
-    overSampDat$eaDat$died = rbinom(nrow(overSampDat$eaDat), overSampDat$eaDat$numChildren, overSampDat$eaDat$trueProbDeathNoNug)
-    SRSDat$eaDat$died = overSampDat$eaDat$died
-    
-    overSampDatTest$eaDat$trueProbDeathNoNug = expit(beta0)
-    overSampDatTest$eaDat$trueProbDeath = overSampDatTest$eaDat$trueProbDeathNoNug
-    SRSDatTest$eaDat$trueProbDeathNoNug = expit(beta0)
-    SRSDatTest$eaDat$trueProbDeath = SRSDatTest$eaDat$trueProbDeathNoNug
-    overSampDatTest$eaDat$died = rbinom(nrow(overSampDatTest$eaDat), overSampDatTest$eaDat$numChildren, overSampDatTest$eaDat$trueProbDeathNoNug)
-    SRSDatTest$eaDat$died = overSampDatTest$eaDat$died
-    for(i in 1:nsimBig) {
-      overSampDat$clustDat[[i]]$trueProbDeathNoNug = expit(beta0)
-      overSampDat$clustDat[[i]]$trueProbDeath = overSampDat$clustDat[[i]]$trueProbDeathNoNug
-      SRSDat$clustDat[[i]]$trueProbDeathNoNug = expit(beta0)
-      SRSDat$clustDat[[i]]$trueProbDeath = SRSDat$clustDat[[i]]$trueProbDeathNoNug
-      overSampDatTest$clustDat[[i]]$trueProbDeathNoNug = expit(beta0)
-      overSampDatTest$clustDat[[i]]$trueProbDeath = overSampDatTest$clustDat[[i]]$trueProbDeathNoNug
-      SRSDatTest$clustDat[[i]]$trueProbDeathNoNug = expit(beta0)
-      SRSDatTest$clustDat[[i]]$trueProbDeath = SRSDatTest$clustDat[[i]]$trueProbDeathNoNug
-      
-      overSampDat$clustDat[[i]]$died = overSampDat$eaDat$died[overSampClustDat$eaIs[,i]]
-      SRSDat$clustDat[[i]]$died = SRSDat$eaDat$died[SRSClustDat$eaIs[,i]]
-      overSampDatTest$clustDat[[i]]$died = overSampDatTest$eaDat$died[overSampClustDatTest$eaIs[,i]]
-      SRSDatTest$clustDat[[i]]$died = SRSDatTest$eaDat$died[SRSClustDatTest$eaIs[,i]]
-    }
-    
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID03, "Big.RData"))
-    overSampDat = overSampDatTest
-    SRSDat = SRSDatTest
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID03, "TestBig.RData"))
-    load(paste0("simDataMulti", dataID03, "Big.RData"))
-    
-    # Again, take only the first nsim simulations from the "big"" dataset
-    overSampDat$clustDat = overSampDat$clustDat[1:nsim]
-    SRSDat$clustDat = SRSDat$clustDat[1:nsim]
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID03, ".RData"))
-    overSampDat = overSampDatTest
-    SRSDat = SRSDatTest
-    overSampDat$clustDat = overSampDat$clustDat[1:nsim]
-    SRSDat$clustDat = SRSDat$clustDat[1:nsim]
-    save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID03, "Test.RData"))
-  }
-  load(paste0("simDataMulti", dataID03, ".RData"))
-  
-  clustDat = SRSDat$clustDat[[1]]
-  # clustDat = SRSDatTest$clustDat[[1]]
-  # clustDat = overSampDat$clustDat[[1]]
-  # clustDat = overSampDatTest$clustDat[[1]]
-  eaDat = overSampDat$eaDat
-  obsCoords = cbind(clustDat$east, clustDat$north)
-  obsNs = clustDat$numChildren
-  obsCounts = clustDat$died
-  
-  pdf(paste0("figures/exampleSRSSimulationConstant", dataID03, ".pdf"), width=8, height=8)
+  pdf(paste0("figures/exampleOverSampTestSimulationNoNug", dataID0, ".pdf"), width=8, height=8)
   par(mfrow =c(2, 2))
   zlim = c(0, quantile(c(eaDat$died/eaDat$numChildren, clustDat$died/clustDat$numChildren, 
                          eaDat$trueProbDeath), probs=.975))

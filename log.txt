@@ -1,1 +1,723 @@
 
+[1] "iteration 1/3"
+result of evaluating expression:
+<simpleError in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = default.stringsAsFactors()) {    data.row.names <- if (check.rows && is.null(row.names))         function(current, new, i) {            if (is.character(current))                 new <- as.character(new)            if (is.character(new))                 current <- as.character(current)            if (anyDuplicated(new))                 return(current)            if (is.null(current))                 return(new)            if (all(current == new) || all(current == ""))                 return(new)            stop(gettextf("mismatch of row names in arguments of 'data.frame', item %d",                 i), domain = NA)        }    else function(current, new, i) {        if (is.null(current)) {            if (anyDuplicated(new)) {                warning(gettextf("some row.names duplicated: %s --> row.names NOT used",                   paste(which(duplicated(new)), collapse = ",")),                   domain = NA)                current            }            else new        }        else current    }    object <- as.list(substitute(list(...)))[-1L]    mirn <- missing(row.names)    mrn <- is.null(row.names)    x <- list(...)    n <- length(x)    if (n < 1L) {        if (!mrn) {            if (is.object(row.names) || !is.integer(row.names))                 row.names <- as.character(row.names)            if (anyNA(row.names))                 stop("row names contain missing values")            if (anyDuplicated(row.names))                 stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                   collapse = ", ")), domain = NA)        }        else row.names <- integer()        return(structure(list(), names = character(), row.names = row.names,             class = "data.frame"))    }    vnames <- names(x)    if (length(vnames) != n)         vnames <- character(n)    no.vn <- !nzchar(vnames)    vlist <- vnames <- as.list(vnames)    nrows <- ncols <- integer(n)    for (i in seq_len(n)) {        xi <- if (is.character(x[[i]]) || is.list(x[[i]]))             as.data.frame(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors)        else as.data.frame(x[[i]], optional = TRUE)        nrows[i] <- .row_names_info(xi)        ncols[i] <- length(xi)        namesi <- names(xi)        if (ncols[i] > 1L) {            if (length(namesi) == 0L)                 namesi <- seq_len(ncols[i])            vnames[[i]] <- if (no.vn[i])                 namesi            else paste(vnames[[i]], namesi, sep = ".")        }        else if (length(namesi)) {            vnames[[i]] <- namesi        }        else if (fix.empty.names && no.vn[[i]]) {            tmpname <- deparse(object[[i]], nlines = 1L)[1L]            if (substr(tmpname, 1L, 2L) == "I(") {                ntmpn <- nchar(tmpname, "c")                if (substr(tmpname, ntmpn, ntmpn) == ")")                   tmpname <- substr(tmpname, 3L, ntmpn - 1L)            }            vnames[[i]] <- tmpname        }        if (mirn && nrows[i] > 0L) {            rowsi <- attr(xi, "row.names")            if (any(nzchar(rowsi)))                 row.names <- data.row.names(row.names, rowsi,                   i)        }        nrows[i] <- abs(nrows[i])        vlist[[i]] <- xi    }    nr <- max(nrows)    for (i in seq_len(n)[nrows < nr]) {        xi <- vlist[[i]]        if (nrows[i] > 0L && (nr%%nrows[i] == 0L)) {            xi <- unclass(xi)            fixed <- TRUE            for (j in seq_along(xi)) {                xi1 <- xi[[j]]                if (is.vector(xi1) || is.factor(xi1))                   xi[[j]] <- rep(xi1, length.out = nr)                else if (is.character(xi1) && inherits(xi1, "AsIs"))                   xi[[j]] <- structure(rep(xi1, length.out = nr),                     class = class(xi1))                else if (inherits(xi1, "Date") || inherits(xi1,                   "POSIXct"))                   xi[[j]] <- rep(xi1, length.out = nr)                else {                  fixed <- FALSE                  break                }            }            if (fixed) {                vlist[[i]] <- xi                next            }        }        stop(gettextf("arguments imply differing number of rows: %s",             paste(unique(nrows), collapse = ", ")), domain = NA)    }    value <- unlist(vlist, recursive = FALSE, use.names = FALSE)    vnames <- unlist(vnames[ncols > 0L])    if (fix.empty.names && any(noname <- !nzchar(vnames)))         vnames[noname] <- paste0("Var.", seq_along(vnames))[noname]    if (check.names) {        if (fix.empty.names)             vnames <- make.names(vnames, unique = TRUE)        else {            nz <- nzchar(vnames)            vnames[nz] <- make.names(vnames[nz], unique = TRUE)        }    }    names(value) <- vnames    if (!mrn) {        if (length(row.names) == 1L && nr != 1L) {            if (is.character(row.names))                 row.names <- match(row.names, vnames, 0L)            if (length(row.names) != 1L || row.names < 1L ||                 row.names > length(vnames))                 stop("'row.names' should specify one of the variables")            i <- row.names            row.names <- value[[i]]            value <- value[-i]        }        else if (!is.null(row.names) && length(row.names) !=             nr)             stop("row names supplied are of the wrong length")    }    else if (!is.null(row.names) && length(row.names) != nr) {        warning("row names were found from a short variable and have been discarded")        row.names <- NULL    }    class(value) <- "data.frame"    if (is.null(row.names))         attr(value, "row.names") <- .set_row_names(nr)    else {        if (is.object(row.names) || !is.integer(row.names))             row.names <- as.character(row.names)        if (anyNA(row.names))             stop("row names contain missing values")        if (anyDuplicated(row.names))             stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                 collapse = ", ")), domain = NA)        row.names(value) <- row.names    }    value})(y = NULL, Ntrials = NULL, link = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = TRUE): arguments imply differing number of rows: 0, 276>
+got results for task 1
+accumulate got an error result
+numValues: 1, numResults: 1, stopped: FALSE
+returning status FALSE
+evaluation # 2:
+$i
+[1] 2
+
+[1] "iteration 2/3"
+result of evaluating expression:
+<simpleError in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = default.stringsAsFactors()) {    data.row.names <- if (check.rows && is.null(row.names))         function(current, new, i) {            if (is.character(current))                 new <- as.character(new)            if (is.character(new))                 current <- as.character(current)            if (anyDuplicated(new))                 return(current)            if (is.null(current))                 return(new)            if (all(current == new) || all(current == ""))                 return(new)            stop(gettextf("mismatch of row names in arguments of 'data.frame', item %d",                 i), domain = NA)        }    else function(current, new, i) {        if (is.null(current)) {            if (anyDuplicated(new)) {                warning(gettextf("some row.names duplicated: %s --> row.names NOT used",                   paste(which(duplicated(new)), collapse = ",")),                   domain = NA)                current            }            else new        }        else current    }    object <- as.list(substitute(list(...)))[-1L]    mirn <- missing(row.names)    mrn <- is.null(row.names)    x <- list(...)    n <- length(x)    if (n < 1L) {        if (!mrn) {            if (is.object(row.names) || !is.integer(row.names))                 row.names <- as.character(row.names)            if (anyNA(row.names))                 stop("row names contain missing values")            if (anyDuplicated(row.names))                 stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                   collapse = ", ")), domain = NA)        }        else row.names <- integer()        return(structure(list(), names = character(), row.names = row.names,             class = "data.frame"))    }    vnames <- names(x)    if (length(vnames) != n)         vnames <- character(n)    no.vn <- !nzchar(vnames)    vlist <- vnames <- as.list(vnames)    nrows <- ncols <- integer(n)    for (i in seq_len(n)) {        xi <- if (is.character(x[[i]]) || is.list(x[[i]]))             as.data.frame(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors)        else as.data.frame(x[[i]], optional = TRUE)        nrows[i] <- .row_names_info(xi)        ncols[i] <- length(xi)        namesi <- names(xi)        if (ncols[i] > 1L) {            if (length(namesi) == 0L)                 namesi <- seq_len(ncols[i])            vnames[[i]] <- if (no.vn[i])                 namesi            else paste(vnames[[i]], namesi, sep = ".")        }        else if (length(namesi)) {            vnames[[i]] <- namesi        }        else if (fix.empty.names && no.vn[[i]]) {            tmpname <- deparse(object[[i]], nlines = 1L)[1L]            if (substr(tmpname, 1L, 2L) == "I(") {                ntmpn <- nchar(tmpname, "c")                if (substr(tmpname, ntmpn, ntmpn) == ")")                   tmpname <- substr(tmpname, 3L, ntmpn - 1L)            }            vnames[[i]] <- tmpname        }        if (mirn && nrows[i] > 0L) {            rowsi <- attr(xi, "row.names")            if (any(nzchar(rowsi)))                 row.names <- data.row.names(row.names, rowsi,                   i)        }        nrows[i] <- abs(nrows[i])        vlist[[i]] <- xi    }    nr <- max(nrows)    for (i in seq_len(n)[nrows < nr]) {        xi <- vlist[[i]]        if (nrows[i] > 0L && (nr%%nrows[i] == 0L)) {            xi <- unclass(xi)            fixed <- TRUE            for (j in seq_along(xi)) {                xi1 <- xi[[j]]                if (is.vector(xi1) || is.factor(xi1))                   xi[[j]] <- rep(xi1, length.out = nr)                else if (is.character(xi1) && inherits(xi1, "AsIs"))                   xi[[j]] <- structure(rep(xi1, length.out = nr),                     class = class(xi1))                else if (inherits(xi1, "Date") || inherits(xi1,                   "POSIXct"))                   xi[[j]] <- rep(xi1, length.out = nr)                else {                  fixed <- FALSE                  break                }            }            if (fixed) {                vlist[[i]] <- xi                next            }        }        stop(gettextf("arguments imply differing number of rows: %s",             paste(unique(nrows), collapse = ", ")), domain = NA)    }    value <- unlist(vlist, recursive = FALSE, use.names = FALSE)    vnames <- unlist(vnames[ncols > 0L])    if (fix.empty.names && any(noname <- !nzchar(vnames)))         vnames[noname] <- paste0("Var.", seq_along(vnames))[noname]    if (check.names) {        if (fix.empty.names)             vnames <- make.names(vnames, unique = TRUE)        else {            nz <- nzchar(vnames)            vnames[nz] <- make.names(vnames[nz], unique = TRUE)        }    }    names(value) <- vnames    if (!mrn) {        if (length(row.names) == 1L && nr != 1L) {            if (is.character(row.names))                 row.names <- match(row.names, vnames, 0L)            if (length(row.names) != 1L || row.names < 1L ||                 row.names > length(vnames))                 stop("'row.names' should specify one of the variables")            i <- row.names            row.names <- value[[i]]            value <- value[-i]        }        else if (!is.null(row.names) && length(row.names) !=             nr)             stop("row names supplied are of the wrong length")    }    else if (!is.null(row.names) && length(row.names) != nr) {        warning("row names were found from a short variable and have been discarded")        row.names <- NULL    }    class(value) <- "data.frame"    if (is.null(row.names))         attr(value, "row.names") <- .set_row_names(nr)    else {        if (is.object(row.names) || !is.integer(row.names))             row.names <- as.character(row.names)        if (anyNA(row.names))             stop("row names contain missing values")        if (anyDuplicated(row.names))             stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                 collapse = ", ")), domain = NA)        row.names(value) <- row.names    }    value})(y = NULL, Ntrials = NULL, link = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = TRUE): arguments imply differing number of rows: 0, 276>
+got results for task 2
+numValues: 2, numResults: 2, stopped: FALSE
+returning status FALSE
+evaluation # 3:
+$i
+[1] 3
+
+[1] "iteration 3/3"
+result of evaluating expression:
+<simpleError in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = default.stringsAsFactors()) {    data.row.names <- if (check.rows && is.null(row.names))         function(current, new, i) {            if (is.character(current))                 new <- as.character(new)            if (is.character(new))                 current <- as.character(current)            if (anyDuplicated(new))                 return(current)            if (is.null(current))                 return(new)            if (all(current == new) || all(current == ""))                 return(new)            stop(gettextf("mismatch of row names in arguments of 'data.frame', item %d",                 i), domain = NA)        }    else function(current, new, i) {        if (is.null(current)) {            if (anyDuplicated(new)) {                warning(gettextf("some row.names duplicated: %s --> row.names NOT used",                   paste(which(duplicated(new)), collapse = ",")),                   domain = NA)                current            }            else new        }        else current    }    object <- as.list(substitute(list(...)))[-1L]    mirn <- missing(row.names)    mrn <- is.null(row.names)    x <- list(...)    n <- length(x)    if (n < 1L) {        if (!mrn) {            if (is.object(row.names) || !is.integer(row.names))                 row.names <- as.character(row.names)            if (anyNA(row.names))                 stop("row names contain missing values")            if (anyDuplicated(row.names))                 stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                   collapse = ", ")), domain = NA)        }        else row.names <- integer()        return(structure(list(), names = character(), row.names = row.names,             class = "data.frame"))    }    vnames <- names(x)    if (length(vnames) != n)         vnames <- character(n)    no.vn <- !nzchar(vnames)    vlist <- vnames <- as.list(vnames)    nrows <- ncols <- integer(n)    for (i in seq_len(n)) {        xi <- if (is.character(x[[i]]) || is.list(x[[i]]))             as.data.frame(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors)        else as.data.frame(x[[i]], optional = TRUE)        nrows[i] <- .row_names_info(xi)        ncols[i] <- length(xi)        namesi <- names(xi)        if (ncols[i] > 1L) {            if (length(namesi) == 0L)                 namesi <- seq_len(ncols[i])            vnames[[i]] <- if (no.vn[i])                 namesi            else paste(vnames[[i]], namesi, sep = ".")        }        else if (length(namesi)) {            vnames[[i]] <- namesi        }        else if (fix.empty.names && no.vn[[i]]) {            tmpname <- deparse(object[[i]], nlines = 1L)[1L]            if (substr(tmpname, 1L, 2L) == "I(") {                ntmpn <- nchar(tmpname, "c")                if (substr(tmpname, ntmpn, ntmpn) == ")")                   tmpname <- substr(tmpname, 3L, ntmpn - 1L)            }            vnames[[i]] <- tmpname        }        if (mirn && nrows[i] > 0L) {            rowsi <- attr(xi, "row.names")            if (any(nzchar(rowsi)))                 row.names <- data.row.names(row.names, rowsi,                   i)        }        nrows[i] <- abs(nrows[i])        vlist[[i]] <- xi    }    nr <- max(nrows)    for (i in seq_len(n)[nrows < nr]) {        xi <- vlist[[i]]        if (nrows[i] > 0L && (nr%%nrows[i] == 0L)) {            xi <- unclass(xi)            fixed <- TRUE            for (j in seq_along(xi)) {                xi1 <- xi[[j]]                if (is.vector(xi1) || is.factor(xi1))                   xi[[j]] <- rep(xi1, length.out = nr)                else if (is.character(xi1) && inherits(xi1, "AsIs"))                   xi[[j]] <- structure(rep(xi1, length.out = nr),                     class = class(xi1))                else if (inherits(xi1, "Date") || inherits(xi1,                   "POSIXct"))                   xi[[j]] <- rep(xi1, length.out = nr)                else {                  fixed <- FALSE                  break                }            }            if (fixed) {                vlist[[i]] <- xi                next            }        }        stop(gettextf("arguments imply differing number of rows: %s",             paste(unique(nrows), collapse = ", ")), domain = NA)    }    value <- unlist(vlist, recursive = FALSE, use.names = FALSE)    vnames <- unlist(vnames[ncols > 0L])    if (fix.empty.names && any(noname <- !nzchar(vnames)))         vnames[noname] <- paste0("Var.", seq_along(vnames))[noname]    if (check.names) {        if (fix.empty.names)             vnames <- make.names(vnames, unique = TRUE)        else {            nz <- nzchar(vnames)            vnames[nz] <- make.names(vnames[nz], unique = TRUE)        }    }    names(value) <- vnames    if (!mrn) {        if (length(row.names) == 1L && nr != 1L) {            if (is.character(row.names))                 row.names <- match(row.names, vnames, 0L)            if (length(row.names) != 1L || row.names < 1L ||                 row.names > length(vnames))                 stop("'row.names' should specify one of the variables")            i <- row.names            row.names <- value[[i]]            value <- value[-i]        }        else if (!is.null(row.names) && length(row.names) !=             nr)             stop("row names supplied are of the wrong length")    }    else if (!is.null(row.names) && length(row.names) != nr) {        warning("row names were found from a short variable and have been discarded")        row.names <- NULL    }    class(value) <- "data.frame"    if (is.null(row.names))         attr(value, "row.names") <- .set_row_names(nr)    else {        if (is.object(row.names) || !is.integer(row.names))             row.names <- as.character(row.names)        if (anyNA(row.names))             stop("row names contain missing values")        if (anyDuplicated(row.names))             stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                 collapse = ", ")), domain = NA)        row.names(value) <- row.names    }    value})(y = NULL, Ntrials = NULL, link = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = TRUE): arguments imply differing number of rows: 0, 276>
+got results for task 3
+numValues: 3, numResults: 3, stopped: FALSE
+returning status FALSE
+numValues: 3, numResults: 3, stopped: TRUE
+not calling combine function due to errors
+
+Enter a frame number, or 0 to exit   
+
+1: resultsSPDE(test = TRUE)
+2: spdeResults.R#64: resultsSPDEHelper3(clustSRS, eaDat, nPostSamples = nPostSamples, verbose = verbose, inc
+3: spdeResults.R#1179: foreach(i = 1:nsim, .combine = combineResults, .verbose = TRUE, .multicombine = TRUE)
+4: e$fun(obj, substitute(ex), parent.frame(), e$data)
+
+Called from: resultsSPDEHelper3(clustSRS, eaDat, nPostSamples = nPostSamples, 
+    verbose = verbose, includeClustEffect = includeClustEffect, 
+    int.strategy = int.strategy, genRegionLevel = genRegionLevel, 
+    keepPixelPreds = keepPixelPreds, genEALevel = genEALevel, 
+    urbanEffect = urbanEffect, kmres = kmres)
+3: stop(gettextf("unknown family '%s'", family), domain = NA)
+2: pdf("figures/exampleSRSSimulation", dataID, ".pdf", width = 8, 
+       height = 8) at generateSimDataSets.R#122
+1: generateSimDataSets()
+[1] "Generating SRS results"
+[1] "Calculating empirical rates at the desired aggregation levels"
+evaluation # 1:
+$i
+[1] 1
+
+[1] "iteration 1/3"
+result of evaluating expression:
+<simpleError in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = default.stringsAsFactors()) {    data.row.names <- if (check.rows && is.null(row.names))         function(current, new, i) {            if (is.character(current))                 new <- as.character(new)            if (is.character(new))                 current <- as.character(current)            if (anyDuplicated(new))                 return(current)            if (is.null(current))                 return(new)            if (all(current == new) || all(current == ""))                 return(new)            stop(gettextf("mismatch of row names in arguments of 'data.frame', item %d",                 i), domain = NA)        }    else function(current, new, i) {        if (is.null(current)) {            if (anyDuplicated(new)) {                warning(gettextf("some row.names duplicated: %s --> row.names NOT used",                   paste(which(duplicated(new)), collapse = ",")),                   domain = NA)                current            }            else new        }        else current    }    object <- as.list(substitute(list(...)))[-1L]    mirn <- missing(row.names)    mrn <- is.null(row.names)    x <- list(...)    n <- length(x)    if (n < 1L) {        if (!mrn) {            if (is.object(row.names) || !is.integer(row.names))                 row.names <- as.character(row.names)            if (anyNA(row.names))                 stop("row names contain missing values")            if (anyDuplicated(row.names))                 stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                   collapse = ", ")), domain = NA)        }        else row.names <- integer()        return(structure(list(), names = character(), row.names = row.names,             class = "data.frame"))    }    vnames <- names(x)    if (length(vnames) != n)         vnames <- character(n)    no.vn <- !nzchar(vnames)    vlist <- vnames <- as.list(vnames)    nrows <- ncols <- integer(n)    for (i in seq_len(n)) {        xi <- if (is.character(x[[i]]) || is.list(x[[i]]))             as.data.frame(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors)        else as.data.frame(x[[i]], optional = TRUE)        nrows[i] <- .row_names_info(xi)        ncols[i] <- length(xi)        namesi <- names(xi)        if (ncols[i] > 1L) {            if (length(namesi) == 0L)                 namesi <- seq_len(ncols[i])            vnames[[i]] <- if (no.vn[i])                 namesi            else paste(vnames[[i]], namesi, sep = ".")        }        else if (length(namesi)) {            vnames[[i]] <- namesi        }        else if (fix.empty.names && no.vn[[i]]) {            tmpname <- deparse(object[[i]], nlines = 1L)[1L]            if (substr(tmpname, 1L, 2L) == "I(") {                ntmpn <- nchar(tmpname, "c")                if (substr(tmpname, ntmpn, ntmpn) == ")")                   tmpname <- substr(tmpname, 3L, ntmpn - 1L)            }            vnames[[i]] <- tmpname        }        if (mirn && nrows[i] > 0L) {            rowsi <- attr(xi, "row.names")            if (any(nzchar(rowsi)))                 row.names <- data.row.names(row.names, rowsi,                   i)        }        nrows[i] <- abs(nrows[i])        vlist[[i]] <- xi    }    nr <- max(nrows)    for (i in seq_len(n)[nrows < nr]) {        xi <- vlist[[i]]        if (nrows[i] > 0L && (nr%%nrows[i] == 0L)) {            xi <- unclass(xi)            fixed <- TRUE            for (j in seq_along(xi)) {                xi1 <- xi[[j]]                if (is.vector(xi1) || is.factor(xi1))                   xi[[j]] <- rep(xi1, length.out = nr)                else if (is.character(xi1) && inherits(xi1, "AsIs"))                   xi[[j]] <- structure(rep(xi1, length.out = nr),                     class = class(xi1))                else if (inherits(xi1, "Date") || inherits(xi1,                   "POSIXct"))                   xi[[j]] <- rep(xi1, length.out = nr)                else {                  fixed <- FALSE                  break                }            }            if (fixed) {                vlist[[i]] <- xi                next            }        }        stop(gettextf("arguments imply differing number of rows: %s",             paste(unique(nrows), collapse = ", ")), domain = NA)    }    value <- unlist(vlist, recursive = FALSE, use.names = FALSE)    vnames <- unlist(vnames[ncols > 0L])    if (fix.empty.names && any(noname <- !nzchar(vnames)))         vnames[noname] <- paste0("Var.", seq_along(vnames))[noname]    if (check.names) {        if (fix.empty.names)             vnames <- make.names(vnames, unique = TRUE)        else {            nz <- nzchar(vnames)            vnames[nz] <- make.names(vnames[nz], unique = TRUE)        }    }    names(value) <- vnames    if (!mrn) {        if (length(row.names) == 1L && nr != 1L) {            if (is.character(row.names))                 row.names <- match(row.names, vnames, 0L)            if (length(row.names) != 1L || row.names < 1L ||                 row.names > length(vnames))                 stop("'row.names' should specify one of the variables")            i <- row.names            row.names <- value[[i]]            value <- value[-i]        }        else if (!is.null(row.names) && length(row.names) !=             nr)             stop("row names supplied are of the wrong length")    }    else if (!is.null(row.names) && length(row.names) != nr) {        warning("row names were found from a short variable and have been discarded")        row.names <- NULL    }    class(value) <- "data.frame"    if (is.null(row.names))         attr(value, "row.names") <- .set_row_names(nr)    else {        if (is.object(row.names) || !is.integer(row.names))             row.names <- as.character(row.names)        if (anyNA(row.names))             stop("row names contain missing values")        if (anyDuplicated(row.names))             stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                 collapse = ", ")), domain = NA)        row.names(value) <- row.names    }    value})(y = NULL, Ntrials = NULL, link = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = TRUE): arguments imply differing number of rows: 0, 276>
+got results for task 1
+accumulate got an error result
+numValues: 1, numResults: 1, stopped: FALSE
+returning status FALSE
+evaluation # 2:
+$i
+[1] 2
+
+[1] "iteration 2/3"
+result of evaluating expression:
+<simpleError in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = default.stringsAsFactors()) {    data.row.names <- if (check.rows && is.null(row.names))         function(current, new, i) {            if (is.character(current))                 new <- as.character(new)            if (is.character(new))                 current <- as.character(current)            if (anyDuplicated(new))                 return(current)            if (is.null(current))                 return(new)            if (all(current == new) || all(current == ""))                 return(new)            stop(gettextf("mismatch of row names in arguments of 'data.frame', item %d",                 i), domain = NA)        }    else function(current, new, i) {        if (is.null(current)) {            if (anyDuplicated(new)) {                warning(gettextf("some row.names duplicated: %s --> row.names NOT used",                   paste(which(duplicated(new)), collapse = ",")),                   domain = NA)                current            }            else new        }        else current    }    object <- as.list(substitute(list(...)))[-1L]    mirn <- missing(row.names)    mrn <- is.null(row.names)    x <- list(...)    n <- length(x)    if (n < 1L) {        if (!mrn) {            if (is.object(row.names) || !is.integer(row.names))                 row.names <- as.character(row.names)            if (anyNA(row.names))                 stop("row names contain missing values")            if (anyDuplicated(row.names))                 stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                   collapse = ", ")), domain = NA)        }        else row.names <- integer()        return(structure(list(), names = character(), row.names = row.names,             class = "data.frame"))    }    vnames <- names(x)    if (length(vnames) != n)         vnames <- character(n)    no.vn <- !nzchar(vnames)    vlist <- vnames <- as.list(vnames)    nrows <- ncols <- integer(n)    for (i in seq_len(n)) {        xi <- if (is.character(x[[i]]) || is.list(x[[i]]))             as.data.frame(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors)        else as.data.frame(x[[i]], optional = TRUE)        nrows[i] <- .row_names_info(xi)        ncols[i] <- length(xi)        namesi <- names(xi)        if (ncols[i] > 1L) {            if (length(namesi) == 0L)                 namesi <- seq_len(ncols[i])            vnames[[i]] <- if (no.vn[i])                 namesi            else paste(vnames[[i]], namesi, sep = ".")        }        else if (length(namesi)) {            vnames[[i]] <- namesi        }        else if (fix.empty.names && no.vn[[i]]) {            tmpname <- deparse(object[[i]], nlines = 1L)[1L]            if (substr(tmpname, 1L, 2L) == "I(") {                ntmpn <- nchar(tmpname, "c")                if (substr(tmpname, ntmpn, ntmpn) == ")")                   tmpname <- substr(tmpname, 3L, ntmpn - 1L)            }            vnames[[i]] <- tmpname        }        if (mirn && nrows[i] > 0L) {            rowsi <- attr(xi, "row.names")            if (any(nzchar(rowsi)))                 row.names <- data.row.names(row.names, rowsi,                   i)        }        nrows[i] <- abs(nrows[i])        vlist[[i]] <- xi    }    nr <- max(nrows)    for (i in seq_len(n)[nrows < nr]) {        xi <- vlist[[i]]        if (nrows[i] > 0L && (nr%%nrows[i] == 0L)) {            xi <- unclass(xi)            fixed <- TRUE            for (j in seq_along(xi)) {                xi1 <- xi[[j]]                if (is.vector(xi1) || is.factor(xi1))                   xi[[j]] <- rep(xi1, length.out = nr)                else if (is.character(xi1) && inherits(xi1, "AsIs"))                   xi[[j]] <- structure(rep(xi1, length.out = nr),                     class = class(xi1))                else if (inherits(xi1, "Date") || inherits(xi1,                   "POSIXct"))                   xi[[j]] <- rep(xi1, length.out = nr)                else {                  fixed <- FALSE                  break                }            }            if (fixed) {                vlist[[i]] <- xi                next            }        }        stop(gettextf("arguments imply differing number of rows: %s",             paste(unique(nrows), collapse = ", ")), domain = NA)    }    value <- unlist(vlist, recursive = FALSE, use.names = FALSE)    vnames <- unlist(vnames[ncols > 0L])    if (fix.empty.names && any(noname <- !nzchar(vnames)))         vnames[noname] <- paste0("Var.", seq_along(vnames))[noname]    if (check.names) {        if (fix.empty.names)             vnames <- make.names(vnames, unique = TRUE)        else {            nz <- nzchar(vnames)            vnames[nz] <- make.names(vnames[nz], unique = TRUE)        }    }    names(value) <- vnames    if (!mrn) {        if (length(row.names) == 1L && nr != 1L) {            if (is.character(row.names))                 row.names <- match(row.names, vnames, 0L)            if (length(row.names) != 1L || row.names < 1L ||                 row.names > length(vnames))                 stop("'row.names' should specify one of the variables")            i <- row.names            row.names <- value[[i]]            value <- value[-i]        }        else if (!is.null(row.names) && length(row.names) !=             nr)             stop("row names supplied are of the wrong length")    }    else if (!is.null(row.names) && length(row.names) != nr) {        warning("row names were found from a short variable and have been discarded")        row.names <- NULL    }    class(value) <- "data.frame"    if (is.null(row.names))         attr(value, "row.names") <- .set_row_names(nr)    else {        if (is.object(row.names) || !is.integer(row.names))             row.names <- as.character(row.names)        if (anyNA(row.names))             stop("row names contain missing values")        if (anyDuplicated(row.names))             stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                 collapse = ", ")), domain = NA)        row.names(value) <- row.names    }    value})(y = NULL, Ntrials = NULL, link = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = TRUE): arguments imply differing number of rows: 0, 276>
+got results for task 2
+numValues: 2, numResults: 2, stopped: FALSE
+returning status FALSE
+evaluation # 3:
+$i
+[1] 3
+
+[1] "iteration 3/3"
+result of evaluating expression:
+<simpleError in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = default.stringsAsFactors()) {    data.row.names <- if (check.rows && is.null(row.names))         function(current, new, i) {            if (is.character(current))                 new <- as.character(new)            if (is.character(new))                 current <- as.character(current)            if (anyDuplicated(new))                 return(current)            if (is.null(current))                 return(new)            if (all(current == new) || all(current == ""))                 return(new)            stop(gettextf("mismatch of row names in arguments of 'data.frame', item %d",                 i), domain = NA)        }    else function(current, new, i) {        if (is.null(current)) {            if (anyDuplicated(new)) {                warning(gettextf("some row.names duplicated: %s --> row.names NOT used",                   paste(which(duplicated(new)), collapse = ",")),                   domain = NA)                current            }            else new        }        else current    }    object <- as.list(substitute(list(...)))[-1L]    mirn <- missing(row.names)    mrn <- is.null(row.names)    x <- list(...)    n <- length(x)    if (n < 1L) {        if (!mrn) {            if (is.object(row.names) || !is.integer(row.names))                 row.names <- as.character(row.names)            if (anyNA(row.names))                 stop("row names contain missing values")            if (anyDuplicated(row.names))                 stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                   collapse = ", ")), domain = NA)        }        else row.names <- integer()        return(structure(list(), names = character(), row.names = row.names,             class = "data.frame"))    }    vnames <- names(x)    if (length(vnames) != n)         vnames <- character(n)    no.vn <- !nzchar(vnames)    vlist <- vnames <- as.list(vnames)    nrows <- ncols <- integer(n)    for (i in seq_len(n)) {        xi <- if (is.character(x[[i]]) || is.list(x[[i]]))             as.data.frame(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors)        else as.data.frame(x[[i]], optional = TRUE)        nrows[i] <- .row_names_info(xi)        ncols[i] <- length(xi)        namesi <- names(xi)        if (ncols[i] > 1L) {            if (length(namesi) == 0L)                 namesi <- seq_len(ncols[i])            vnames[[i]] <- if (no.vn[i])                 namesi            else paste(vnames[[i]], namesi, sep = ".")        }        else if (length(namesi)) {            vnames[[i]] <- namesi        }        else if (fix.empty.names && no.vn[[i]]) {            tmpname <- deparse(object[[i]], nlines = 1L)[1L]            if (substr(tmpname, 1L, 2L) == "I(") {                ntmpn <- nchar(tmpname, "c")                if (substr(tmpname, ntmpn, ntmpn) == ")")                   tmpname <- substr(tmpname, 3L, ntmpn - 1L)            }            vnames[[i]] <- tmpname        }        if (mirn && nrows[i] > 0L) {            rowsi <- attr(xi, "row.names")            if (any(nzchar(rowsi)))                 row.names <- data.row.names(row.names, rowsi,                   i)        }        nrows[i] <- abs(nrows[i])        vlist[[i]] <- xi    }    nr <- max(nrows)    for (i in seq_len(n)[nrows < nr]) {        xi <- vlist[[i]]        if (nrows[i] > 0L && (nr%%nrows[i] == 0L)) {            xi <- unclass(xi)            fixed <- TRUE            for (j in seq_along(xi)) {                xi1 <- xi[[j]]                if (is.vector(xi1) || is.factor(xi1))                   xi[[j]] <- rep(xi1, length.out = nr)                else if (is.character(xi1) && inherits(xi1, "AsIs"))                   xi[[j]] <- structure(rep(xi1, length.out = nr),                     class = class(xi1))                else if (inherits(xi1, "Date") || inherits(xi1,                   "POSIXct"))                   xi[[j]] <- rep(xi1, length.out = nr)                else {                  fixed <- FALSE                  break                }            }            if (fixed) {                vlist[[i]] <- xi                next            }        }        stop(gettextf("arguments imply differing number of rows: %s",             paste(unique(nrows), collapse = ", ")), domain = NA)    }    value <- unlist(vlist, recursive = FALSE, use.names = FALSE)    vnames <- unlist(vnames[ncols > 0L])    if (fix.empty.names && any(noname <- !nzchar(vnames)))         vnames[noname] <- paste0("Var.", seq_along(vnames))[noname]    if (check.names) {        if (fix.empty.names)             vnames <- make.names(vnames, unique = TRUE)        else {            nz <- nzchar(vnames)            vnames[nz] <- make.names(vnames[nz], unique = TRUE)        }    }    names(value) <- vnames    if (!mrn) {        if (length(row.names) == 1L && nr != 1L) {            if (is.character(row.names))                 row.names <- match(row.names, vnames, 0L)            if (length(row.names) != 1L || row.names < 1L ||                 row.names > length(vnames))                 stop("'row.names' should specify one of the variables")            i <- row.names            row.names <- value[[i]]            value <- value[-i]        }        else if (!is.null(row.names) && length(row.names) !=             nr)             stop("row names supplied are of the wrong length")    }    else if (!is.null(row.names) && length(row.names) != nr) {        warning("row names were found from a short variable and have been discarded")        row.names <- NULL    }    class(value) <- "data.frame"    if (is.null(row.names))         attr(value, "row.names") <- .set_row_names(nr)    else {        if (is.object(row.names) || !is.integer(row.names))             row.names <- as.character(row.names)        if (anyNA(row.names))             stop("row names contain missing values")        if (anyDuplicated(row.names))             stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                 collapse = ", ")), domain = NA)        row.names(value) <- row.names    }    value})(y = NULL, Ntrials = NULL, link = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = TRUE): arguments imply differing number of rows: 0, 276>
+got results for task 3
+numValues: 3, numResults: 3, stopped: FALSE
+returning status FALSE
+numValues: 3, numResults: 3, stopped: TRUE
+not calling combine function due to errors
+
+Enter a frame number, or 0 to exit   
+
+1: resultsSPDE(test = TRUE)
+2: spdeResults.R#64: resultsSPDEHelper3(clustSRS, eaDat, nPostSamples = nPostSamples, verbose = verbose, inc
+3: spdeResults.R#1179: foreach(i = 1:nsim, .combine = combineResults, .verbose = TRUE, .multicombine = TRUE)
+4: e$fun(obj, substitute(ex), parent.frame(), e$data)
+
+Called from: resultsSPDEHelper3(clustSRS, eaDat, nPostSamples = nPostSamples, 
+    verbose = verbose, includeClustEffect = includeClustEffect, 
+    int.strategy = int.strategy, genRegionLevel = genRegionLevel, 
+    keepPixelPreds = keepPixelPreds, genEALevel = genEALevel, 
+    urbanEffect = urbanEffect, kmres = kmres)
+3: stop(gettextf("unknown family '%s'", family), domain = NA)
+2: pdf("figures/exampleSRSSimulation", dataID, ".pdf", width = 8, 
+       height = 8) at generateSimDataSets.R#122
+1: generateSimDataSets()
+ [1] "beta0"              "clustOverSamp"      "clustSRS"           "eaDat"              "fileName"          
+ [6] "gamma"              "genEALevel"         "genRegionLevel"     "includeClustEffect" "int.strategy"      
+[11] "keepPixelPreds"     "kmres"              "loadProgress"       "margVar"            "nPostSamples"      
+[16] "nTest"              "overSampDat"        "saveResults"        "SRSDat"             "tausq"             
+[21] "test"               "testText"           "urbanEffect"        "verbose"           
+[1] "Generating SRS results"
+Called from: eval(expr, p)
+debug at ~/git/U5MR/spdeResults.R#821: predictionType = match.arg(predictionType)
+debug at ~/git/U5MR/spdeResults.R#823: if (calcCrps) {
+    print("Calculating empirical rates at the desired aggregation levels")
+    regions = sort(unique(eaDat$region))
+    counties = sort(unique(eaDat$admin1))
+    truthByCounty = getTruth("county", eaDat)
+    if (genRegionLevel) 
+        truthByRegion = getTruth("region", eaDat)
+    else truthByRegion = NULL
+    if (keepPixelPreds) 
+        truthByPixel = getTruth("pixel", eaDat)
+    else truthByPixel = NULL
+    if (genEALevel) 
+        truthByEa = getTruth("EA", eaDat)
+    else truthByEa = NULL
+} else {
+    truthByRegion = NULL
+    truthByCounty = NULL
+    truthByPixel = NULL
+    truthByEa = NULL
+}
+debug at ~/git/U5MR/spdeResults.R#825: print("Calculating empirical rates at the desired aggregation levels")
+[1] "Calculating empirical rates at the desired aggregation levels"
+debug at ~/git/U5MR/spdeResults.R#828: regions = sort(unique(eaDat$region))
+debug at ~/git/U5MR/spdeResults.R#829: counties = sort(unique(eaDat$admin1))
+debug at ~/git/U5MR/spdeResults.R#830: truthByCounty = getTruth("county", eaDat)
+debug at ~/git/U5MR/spdeResults.R#831: if (genRegionLevel) truthByRegion = getTruth("region", eaDat) else truthByRegion = NULL
+debug at ~/git/U5MR/spdeResults.R#831: truthByRegion = getTruth("region", eaDat)
+debug at ~/git/U5MR/spdeResults.R#835: if (keepPixelPreds) truthByPixel = getTruth("pixel", eaDat) else truthByPixel = NULL
+debug at ~/git/U5MR/spdeResults.R#835: truthByPixel = getTruth("pixel", eaDat)
+debug at ~/git/U5MR/spdeResults.R#839: if (genEALevel) truthByEa = getTruth("EA", eaDat) else truthByEa = NULL
+debug at ~/git/U5MR/spdeResults.R#839: truthByEa = getTruth("EA", eaDat)
+debug at ~/git/U5MR/spdeResults.R#850: nsim = length(clustDatMulti)
+debug at ~/git/U5MR/spdeResults.R#853: if (kmres == 5) load("popGrid.RData") else popGrid = makeInterpPopGrid(kmres)
+debug at ~/git/U5MR/spdeResults.R#853: load("popGrid.RData")
+debug at ~/git/U5MR/spdeResults.R#858: predCoords = cbind(popGrid$east, popGrid$north)
+debug at ~/git/U5MR/spdeResults.R#859: predUrban = popGrid$urban
+debug at ~/git/U5MR/spdeResults.R#860: if (genEALevel) {
+    predCoords = rbind(cbind(eaDat$east, eaDat$north), predCoords)
+    predUrban = c(eaDat$urban, predUrban)
+}
+debug at ~/git/U5MR/spdeResults.R#863: predCoords = rbind(cbind(eaDat$east, eaDat$north), predCoords)
+debug at ~/git/U5MR/spdeResults.R#864: predUrban = c(eaDat$urban, predUrban)
+debug at ~/git/U5MR/spdeResults.R#869: predNs = rep(1, nrow(predCoords))
+debug at ~/git/U5MR/spdeResults.R#872: combineResults = function(...) {
+    print("Combining results...")
+    results = as.list(...)
+    scoresEaExact = do.call("rbind", lapply(results, function(x) {
+        x$scoresEaExact
+    }))
+    scoresEaExactBVar = do.call("rbind", lapply(results, function(x) {
+        x$scoresEaExactBVar
+    }))
+    scoresPixelInexact = do.call("rbind", lapply(results, function(x) {
+        x$scoresPixelInexact
+    }))
+    scoresPixelExact = do.call("rbind", lapply(results, function(x) {
+        x$scoresPixelExact
+    }))
+    scoresPixelExactBVar = do.call("rbind", lapply(results, function(x) {
+        x$scoresPixelExactBVar
+    }))
+    scoresCountyInexact = do.call("rbind", lapply(results, function(x) {
+        x$scoresCountyInexact
+    }))
+    scoresCountyExact = do.call("rbind", lapply(results, function(x) {
+        x$scoresCountyExact
+    }))
+    scoresCountyExactBVar = do.call("rbind", lapply(results, 
+        function(x) {
+            x$scoresCountyExactBVar
+        }))
+    scoresRegionInexact = do.call("rbind", lapply(results, function(x) {
+        x$scoresRegionInexact
+    }))
+    scoresRegionExact = do.call("rbind", lapply(results, function(x) {
+        x$scoresRegionExact
+    }))
+    scoresRegionExactBVar = do.call("rbind", lapply(results, 
+        function(x) {
+            x$scoresRegionExactBVar
+        }))
+    interceptSummary = do.call("rbind", lapply(results, function(x) {
+        x$interceptSummary
+    }))
+    interceptSummary = colMeans(interceptSummary)
+    if (urbanEffect) {
+        urbanSummary = do.call("rbind", lapply(results, function(x) {
+            x$urbanSummary
+        }))
+        urbanSummary = colMeans(urbanSummary)
+    }
+    else urbanSummary = NULL
+    rangeSummary = do.call("rbind", lapply(results, function(x) {
+        x$rangeSummary
+    }))
+    rangeSummary = colMeans(rangeSummary)
+    sdSummary = do.call("rbind", lapply(results, function(x) {
+        x$sdSummary
+    }))
+    sdSummary = colMeans(sdSummary)
+    varSummary = do.call("rbind", lapply(results, function(x) {
+        x$varSummary
+    }))
+    varSummary = colMeans(varSummary)
+    if (includeClustEffect) {
+        nuggetVarSummary = do.call("rbind", lapply(results, function(x) {
+            x$nuggetVarSummary
+        }))
+        nuggetVarSummary = colMeans(nuggetVarSummary)
+        nuggetSDSummary = do.call("rbind", lapply(results, function(x) {
+            x$nuggetSDSummary
+        }))
+        nuggetSDSummary = colMeans(nuggetSDSummary)
+    }
+    else {
+        nuggetVarSummary = NULL
+        nuggetSDSummary = NULL
+    }
+    list(scoresEaExact = scoresEaExact, scoresEaExactBVar = scoresEaExactBVar, 
+        scoresPixelInexact = scoresPixelInexact, scoresPixelExact = scoresPixelExact, 
+        scoresPixelExactBVar = scoresPixelExactBVar, scoresCountyInexact = scoresCountyInexact, 
+        scoresCountyExact = scoresCountyExact, scoresCountyExactBVar = scoresCountyExactBVar, 
+        scoresRegionInexact = scoresRegionInexact, scoresRegionExact = scoresRegionExact, 
+        scoresRegionExactBVar = scoresRegionExactBVar, interceptSummary = interceptSummary, 
+        urbanSummary = urbanSummary, rangeSummary = rangeSummary, 
+        varSummary = varSummary, sdSummary = sdSummary, nuggetVarSummary = nuggetVarSummary, 
+        nuggetSDSummary = nuggetSDSummary)
+}
+debug at ~/git/U5MR/spdeResults.R#924: mainFunction = function(i, doSink = FALSE) {
+    if (doSink) 
+        sink("log.txt", append = TRUE)
+    print(paste0("iteration ", i, "/", nsim))
+    clustDat = clustDatMulti[[i]]
+    obsCoords = cbind(clustDat$east, clustDat$north)
+    obsNs = clustDat$n
+    obsCounts = clustDat$y
+    obsUrban = clustDat$urban
+    fit = fitSPDEModel3(obsCoords, obsNs = obsNs, obsCounts, 
+        obsUrban, predCoords, predNs = predNs, predUrban, clusterIndices = clustDat$eaIs, 
+        genCountyLevel = TRUE, popGrid = popGrid, nPostSamples = nPostSamples, 
+        verbose = verbose, clusterEffect = includeClustEffect, 
+        int.strategy = int.strategy, genRegionLevel = genRegionLevel, 
+        keepPixelPreds = keepPixelPreds, genEALevel = genEALevel, 
+        urbanEffect = urbanEffect, link = 1, predictionType = predictionType, 
+        eaDat = eaDat, truthByCounty = truthByCounty, truthByRegion = truthByRegion, 
+        truthByPixel = truthByPixel, nSamplePixel = nSamplePixel, 
+        significance = significance)
+    print(paste0("Fit completed: iteration ", i, "/", nsim))
+    countyPreds = fit$countyPreds
+    regionPreds = fit$regionPreds
+    pixelPreds = fit$pixelPreds
+    eaPreds = fit$eaPreds
+    if (genEALevel) {
+        print(paste0("EA results generating: iteration ", i, 
+            "/", nsim))
+        thisu1mEaExact = logit(rowMeans(eaPreds$eaPredMat))
+        cat(".")
+        scoresEaExact = getScoresSPDE(truthByEa$truth, truthByEa$n, 
+            thisu1mEaExact, expit(thisu1mEaExact), bVar = FALSE, 
+            probMat = eaPreds$eaPredMat)
+        cat(".")
+        scoresEaExactBVar = getScoresSPDE(truthByEa$truth, truthByEa$n, 
+            thisu1mEaExact, expit(thisu1mEaExact), bVar = TRUE, 
+            probMat = eaPreds$eaPredMat)
+        cat(".")
+    }
+    else {
+        scoresEaExact = NA
+        scoresEaExactBVar = NA
+    }
+    if (keepPixelPreds) {
+        print(paste0("Pixel results generating: iteration ", 
+            i, "/", nsim))
+        thisu1mPixelInexact = logit(rowMeans(pixelPreds$pixelPredMatInexact))
+        thisu1mPixelExact = logit(rowMeans(pixelPreds$pixelPredMatExact))
+        scoresPixelInexact = getScoresSPDE(truthByPixel$truth, 
+            truthByPixel$n, thisu1mPixelInexact, expit(thisu1mPixelInexact), 
+            bVar = FALSE, probMat = pixelPreds$pixelPredMatInexact)
+        cat(".")
+        scoresPixelExact = getScoresSPDE(truthByPixel$truth, 
+            truthByPixel$n, thisu1mPixelExact, expit(thisu1mPixelExact), 
+            bVar = FALSE, probMat = pixelPreds$pixelPredMatExact)
+        cat(".")
+        scoresPixelExactBVar = getScoresSPDE(truthByPixel$truth, 
+            truthByPixel$n, thisu1mPixelExact, expit(thisu1mPixelExact), 
+            bVar = TRUE, pmfs = pixelPreds$pixelPredMatExactB)
+        cat(".")
+    }
+    else {
+        scoresPixelInexact = NA
+        scoresPixelExact = NA
+        scoresPixelExactBVar = NA
+    }
+    print(paste0("County results generating: iteration ", i, 
+        "/", nsim))
+    thisu1mCountyInexact = logit(rowMeans(countyPreds$countyPredMatInexact))
+    thisu1mCountyExact = logit(rowMeans(countyPreds$countyPredMatExact))
+    scoresCountyInexact = getScoresSPDE(truthByCounty$truth, 
+        truthByCounty$n, thisu1mCountyInexact, expit(thisu1mCountyInexact), 
+        NULL, bVar = FALSE, probMat = countyPreds$countyPredMatInexact)
+    cat(".")
+    scoresCountyExact = getScoresSPDE(truthByCounty$truth, truthByCounty$n, 
+        thisu1mCountyExact, expit(thisu1mCountyExact), NULL, 
+        bVar = FALSE, probMat = countyPreds$countyPredMatExact)
+    cat(".")
+    scoresCountyExactBVar = getScoresSPDE(truthByCounty$truth, 
+        truthByCounty$n, thisu1mCountyExact, expit(thisu1mCountyExact), 
+        NULL, bVar = TRUE, pmfs = countyPreds$countyPredMatExactB)
+    cat(".")
+    if (genRegionLevel) {
+        print(paste0("Region results generating: iteration ", 
+            i, "/", nsim))
+        thisu1mRegionInexact = logit(rowMeans(regionPreds$regionPredMatInexact))
+        thisu1mRegionExact = logit(rowMeans(regionPreds$regionPredMatExact))
+        scoresRegionInexact = getScoresSPDE(truthByRegion$truth, 
+            truthByRegion$n, thisu1mRegionInexact, expit(thisu1mRegionInexact), 
+            NULL, bVar = FALSE, probMat = regionPreds$regionPredMatInexact)
+        cat(".")
+        scoresRegionExact = getScoresSPDE(truthByRegion$truth, 
+            truthByRegion$n, thisu1mRegionExact, expit(thisu1mRegionExact), 
+            NULL, bVar = FALSE, probMat = regionPreds$regionPredMatExact)
+        cat(".")
+        scoresRegionExactBVar = getScoresSPDE(truthByRegion$truth, 
+            truthByRegion$n, thisu1mRegionExact, expit(thisu1mRegionExact), 
+            NULL, bVar = TRUE, pmfs = regionPreds$regionPredMatExactB)
+        cat(".")
+    }
+    else {
+        scoresRegionInexact = NA
+        scoresRegionExact = NA
+        scoresRegionExactBVar = NA
+    }
+    interceptQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.fixed[[1]])
+    interceptMoments = inla.emarginal(function(x) {
+        c(x, x^2)
+    }, fit$mod$marginals.fixed[[1]])
+    interceptSummary = c(interceptMoments[1], sqrt(interceptMoments[2] - 
+        interceptMoments[1]^2), interceptMoments[2] - interceptMoments[1]^2, 
+        interceptQuants, interceptQuants[3] - interceptQuants[1])
+    urbanSummary = NULL
+    if (urbanEffect) {
+        urbanQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.fixed[[2]])
+        urbanMoments = inla.emarginal(function(x) {
+            c(x, x^2)
+        }, fit$mod$marginals.fixed[[2]])
+        urbanSummary = c(urbanMoments[1], sqrt(urbanMoments[2] - 
+            urbanMoments[1]^2), urbanMoments[2] - urbanMoments[1]^2, 
+            urbanQuants, urbanQuants[3] - urbanQuants[1])
+    }
+    rangeQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
+    sdQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
+    varQuants = sdQuants^2
+    varMarg = inla.tmarginal(function(x) {
+        x^2
+    }, fit$mod$marginals.hyperpar[[2]])
+    rangeMoments = inla.emarginal(function(x) {
+        c(x, x^2)
+    }, fit$mod$marginals.hyperpar[[1]])
+    rangeSummary = c(rangeMoments[1], sqrt(rangeMoments[2] - 
+        rangeMoments[1]^2), rangeMoments[2] - rangeMoments[1]^2, 
+        rangeQuants, rangeQuants[3] - rangeQuants[1])
+    sdMoments = inla.emarginal(function(x) {
+        c(x, x^2)
+    }, fit$mod$marginals.hyperpar[[2]])
+    sdSummary = c(sdMoments[1], sqrt(sdMoments[2] - sdMoments[1]^2), 
+        sdMoments[2] - sdMoments[1]^2, sdQuants, sdQuants[3] - 
+            sdQuants[1])
+    varMoments = inla.emarginal(function(x) {
+        c(x, x^2)
+    }, varMarg)
+    varSummary = c(varMoments[1], sqrt(varMoments[2] - varMoments[1]^2), 
+        varMoments[2] - varMoments[1]^2, varQuants, varQuants[3] - 
+            varQuants[1])
+    nuggetVarSummary = NULL
+    nuggetSDSummary = NULL
+    if (includeClustEffect) {
+        nuggetPrecQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[3]])
+        nuggetVarQuants = 1/nuggetPrecQuants
+        nuggetSDQuants = sqrt(nuggetVarQuants)
+        nuggetVarMarg = inla.tmarginal(function(x) {
+            1/x
+        }, fit$mod$marginals.hyperpar[[3]])
+        nuggetSDMarg = inla.tmarginal(function(x) {
+            1/sqrt(x)
+        }, fit$mod$marginals.hyperpar[[3]])
+        nuggetVarMoments = inla.emarginal(function(x) {
+            c(x, x^2)
+        }, nuggetVarMarg)
+        nuggetSDMoments = inla.emarginal(function(x) {
+            c(x, x^2)
+        }, nuggetSDMarg)
+        nuggetVarSummary = c(nuggetVarMoments[1], sqrt(nuggetVarMoments[2] - 
+            nuggetVarMoments[1]^2), nuggetVarMoments[2] - nuggetVarMoments[1]^2, 
+            nuggetVarQuants, nuggetVarQuants[3] - nuggetVarQuants[1])
+        nuggetSDSummary = c(nuggetSDMoments[1], sqrt(nuggetSDMoments[2] - 
+            nuggetSDMoments[1]^2), nuggetSDMoments[2] - nuggetSDMoments[1]^2, 
+            nuggetSDQuants, nuggetSDQuants[3] - nuggetSDQuants[1])
+    }
+    list(scoresEaExact = scoresEaExact, scoresEaExactBVar = scoresEaExactBVar, 
+        scoresPixelInexact = scoresPixelInexact, scoresPixelExact = scoresPixelExact, 
+        scoresPixelExactBVar = scoresPixelExactBVar, scoresCountyInexact = scoresCountyInexact, 
+        scoresCountyExact = scoresCountyExact, scoresCountyExactBVar = scoresCountyExactBVar, 
+        scoresRegionInexact = scoresRegionInexact, scoresRegionExact = scoresRegionExact, 
+        scoresRegionExactBVar = scoresRegionExactBVar, interceptSummary = interceptSummary, 
+        urbanSummary = urbanSummary, rangeSummary = rangeSummary, 
+        varSummary = varSummary, sdSummary = sdSummary, nuggetVarSummary = nuggetVarSummary, 
+        nuggetSDSummary = nuggetSDSummary)
+}
+debug at ~/git/U5MR/spdeResults.R#1096: if (is.null(parClust)) {
+    {
+        .doTrace(browser())
+        results = foreach(i = 1:nsim, .combine = combineResults, 
+            .verbose = TRUE, .multicombine = TRUE) %do% {
+            mainFunction(i, TRUE)
+        }
+    }
+} else {
+    {
+        .doTrace(browser())
+        results = foreach(i = 1:nsim, .combine = combineResults, 
+            .verbose = TRUE, .multicombine = TRUE) %dopar% {
+            mainFunction(i, TRUE)
+        }
+    }
+}
+debug at ~/git/U5MR/spdeResults.R#1179: {
+    .doTrace(browser())
+    results = foreach(i = 1:nsim, .combine = combineResults, 
+        .verbose = TRUE, .multicombine = TRUE) %do% {
+        mainFunction(i, TRUE)
+    }
+}
+[1] "iteration 1/3"
+
+Enter a frame number, or 0 to exit   
+
+ 1: resultsSPDE(test = TRUE)
+ 2: spdeResults.R#64: resultsSPDEHelper3(clustSRS, eaDat, nPostSamples = nPostSamples, verbose = verbose, inc
+ 3: spdeResults.R#1179: mainFunction(i, TRUE)
+ 4: spdeResults.R#940: fitSPDEModel3(obsCoords, obsNs = obsNs, obsCounts, obsUrban, predCoords, predNs = pred
+ 5: spdeMod.R#1153: inla.stack(A = list(AEst, 1, 1), effects = list(field = latticeInds, clust = clustIObs, X
+ 6: do.call(inla.stack.sum, c(list(...), compress = compress, remove.unused = remove.unused))
+ 7: (function (data, A, effects, tag = "", compress = TRUE, remove.unused = TRUE) 
+{
+    input.nrow <- functi
+ 8: parse.input.list(inla.ifelse(is.data.frame(data), as.list(data), data), A.nrow, paste("Data block:\n", se
+ 9: as.data.frame(l)
+10: as.data.frame.list(l)
+11: do.call(data.frame, c(x, alis))
+12: (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE, fix.empty.names = TRUE, strings
+
+Called from: as.data.frame.list(l)
+3: stop(gettextf("unknown family '%s'", family), domain = NA)
+2: pdf("figures/exampleSRSSimulation", dataID, ".pdf", width = 8, 
+       height = 8) at generateSimDataSets.R#122
+1: generateSimDataSets()
+ [1] "beta0"              "clustOverSamp"      "clustSRS"           "eaDat"              "fileName"          
+ [6] "gamma"              "genEALevel"         "genRegionLevel"     "includeClustEffect" "int.strategy"      
+[11] "keepPixelPreds"     "kmres"              "loadProgress"       "margVar"            "nPostSamples"      
+[16] "nTest"              "overSampDat"        "saveResults"        "SRSDat"             "tausq"             
+[21] "test"               "testText"           "urbanEffect"        "verbose"           
+
+Enter a frame number, or 0 to exit   
+
+ 1: resultsSPDE(test = TRUE)
+ 2: spdeResults.R#64: resultsSPDEHelper3(clustSRS, eaDat, nPostSamples = nPostSamples, verbose = verbose, inc
+ 3: spdeResults.R#1179: mainFunction(i, TRUE)
+ 4: spdeResults.R#940: fitSPDEModel3(obsCoords, obsNs = obsNs, obsCounts, obsUrban, predCoords, predNs = pred
+ 5: spdeMod.R#1153: inla.stack(A = list(AEst, 1, 1), effects = list(field = latticeInds, clust = clustIObs, X
+ 6: do.call(inla.stack.sum, c(list(...), compress = compress, remove.unused = remove.unused))
+ 7: (function (data, A, effects, tag = "", compress = TRUE, remove.unused = TRUE) 
+{
+    input.nrow <- functi
+ 8: parse.input.list(inla.ifelse(is.data.frame(data), as.list(data), data), A.nrow, paste("Data block:\n", se
+ 9: as.data.frame(l)
+10: as.data.frame.list(l)
+11: do.call(data.frame, c(x, alis))
+12: (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE, fix.empty.names = TRUE, strings
+
+ [1] "calcCrps"           "clustDatMulti"      "combineResults"     "counties"           "eaDat"             
+ [6] "genEALevel"         "genRegionLevel"     "i"                  "includeClustEffect" "int.strategy"      
+[11] "keepPixelPreds"     "kmres"              "mainFunction"       "nPostSamples"       "nSamplePixel"      
+[16] "nsim"               "parClust"           "popGrid"            "predCoords"         "predictionType"    
+[21] "predNs"             "predUrban"          "regions"            "significance"       "truthByCounty"     
+[26] "truthByEa"          "truthByPixel"       "truthByRegion"      "urbanEffect"        "verbose"           
+3: stop(gettextf("unknown family '%s'", family), domain = NA)
+2: pdf("figures/exampleSRSSimulation", dataID, ".pdf", width = 8, 
+       height = 8) at generateSimDataSets.R#122
+1: generateSimDataSets()
+
+Enter a frame number, or 0 to exit   
+
+ 1: resultsSPDE(test = TRUE)
+ 2: spdeResults.R#64: resultsSPDEHelper3(clustSRS, eaDat, nPostSamples = nPostSamples, verbose = verbose, inc
+ 3: spdeResults.R#1179: mainFunction(i, TRUE)
+ 4: spdeResults.R#940: fitSPDEModel3(obsCoords, obsNs = obsNs, obsCounts, obsUrban, predCoords, predNs = pred
+ 5: spdeMod.R#1153: inla.stack(A = list(AEst, 1, 1), effects = list(field = latticeInds, clust = clustIObs, X
+ 6: do.call(inla.stack.sum, c(list(...), compress = compress, remove.unused = remove.unused))
+ 7: (function (data, A, effects, tag = "", compress = TRUE, remove.unused = TRUE) 
+{
+    input.nrow <- functi
+ 8: parse.input.list(inla.ifelse(is.data.frame(data), as.list(data), data), A.nrow, paste("Data block:\n", se
+ 9: as.data.frame(l)
+10: as.data.frame.list(l)
+11: do.call(data.frame, c(x, alis))
+12: (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE, fix.empty.names = TRUE, strings
+
+Enter an item from the menu, or 0 to exit
+[1] "Generating SRS results"
+Called from: eval(expr, p)
+debug at ~/git/U5MR/spdeResults.R#821: predictionType = match.arg(predictionType)
+[1] "Calculating empirical rates at the desired aggregation levels"
+Called from: eval(expr, p)
+debug at ~/git/U5MR/spdeResults.R#1179: results = foreach(i = 1:nsim, .combine = combineResults, .verbose = TRUE, 
+    .multicombine = TRUE) %do% {
+    mainFunction(i, TRUE)
+}
+evaluation # 1:
+$i
+[1] 1
+
+[1] "iteration 1/3"
+Called from: eval(expr, p)
+debug at ~/git/U5MR/spdeMod.R#1142: latticeInds = 1:n
+debug at ~/git/U5MR/spdeMod.R#1144: if (clusterEffect) {
+    clustIObs = clusterIndices
+}
+debug at ~/git/U5MR/spdeMod.R#1148: clustIObs = clusterIndices
+debug at ~/git/U5MR/spdeMod.R#1152: if (clusterEffect) {
+    stack.est = inla.stack(A = list(AEst, 1, 1), effects = list(field = latticeInds, 
+        clust = clustIObs, X = X), data = list(y = ys, Ntrials = obsNs, 
+        link = 1), tag = "est", remove.unused = FALSE)
+} else {
+    stack.est = inla.stack(A = list(AEst, 1), effects = list(field = latticeInds, 
+        X = X), data = list(y = ys, Ntrials = obsNs, link = link), 
+        tag = "est", remove.unused = FALSE)
+}
+debug at ~/git/U5MR/spdeMod.R#1153: stack.est = inla.stack(A = list(AEst, 1, 1), effects = list(field = latticeInds, 
+    clust = clustIObs, X = X), data = list(y = ys, Ntrials = obsNs, 
+    link = 1), tag = "est", remove.unused = FALSE)
+
+Enter a frame number, or 0 to exit   
+
+ 1: resultsSPDE(test = TRUE)
+ 2: spdeResults.R#64: resultsSPDEHelper3(clustSRS, eaDat, nPostSamples = nPostSamples, verbose = verbose, inc
+ 3: spdeResults.R#1179: foreach(i = 1:nsim, .combine = combineResults, .verbose = TRUE, .multicombine = TRUE)
+ 4: e$fun(obj, substitute(ex), parent.frame(), e$data)
+ 5: tryCatch({
+    repeat {
+        args <- nextElem(it)
+        if (obj$verbose) {
+            cat(sprintf("
+ 6: tryCatchList(expr, classes, parentenv, handlers)
+ 7: tryCatchOne(expr, names, parentenv, handlers[[1]])
+ 8: doTryCatch(return(expr), name, parentenv, handler)
+ 9: tryCatch(eval(xpr, envir = envir), error = function(e) e)
+10: tryCatchList(expr, classes, parentenv, handlers)
+11: tryCatchOne(expr, names, parentenv, handlers[[1]])
+12: doTryCatch(return(expr), name, parentenv, handler)
+13: eval(xpr, envir = envir)
+14: eval(xpr, envir = envir)
+15: spdeResults.R#1180: mainFunction(i, TRUE)
+16: spdeResults.R#940: fitSPDEModel3(obsCoords, obsNs = obsNs, obsCounts, obsUrban, predCoords, predNs = pred
+17: spdeMod.R#1153: inla.stack(A = list(AEst, 1, 1), effects = list(field = latticeInds, clust = clustIObs, X
+18: do.call(inla.stack.sum, c(list(...), compress = compress, remove.unused = remove.unused))
+19: (function (data, A, effects, tag = "", compress = TRUE, remove.unused = TRUE) 
+{
+    input.nrow <- functi
+20: parse.input.list(inla.ifelse(is.data.frame(data), as.list(data), data), A.nrow, paste("Data block:\n", se
+21: as.data.frame(l)
+22: as.data.frame.list(l)
+23: do.call(data.frame, c(x, alis))
+24: (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE, fix.empty.names = TRUE, strings
+
+[1] 590
+  [1]   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26
+ [27]  27  28  29  30  31  32  33  34  35  36  37  38  39  40  41  42  43  44  45  46  47  48  49  50  51  52
+ [53]  53  54  55  56  57  58  59  60  61  62  63  64  65  66  67  68  69  70  71  72  73  74  75  76  77  78
+ [79]  79  80  81  82  83  84  85  86  87  88  89  90  91  92  93  94  95  96  97  98  99 100 101 102 103 104
+[105] 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130
+[131] 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156
+[157] 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182
+[183] 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 205 206 207 208
+[209] 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234
+[235] 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260
+[261] 261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282 283 284 285 286
+[287] 287 288 289 290 291 292 293 294 295 296 297 298 299 300 301 302 303 304 305 306 307 308 309 310 311 312
+[313] 313 314 315 316 317 318 319 320 321 322 323 324 325 326 327 328 329 330 331 332 333 334 335 336 337 338
+[339] 339 340 341 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356 357 358 359 360 361 362 363 364
+[365] 365 366 367 368 369 370 371 372 373 374 375 376 377 378 379 380 381 382 383 384 385 386 387 388 389 390
+[391] 391 392 393 394 395 396 397 398 399 400 401 402 403 404 405 406 407 408 409 410 411 412 413 414 415 416
+[417] 417 418 419 420 421 422 423 424 425 426 427 428 429 430 431 432 433 434 435 436 437 438 439 440 441 442
+[443] 443 444 445 446 447 448 449 450 451 452 453 454 455 456 457 458 459 460 461 462 463 464 465 466 467 468
+[469] 469 470 471 472 473 474 475 476 477 478 479 480 481 482 483 484 485 486 487 488 489 490 491 492 493 494
+[495] 495 496 497 498 499 500 501 502 503 504 505 506 507 508 509 510 511 512 513 514 515 516 517 518 519 520
+[521] 521 522 523 524 525 526 527 528 529 530 531 532 533 534 535 536 537 538 539 540 541 542 543 544 545 546
+[547] 547 548 549 550 551 552 553 554 555 556 557 558 559 560 561 562 563 564 565 566 567 568 569 570 571 572
+[573] 573 574 575 576 577 578 579 580 581 582 583 584 585 586 587 588 589 590
+[1] "Generating SRS results"
+Called from: eval(expr, p)
+debug at ~/git/U5MR/spdeResults.R#821: predictionType = match.arg(predictionType)
+[1] "Calculating empirical rates at the desired aggregation levels"
+Called from: eval(expr, p)
+debug at ~/git/U5MR/spdeResults.R#1179: results = foreach(i = 1:nsim, .combine = combineResults, .verbose = TRUE, 
+    .multicombine = TRUE) %do% {
+    mainFunction(i, TRUE)
+}
+evaluation # 1:
+$i
+[1] 1
+
+[1] "iteration 1/3"
+Called from: eval(expr, p)
+debug at ~/git/U5MR/spdeMod.R#1142: latticeInds = 1:n
+result of evaluating expression:
+<simpleError in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = default.stringsAsFactors()) {    data.row.names <- if (check.rows && is.null(row.names))         function(current, new, i) {            if (is.character(current))                 new <- as.character(new)            if (is.character(new))                 current <- as.character(current)            if (anyDuplicated(new))                 return(current)            if (is.null(current))                 return(new)            if (all(current == new) || all(current == ""))                 return(new)            stop(gettextf("mismatch of row names in arguments of 'data.frame', item %d",                 i), domain = NA)        }    else function(current, new, i) {        if (is.null(current)) {            if (anyDuplicated(new)) {                warning(gettextf("some row.names duplicated: %s --> row.names NOT used",                   paste(which(duplicated(new)), collapse = ",")),                   domain = NA)                current            }            else new        }        else current    }    object <- as.list(substitute(list(...)))[-1L]    mirn <- missing(row.names)    mrn <- is.null(row.names)    x <- list(...)    n <- length(x)    if (n < 1L) {        if (!mrn) {            if (is.object(row.names) || !is.integer(row.names))                 row.names <- as.character(row.names)            if (anyNA(row.names))                 stop("row names contain missing values")            if (anyDuplicated(row.names))                 stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                   collapse = ", ")), domain = NA)        }        else row.names <- integer()        return(structure(list(), names = character(), row.names = row.names,             class = "data.frame"))    }    vnames <- names(x)    if (length(vnames) != n)         vnames <- character(n)    no.vn <- !nzchar(vnames)    vlist <- vnames <- as.list(vnames)    nrows <- ncols <- integer(n)    for (i in seq_len(n)) {        xi <- if (is.character(x[[i]]) || is.list(x[[i]]))             as.data.frame(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors)        else as.data.frame(x[[i]], optional = TRUE)        nrows[i] <- .row_names_info(xi)        ncols[i] <- length(xi)        namesi <- names(xi)        if (ncols[i] > 1L) {            if (length(namesi) == 0L)                 namesi <- seq_len(ncols[i])            vnames[[i]] <- if (no.vn[i])                 namesi            else paste(vnames[[i]], namesi, sep = ".")        }        else if (length(namesi)) {            vnames[[i]] <- namesi        }        else if (fix.empty.names && no.vn[[i]]) {            tmpname <- deparse(object[[i]], nlines = 1L)[1L]            if (substr(tmpname, 1L, 2L) == "I(") {                ntmpn <- nchar(tmpname, "c")                if (substr(tmpname, ntmpn, ntmpn) == ")")                   tmpname <- substr(tmpname, 3L, ntmpn - 1L)            }            vnames[[i]] <- tmpname        }        if (mirn && nrows[i] > 0L) {            rowsi <- attr(xi, "row.names")            if (any(nzchar(rowsi)))                 row.names <- data.row.names(row.names, rowsi,                   i)        }        nrows[i] <- abs(nrows[i])        vlist[[i]] <- xi    }    nr <- max(nrows)    for (i in seq_len(n)[nrows < nr]) {        xi <- vlist[[i]]        if (nrows[i] > 0L && (nr%%nrows[i] == 0L)) {            xi <- unclass(xi)            fixed <- TRUE            for (j in seq_along(xi)) {                xi1 <- xi[[j]]                if (is.vector(xi1) || is.factor(xi1))                   xi[[j]] <- rep(xi1, length.out = nr)                else if (is.character(xi1) && inherits(xi1, "AsIs"))                   xi[[j]] <- structure(rep(xi1, length.out = nr),                     class = class(xi1))                else if (inherits(xi1, "Date") || inherits(xi1,                   "POSIXct"))                   xi[[j]] <- rep(xi1, length.out = nr)                else {                  fixed <- FALSE                  break                }            }            if (fixed) {                vlist[[i]] <- xi                next            }        }        stop(gettextf("arguments imply differing number of rows: %s",             paste(unique(nrows), collapse = ", ")), domain = NA)    }    value <- unlist(vlist, recursive = FALSE, use.names = FALSE)    vnames <- unlist(vnames[ncols > 0L])    if (fix.empty.names && any(noname <- !nzchar(vnames)))         vnames[noname] <- paste0("Var.", seq_along(vnames))[noname]    if (check.names) {        if (fix.empty.names)             vnames <- make.names(vnames, unique = TRUE)        else {            nz <- nzchar(vnames)            vnames[nz] <- make.names(vnames[nz], unique = TRUE)        }    }    names(value) <- vnames    if (!mrn) {        if (length(row.names) == 1L && nr != 1L) {            if (is.character(row.names))                 row.names <- match(row.names, vnames, 0L)            if (length(row.names) != 1L || row.names < 1L ||                 row.names > length(vnames))                 stop("'row.names' should specify one of the variables")            i <- row.names            row.names <- value[[i]]            value <- value[-i]        }        else if (!is.null(row.names) && length(row.names) !=             nr)             stop("row names supplied are of the wrong length")    }    else if (!is.null(row.names) && length(row.names) != nr) {        warning("row names were found from a short variable and have been discarded")        row.names <- NULL    }    class(value) <- "data.frame"    if (is.null(row.names))         attr(value, "row.names") <- .set_row_names(nr)    else {        if (is.object(row.names) || !is.integer(row.names))             row.names <- as.character(row.names)        if (anyNA(row.names))             stop("row names contain missing values")        if (anyDuplicated(row.names))             stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                 collapse = ", ")), domain = NA)        row.names(value) <- row.names    }    value})(y = NULL, Ntrials = NULL, link = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = TRUE): arguments imply differing number of rows: 0, 276>
+got results for task 1
+accumulate got an error result
+numValues: 1, numResults: 1, stopped: FALSE
+returning status FALSE
+evaluation # 2:
+$i
+[1] 2
+
+[1] "iteration 2/3"
+Called from: eval(expr, p)
+debug at ~/git/U5MR/spdeMod.R#1142: latticeInds = 1:n
+result of evaluating expression:
+<simpleError in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = default.stringsAsFactors()) {    data.row.names <- if (check.rows && is.null(row.names))         function(current, new, i) {            if (is.character(current))                 new <- as.character(new)            if (is.character(new))                 current <- as.character(current)            if (anyDuplicated(new))                 return(current)            if (is.null(current))                 return(new)            if (all(current == new) || all(current == ""))                 return(new)            stop(gettextf("mismatch of row names in arguments of 'data.frame', item %d",                 i), domain = NA)        }    else function(current, new, i) {        if (is.null(current)) {            if (anyDuplicated(new)) {                warning(gettextf("some row.names duplicated: %s --> row.names NOT used",                   paste(which(duplicated(new)), collapse = ",")),                   domain = NA)                current            }            else new        }        else current    }    object <- as.list(substitute(list(...)))[-1L]    mirn <- missing(row.names)    mrn <- is.null(row.names)    x <- list(...)    n <- length(x)    if (n < 1L) {        if (!mrn) {            if (is.object(row.names) || !is.integer(row.names))                 row.names <- as.character(row.names)            if (anyNA(row.names))                 stop("row names contain missing values")            if (anyDuplicated(row.names))                 stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                   collapse = ", ")), domain = NA)        }        else row.names <- integer()        return(structure(list(), names = character(), row.names = row.names,             class = "data.frame"))    }    vnames <- names(x)    if (length(vnames) != n)         vnames <- character(n)    no.vn <- !nzchar(vnames)    vlist <- vnames <- as.list(vnames)    nrows <- ncols <- integer(n)    for (i in seq_len(n)) {        xi <- if (is.character(x[[i]]) || is.list(x[[i]]))             as.data.frame(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors)        else as.data.frame(x[[i]], optional = TRUE)        nrows[i] <- .row_names_info(xi)        ncols[i] <- length(xi)        namesi <- names(xi)        if (ncols[i] > 1L) {            if (length(namesi) == 0L)                 namesi <- seq_len(ncols[i])            vnames[[i]] <- if (no.vn[i])                 namesi            else paste(vnames[[i]], namesi, sep = ".")        }        else if (length(namesi)) {            vnames[[i]] <- namesi        }        else if (fix.empty.names && no.vn[[i]]) {            tmpname <- deparse(object[[i]], nlines = 1L)[1L]            if (substr(tmpname, 1L, 2L) == "I(") {                ntmpn <- nchar(tmpname, "c")                if (substr(tmpname, ntmpn, ntmpn) == ")")                   tmpname <- substr(tmpname, 3L, ntmpn - 1L)            }            vnames[[i]] <- tmpname        }        if (mirn && nrows[i] > 0L) {            rowsi <- attr(xi, "row.names")            if (any(nzchar(rowsi)))                 row.names <- data.row.names(row.names, rowsi,                   i)        }        nrows[i] <- abs(nrows[i])        vlist[[i]] <- xi    }    nr <- max(nrows)    for (i in seq_len(n)[nrows < nr]) {        xi <- vlist[[i]]        if (nrows[i] > 0L && (nr%%nrows[i] == 0L)) {            xi <- unclass(xi)            fixed <- TRUE            for (j in seq_along(xi)) {                xi1 <- xi[[j]]                if (is.vector(xi1) || is.factor(xi1))                   xi[[j]] <- rep(xi1, length.out = nr)                else if (is.character(xi1) && inherits(xi1, "AsIs"))                   xi[[j]] <- structure(rep(xi1, length.out = nr),                     class = class(xi1))                else if (inherits(xi1, "Date") || inherits(xi1,                   "POSIXct"))                   xi[[j]] <- rep(xi1, length.out = nr)                else {                  fixed <- FALSE                  break                }            }            if (fixed) {                vlist[[i]] <- xi                next            }        }        stop(gettextf("arguments imply differing number of rows: %s",             paste(unique(nrows), collapse = ", ")), domain = NA)    }    value <- unlist(vlist, recursive = FALSE, use.names = FALSE)    vnames <- unlist(vnames[ncols > 0L])    if (fix.empty.names && any(noname <- !nzchar(vnames)))         vnames[noname] <- paste0("Var.", seq_along(vnames))[noname]    if (check.names) {        if (fix.empty.names)             vnames <- make.names(vnames, unique = TRUE)        else {            nz <- nzchar(vnames)            vnames[nz] <- make.names(vnames[nz], unique = TRUE)        }    }    names(value) <- vnames    if (!mrn) {        if (length(row.names) == 1L && nr != 1L) {            if (is.character(row.names))                 row.names <- match(row.names, vnames, 0L)            if (length(row.names) != 1L || row.names < 1L ||                 row.names > length(vnames))                 stop("'row.names' should specify one of the variables")            i <- row.names            row.names <- value[[i]]            value <- value[-i]        }        else if (!is.null(row.names) && length(row.names) !=             nr)             stop("row names supplied are of the wrong length")    }    else if (!is.null(row.names) && length(row.names) != nr) {        warning("row names were found from a short variable and have been discarded")        row.names <- NULL    }    class(value) <- "data.frame"    if (is.null(row.names))         attr(value, "row.names") <- .set_row_names(nr)    else {        if (is.object(row.names) || !is.integer(row.names))             row.names <- as.character(row.names)        if (anyNA(row.names))             stop("row names contain missing values")        if (anyDuplicated(row.names))             stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                 collapse = ", ")), domain = NA)        row.names(value) <- row.names    }    value})(y = NULL, Ntrials = NULL, link = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = TRUE): arguments imply differing number of rows: 0, 276>
+got results for task 2
+numValues: 2, numResults: 2, stopped: FALSE
+returning status FALSE
+evaluation # 3:
+$i
+[1] 3
+
+[1] "iteration 3/3"
+Called from: eval(expr, p)
+debug at ~/git/U5MR/spdeMod.R#1142: latticeInds = 1:n
+[1] "Generating SRS results"
+Called from: eval(expr, p)
+debug at ~/git/U5MR/spdeResults.R#821: predictionType = match.arg(predictionType)
+[1] "Calculating empirical rates at the desired aggregation levels"
+evaluation # 1:
+$i
+[1] 1
+
+[1] "iteration 1/3"
+result of evaluating expression:
+<simpleError in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = default.stringsAsFactors()) {    data.row.names <- if (check.rows && is.null(row.names))         function(current, new, i) {            if (is.character(current))                 new <- as.character(new)            if (is.character(new))                 current <- as.character(current)            if (anyDuplicated(new))                 return(current)            if (is.null(current))                 return(new)            if (all(current == new) || all(current == ""))                 return(new)            stop(gettextf("mismatch of row names in arguments of 'data.frame', item %d",                 i), domain = NA)        }    else function(current, new, i) {        if (is.null(current)) {            if (anyDuplicated(new)) {                warning(gettextf("some row.names duplicated: %s --> row.names NOT used",                   paste(which(duplicated(new)), collapse = ",")),                   domain = NA)                current            }            else new        }        else current    }    object <- as.list(substitute(list(...)))[-1L]    mirn <- missing(row.names)    mrn <- is.null(row.names)    x <- list(...)    n <- length(x)    if (n < 1L) {        if (!mrn) {            if (is.object(row.names) || !is.integer(row.names))                 row.names <- as.character(row.names)            if (anyNA(row.names))                 stop("row names contain missing values")            if (anyDuplicated(row.names))                 stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                   collapse = ", ")), domain = NA)        }        else row.names <- integer()        return(structure(list(), names = character(), row.names = row.names,             class = "data.frame"))    }    vnames <- names(x)    if (length(vnames) != n)         vnames <- character(n)    no.vn <- !nzchar(vnames)    vlist <- vnames <- as.list(vnames)    nrows <- ncols <- integer(n)    for (i in seq_len(n)) {        xi <- if (is.character(x[[i]]) || is.list(x[[i]]))             as.data.frame(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors)        else as.data.frame(x[[i]], optional = TRUE)        nrows[i] <- .row_names_info(xi)        ncols[i] <- length(xi)        namesi <- names(xi)        if (ncols[i] > 1L) {            if (length(namesi) == 0L)                 namesi <- seq_len(ncols[i])            vnames[[i]] <- if (no.vn[i])                 namesi            else paste(vnames[[i]], namesi, sep = ".")        }        else if (length(namesi)) {            vnames[[i]] <- namesi        }        else if (fix.empty.names && no.vn[[i]]) {            tmpname <- deparse(object[[i]], nlines = 1L)[1L]            if (substr(tmpname, 1L, 2L) == "I(") {                ntmpn <- nchar(tmpname, "c")                if (substr(tmpname, ntmpn, ntmpn) == ")")                   tmpname <- substr(tmpname, 3L, ntmpn - 1L)            }            vnames[[i]] <- tmpname        }        if (mirn && nrows[i] > 0L) {            rowsi <- attr(xi, "row.names")            if (any(nzchar(rowsi)))                 row.names <- data.row.names(row.names, rowsi,                   i)        }        nrows[i] <- abs(nrows[i])        vlist[[i]] <- xi    }    nr <- max(nrows)    for (i in seq_len(n)[nrows < nr]) {        xi <- vlist[[i]]        if (nrows[i] > 0L && (nr%%nrows[i] == 0L)) {            xi <- unclass(xi)            fixed <- TRUE            for (j in seq_along(xi)) {                xi1 <- xi[[j]]                if (is.vector(xi1) || is.factor(xi1))                   xi[[j]] <- rep(xi1, length.out = nr)                else if (is.character(xi1) && inherits(xi1, "AsIs"))                   xi[[j]] <- structure(rep(xi1, length.out = nr),                     class = class(xi1))                else if (inherits(xi1, "Date") || inherits(xi1,                   "POSIXct"))                   xi[[j]] <- rep(xi1, length.out = nr)                else {                  fixed <- FALSE                  break                }            }            if (fixed) {                vlist[[i]] <- xi                next            }        }        stop(gettextf("arguments imply differing number of rows: %s",             paste(unique(nrows), collapse = ", ")), domain = NA)    }    value <- unlist(vlist, recursive = FALSE, use.names = FALSE)    vnames <- unlist(vnames[ncols > 0L])    if (fix.empty.names && any(noname <- !nzchar(vnames)))         vnames[noname] <- paste0("Var.", seq_along(vnames))[noname]    if (check.names) {        if (fix.empty.names)             vnames <- make.names(vnames, unique = TRUE)        else {            nz <- nzchar(vnames)            vnames[nz] <- make.names(vnames[nz], unique = TRUE)        }    }    names(value) <- vnames    if (!mrn) {        if (length(row.names) == 1L && nr != 1L) {            if (is.character(row.names))                 row.names <- match(row.names, vnames, 0L)            if (length(row.names) != 1L || row.names < 1L ||                 row.names > length(vnames))                 stop("'row.names' should specify one of the variables")            i <- row.names            row.names <- value[[i]]            value <- value[-i]        }        else if (!is.null(row.names) && length(row.names) !=             nr)             stop("row names supplied are of the wrong length")    }    else if (!is.null(row.names) && length(row.names) != nr) {        warning("row names were found from a short variable and have been discarded")        row.names <- NULL    }    class(value) <- "data.frame"    if (is.null(row.names))         attr(value, "row.names") <- .set_row_names(nr)    else {        if (is.object(row.names) || !is.integer(row.names))             row.names <- as.character(row.names)        if (anyNA(row.names))             stop("row names contain missing values")        if (anyDuplicated(row.names))             stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                 collapse = ", ")), domain = NA)        row.names(value) <- row.names    }    value})(y = NULL, Ntrials = NULL, link = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = TRUE): arguments imply differing number of rows: 0, 276>
+got results for task 1
+accumulate got an error result
+numValues: 1, numResults: 1, stopped: FALSE
+returning status FALSE
+evaluation # 2:
+$i
+[1] 2
+
+[1] "iteration 2/3"
+result of evaluating expression:
+<simpleError in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = default.stringsAsFactors()) {    data.row.names <- if (check.rows && is.null(row.names))         function(current, new, i) {            if (is.character(current))                 new <- as.character(new)            if (is.character(new))                 current <- as.character(current)            if (anyDuplicated(new))                 return(current)            if (is.null(current))                 return(new)            if (all(current == new) || all(current == ""))                 return(new)            stop(gettextf("mismatch of row names in arguments of 'data.frame', item %d",                 i), domain = NA)        }    else function(current, new, i) {        if (is.null(current)) {            if (anyDuplicated(new)) {                warning(gettextf("some row.names duplicated: %s --> row.names NOT used",                   paste(which(duplicated(new)), collapse = ",")),                   domain = NA)                current            }            else new        }        else current    }    object <- as.list(substitute(list(...)))[-1L]    mirn <- missing(row.names)    mrn <- is.null(row.names)    x <- list(...)    n <- length(x)    if (n < 1L) {        if (!mrn) {            if (is.object(row.names) || !is.integer(row.names))                 row.names <- as.character(row.names)            if (anyNA(row.names))                 stop("row names contain missing values")            if (anyDuplicated(row.names))                 stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                   collapse = ", ")), domain = NA)        }        else row.names <- integer()        return(structure(list(), names = character(), row.names = row.names,             class = "data.frame"))    }    vnames <- names(x)    if (length(vnames) != n)         vnames <- character(n)    no.vn <- !nzchar(vnames)    vlist <- vnames <- as.list(vnames)    nrows <- ncols <- integer(n)    for (i in seq_len(n)) {        xi <- if (is.character(x[[i]]) || is.list(x[[i]]))             as.data.frame(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors)        else as.data.frame(x[[i]], optional = TRUE)        nrows[i] <- .row_names_info(xi)        ncols[i] <- length(xi)        namesi <- names(xi)        if (ncols[i] > 1L) {            if (length(namesi) == 0L)                 namesi <- seq_len(ncols[i])            vnames[[i]] <- if (no.vn[i])                 namesi            else paste(vnames[[i]], namesi, sep = ".")        }        else if (length(namesi)) {            vnames[[i]] <- namesi        }        else if (fix.empty.names && no.vn[[i]]) {            tmpname <- deparse(object[[i]], nlines = 1L)[1L]            if (substr(tmpname, 1L, 2L) == "I(") {                ntmpn <- nchar(tmpname, "c")                if (substr(tmpname, ntmpn, ntmpn) == ")")                   tmpname <- substr(tmpname, 3L, ntmpn - 1L)            }            vnames[[i]] <- tmpname        }        if (mirn && nrows[i] > 0L) {            rowsi <- attr(xi, "row.names")            if (any(nzchar(rowsi)))                 row.names <- data.row.names(row.names, rowsi,                   i)        }        nrows[i] <- abs(nrows[i])        vlist[[i]] <- xi    }    nr <- max(nrows)    for (i in seq_len(n)[nrows < nr]) {        xi <- vlist[[i]]        if (nrows[i] > 0L && (nr%%nrows[i] == 0L)) {            xi <- unclass(xi)            fixed <- TRUE            for (j in seq_along(xi)) {                xi1 <- xi[[j]]                if (is.vector(xi1) || is.factor(xi1))                   xi[[j]] <- rep(xi1, length.out = nr)                else if (is.character(xi1) && inherits(xi1, "AsIs"))                   xi[[j]] <- structure(rep(xi1, length.out = nr),                     class = class(xi1))                else if (inherits(xi1, "Date") || inherits(xi1,                   "POSIXct"))                   xi[[j]] <- rep(xi1, length.out = nr)                else {                  fixed <- FALSE                  break                }            }            if (fixed) {                vlist[[i]] <- xi                next            }        }        stop(gettextf("arguments imply differing number of rows: %s",             paste(unique(nrows), collapse = ", ")), domain = NA)    }    value <- unlist(vlist, recursive = FALSE, use.names = FALSE)    vnames <- unlist(vnames[ncols > 0L])    if (fix.empty.names && any(noname <- !nzchar(vnames)))         vnames[noname] <- paste0("Var.", seq_along(vnames))[noname]    if (check.names) {        if (fix.empty.names)             vnames <- make.names(vnames, unique = TRUE)        else {            nz <- nzchar(vnames)            vnames[nz] <- make.names(vnames[nz], unique = TRUE)        }    }    names(value) <- vnames    if (!mrn) {        if (length(row.names) == 1L && nr != 1L) {            if (is.character(row.names))                 row.names <- match(row.names, vnames, 0L)            if (length(row.names) != 1L || row.names < 1L ||                 row.names > length(vnames))                 stop("'row.names' should specify one of the variables")            i <- row.names            row.names <- value[[i]]            value <- value[-i]        }        else if (!is.null(row.names) && length(row.names) !=             nr)             stop("row names supplied are of the wrong length")    }    else if (!is.null(row.names) && length(row.names) != nr) {        warning("row names were found from a short variable and have been discarded")        row.names <- NULL    }    class(value) <- "data.frame"    if (is.null(row.names))         attr(value, "row.names") <- .set_row_names(nr)    else {        if (is.object(row.names) || !is.integer(row.names))             row.names <- as.character(row.names)        if (anyNA(row.names))             stop("row names contain missing values")        if (anyDuplicated(row.names))             stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                 collapse = ", ")), domain = NA)        row.names(value) <- row.names    }    value})(y = NULL, Ntrials = NULL, link = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = TRUE): arguments imply differing number of rows: 0, 276>
+got results for task 2
+numValues: 2, numResults: 2, stopped: FALSE
+returning status FALSE
+evaluation # 3:
+$i
+[1] 3
+
+[1] "iteration 3/3"
+result of evaluating expression:
+<simpleError in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = default.stringsAsFactors()) {    data.row.names <- if (check.rows && is.null(row.names))         function(current, new, i) {            if (is.character(current))                 new <- as.character(new)            if (is.character(new))                 current <- as.character(current)            if (anyDuplicated(new))                 return(current)            if (is.null(current))                 return(new)            if (all(current == new) || all(current == ""))                 return(new)            stop(gettextf("mismatch of row names in arguments of 'data.frame', item %d",                 i), domain = NA)        }    else function(current, new, i) {        if (is.null(current)) {            if (anyDuplicated(new)) {                warning(gettextf("some row.names duplicated: %s --> row.names NOT used",                   paste(which(duplicated(new)), collapse = ",")),                   domain = NA)                current            }            else new        }        else current    }    object <- as.list(substitute(list(...)))[-1L]    mirn <- missing(row.names)    mrn <- is.null(row.names)    x <- list(...)    n <- length(x)    if (n < 1L) {        if (!mrn) {            if (is.object(row.names) || !is.integer(row.names))                 row.names <- as.character(row.names)            if (anyNA(row.names))                 stop("row names contain missing values")            if (anyDuplicated(row.names))                 stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                   collapse = ", ")), domain = NA)        }        else row.names <- integer()        return(structure(list(), names = character(), row.names = row.names,             class = "data.frame"))    }    vnames <- names(x)    if (length(vnames) != n)         vnames <- character(n)    no.vn <- !nzchar(vnames)    vlist <- vnames <- as.list(vnames)    nrows <- ncols <- integer(n)    for (i in seq_len(n)) {        xi <- if (is.character(x[[i]]) || is.list(x[[i]]))             as.data.frame(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors)        else as.data.frame(x[[i]], optional = TRUE)        nrows[i] <- .row_names_info(xi)        ncols[i] <- length(xi)        namesi <- names(xi)        if (ncols[i] > 1L) {            if (length(namesi) == 0L)                 namesi <- seq_len(ncols[i])            vnames[[i]] <- if (no.vn[i])                 namesi            else paste(vnames[[i]], namesi, sep = ".")        }        else if (length(namesi)) {            vnames[[i]] <- namesi        }        else if (fix.empty.names && no.vn[[i]]) {            tmpname <- deparse(object[[i]], nlines = 1L)[1L]            if (substr(tmpname, 1L, 2L) == "I(") {                ntmpn <- nchar(tmpname, "c")                if (substr(tmpname, ntmpn, ntmpn) == ")")                   tmpname <- substr(tmpname, 3L, ntmpn - 1L)            }            vnames[[i]] <- tmpname        }        if (mirn && nrows[i] > 0L) {            rowsi <- attr(xi, "row.names")            if (any(nzchar(rowsi)))                 row.names <- data.row.names(row.names, rowsi,                   i)        }        nrows[i] <- abs(nrows[i])        vlist[[i]] <- xi    }    nr <- max(nrows)    for (i in seq_len(n)[nrows < nr]) {        xi <- vlist[[i]]        if (nrows[i] > 0L && (nr%%nrows[i] == 0L)) {            xi <- unclass(xi)            fixed <- TRUE            for (j in seq_along(xi)) {                xi1 <- xi[[j]]                if (is.vector(xi1) || is.factor(xi1))                   xi[[j]] <- rep(xi1, length.out = nr)                else if (is.character(xi1) && inherits(xi1, "AsIs"))                   xi[[j]] <- structure(rep(xi1, length.out = nr),                     class = class(xi1))                else if (inherits(xi1, "Date") || inherits(xi1,                   "POSIXct"))                   xi[[j]] <- rep(xi1, length.out = nr)                else {                  fixed <- FALSE                  break                }            }            if (fixed) {                vlist[[i]] <- xi                next            }        }        stop(gettextf("arguments imply differing number of rows: %s",             paste(unique(nrows), collapse = ", ")), domain = NA)    }    value <- unlist(vlist, recursive = FALSE, use.names = FALSE)    vnames <- unlist(vnames[ncols > 0L])    if (fix.empty.names && any(noname <- !nzchar(vnames)))         vnames[noname] <- paste0("Var.", seq_along(vnames))[noname]    if (check.names) {        if (fix.empty.names)             vnames <- make.names(vnames, unique = TRUE)        else {            nz <- nzchar(vnames)            vnames[nz] <- make.names(vnames[nz], unique = TRUE)        }    }    names(value) <- vnames    if (!mrn) {        if (length(row.names) == 1L && nr != 1L) {            if (is.character(row.names))                 row.names <- match(row.names, vnames, 0L)            if (length(row.names) != 1L || row.names < 1L ||                 row.names > length(vnames))                 stop("'row.names' should specify one of the variables")            i <- row.names            row.names <- value[[i]]            value <- value[-i]        }        else if (!is.null(row.names) && length(row.names) !=             nr)             stop("row names supplied are of the wrong length")    }    else if (!is.null(row.names) && length(row.names) != nr) {        warning("row names were found from a short variable and have been discarded")        row.names <- NULL    }    class(value) <- "data.frame"    if (is.null(row.names))         attr(value, "row.names") <- .set_row_names(nr)    else {        if (is.object(row.names) || !is.integer(row.names))             row.names <- as.character(row.names)        if (anyNA(row.names))             stop("row names contain missing values")        if (anyDuplicated(row.names))             stop(gettextf("duplicate row.names: %s", paste(unique(row.names[duplicated(row.names)]),                 collapse = ", ")), domain = NA)        row.names(value) <- row.names    }    value})(y = NULL, Ntrials = NULL, link = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1), check.names = TRUE,     fix.empty.names = TRUE, stringsAsFactors = TRUE): arguments imply differing number of rows: 0, 276>
+got results for task 3
+numValues: 3, numResults: 3, stopped: FALSE
+returning status FALSE
+numValues: 3, numResults: 3, stopped: TRUE
+not calling combine function due to errors
+
+Enter a frame number, or 0 to exit   
+
+1: resultsSPDE(test = TRUE)
+2: spdeResults.R#64: resultsSPDEHelper3(clustSRS, eaDat, nPostSamples = nPostSamples, verbose = verbose, inc
+3: spdeResults.R#1179: foreach(i = 1:nsim, .combine = combineResults, .verbose = TRUE, .multicombine = TRUE)
+4: e$fun(obj, substitute(ex), parent.frame(), e$data)
+
+[1] "Generating SRS results"
+Called from: eval(expr, p)
+debug at ~/git/U5MR/spdeResults.R#821: predictionType = match.arg(predictionType)
+[1] "Calculating empirical rates at the desired aggregation levels"
+evaluation # 1:
+$i
+[1] 1
+
+[1] "iteration 1/3"
+Called from: eval(expr, p)
+debug at ~/git/U5MR/spdeMod.R#1142: latticeInds = 1:n
+debug at ~/git/U5MR/spdeMod.R#1144: if (clusterEffect) {
+    clustIObs = clusterIndices
+}
+debug at ~/git/U5MR/spdeMod.R#1148: clustIObs = clusterIndices
+debug at ~/git/U5MR/spdeMod.R#1152: if (clusterEffect) {
+    stack.est = inla.stack(A = list(AEst, 1, 1), effects = list(field = latticeInds, 
+        clust = clustIObs, X = X), data = list(y = ys, Ntrials = obsNs, 
+        link = 1), tag = "est", remove.unused = FALSE)
+} else {
+    stack.est = inla.stack(A = list(AEst, 1), effects = list(field = latticeInds, 
+        X = X), data = list(y = ys, Ntrials = obsNs, link = link), 
+        tag = "est", remove.unused = FALSE)
+}
+debug at ~/git/U5MR/spdeMod.R#1153: stack.est = inla.stack(A = list(AEst, 1, 1), effects = list(field = latticeInds, 
+    clust = clustIObs, X = X), data = list(y = ys, Ntrials = obsNs, 
+    link = 1), tag = "est", remove.unused = FALSE)
+[1] 590
+[1] "/Users/johnpaige/git/U5MR"
+[1] "hello"
+[1] "hello"
+[1] "hello"
