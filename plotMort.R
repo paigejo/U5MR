@@ -1,17 +1,17 @@
-# script for plotting predictions for secondary education completion in Kenya
+# script for plotting predictions for neonatal mortality in Kenya
 
 ##### before we make any plots, put all of them on the same scale
 ##### make multiple scales, two for estimates and quantiles, and two
 ##### for standard deviations. For each type of scale, make one that 
 ##### includes the naive and direct estimates, on anther that does not
 # naive and direct
-out = load("resultsDirectNaiveEd.RData")
-meanRange = range(c(expit(naiveEd$upper),expit(naiveEd$lower) ))
-meanRange = range(c(meanRange, expit(naiveEd$upper),expit(naiveEd$lower)))
-zlim = range(c(expit(directEstEd$upper),expit(directEstEd$lower) ))
+out = load("resultsDirectNaiveMort.RData")
+meanRange = range(c(expit(naiveMort$upper),expit(naiveMort$lower) ))
+meanRange = range(c(meanRange, expit(naiveMort$upper),expit(naiveMort$lower)))
+zlim = range(c(expit(directEstMort$upper),expit(directEstMort$lower) ))
 meanRange = range(c(meanRange, zlim))
-sdRange = range(sqrt(naiveEd$var.est))
-zlim = range(sqrt(directEstEd$var.est))
+sdRange = range(sqrt(naiveMort$var.est))
+zlim = range(sqrt(directEstMort$var.est))
 sdRange = range(c(sdRange, zlim))
 
 # make scales specialized for the direct and naive models
@@ -24,12 +24,12 @@ meanTicksND = meanTicksND[-which(meanTicksND == 0)]
 meanTickLabelsND = as.character(meanTicksND)
 
 # mercer
-out = load("resultsMercerEd.RData")
-zlim = range(c(expit(mercerEd$lower.mercer),expit(mercerEd$upper.mercer)))
+out = load("resultsMercerMort.RData")
+zlim = range(c(expit(mercerMort$lower.mercer),expit(mercerMort$upper.mercer)))
 meanRange = range(c(meanRange, zlim))
-sdRange = range(c(sdRange, sqrt(mercerEd$var.est.mercer)))
+sdRange = range(c(sdRange, sqrt(mercerMort$var.est.mercer)))
 meanRange2 = zlim
-sdRange2 = range(sqrt(mercerEd$var.est.mercer))
+sdRange2 = range(sqrt(mercerMort$var.est.mercer))
 
 # bym2
 argList = list(list(includeUrbanRural = FALSE, includeCluster = FALSE), 
@@ -42,17 +42,17 @@ for(i in 1:length(argList)) {
   includeCluster = args$includeCluster
   clusterText = ifelse(includeCluster, "", "NoClust")
   
-  nameRoot = paste0('bym2EdUrbRur',includeUrban, 'Cluster', includeCluster)
+  nameRoot = paste0('bym2MortUrbRur',includeUrban, 'Cluster', includeCluster)
   out = load(paste0(nameRoot, '.RData'))
   zlim = range(c(expit(designRes$predictions$Q10),expit(designRes$predictions$Q90)))
   meanRange = range(c(meanRange, zlim))
   sdRange = range(c(sdRange, designRes$predictions$stddev))
   meanRange2 = range(c(meanRange2, zlim))
-  sdRange2 = range(c(sdRange2, sqrt(mercerEd$var.est.mercer)))
+  sdRange2 = range(c(sdRange2, sqrt(mercerMort$var.est.mercer)))
   
   if(includeCluster) {
     # also gather and plot the debiased results
-    nameRoot = paste0('bym2EdUrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
+    nameRoot = paste0('bym2MortUrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
     out = load(paste0(nameRoot, '.RData'))
     
     zlim = range(c(expit(designRes$predictions$Q10),expit(designRes$predictions$Q90)))
@@ -64,10 +64,10 @@ for(i in 1:length(argList)) {
 }
 
 # spde
-argList = list(list(clustDat = ed, includeClustEffect = FALSE, urbanEffect = FALSE), 
-               list(clustDat = ed, includeClustEffect = FALSE, urbanEffect = TRUE), 
-               list(clustDat = ed, includeClustEffect = TRUE, urbanEffect = FALSE), 
-               list(clustDat = ed, includeClustEffect = TRUE, urbanEffect = TRUE))
+argList = list(list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = FALSE), 
+               list(clustDat = mort, includeClustEffect = FALSE, urbanEffect = TRUE), 
+               list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = FALSE), 
+               list(clustDat = mort, includeClustEffect = TRUE, urbanEffect = TRUE))
 for(i in 1:length(argList)) {
   args = argList[[i]]
   includeUrban = args$urbanEffect
@@ -124,6 +124,23 @@ sdTicks2 = c(0.005, 0.01, 0.05, sdTicks2)
 sdTickLabels2 = c("0.005", "0.01", "0.05", sdTickLabels2)
 meanTicksSPDE = c(0.005, 0.01, 0.05, meanTicksSPDE)
 meanTickLabelsSPDE = as.character(meanTicksSPDE)
+
+# plot the actual data
+png(file="figures/EAsUrban.png", width=500, height=500)
+par(oma=c( 0,0,0,3), mar=c(5.1, 4.1, 4.1, 6))
+urban = mort$urban
+plot(mort$lon[!urban], mort$lat[!urban], pch=19, col="green", main=TeX("Urban vs. rural clusters"), xlim=kenyaLonRange, 
+     ylim=kenyaLatRange, xlab="Longitude", ylab="Latitude", cex=.2)
+points(mort$lon[urban], mort$lat[urban], pch=19, col="blue", cex=.2)
+# world(add=TRUE)
+plotMapDat(adm1)
+dev.off()
+
+# plot a map of urbanicity
+if(FALSE) {
+  # inside this if statement since it takes around ten minutes to run
+  makeUrbanMap(kmres=1, savePlot=TRUE)
+}
 
 makeAllPlots(ed, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2, 
              meanRangeSPDE, meanRangeSPDE2, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 

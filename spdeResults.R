@@ -5,7 +5,7 @@
 # cluster random effect in urban fixed effect in the model
 # genRegionLevel, keepPixelPreds, genEALevel: control whether to include 
 # regional, pixel, and enumeration area level predictions
-resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=3, verbose=TRUE, 
+resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE, 
                        includeClustEffect=TRUE, int.strategy="eb", 
                        genRegionLevel=TRUE, keepPixelPreds=TRUE, kmres=5, 
                        genEALevel=TRUE, urbanEffect=TRUE, tausq=0, 
@@ -1257,7 +1257,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
 }
 
 # Based on resultsSPDEHelper, but use for analyzing a single rate data set
-resultsSPDEed = function(clustDat=ed, nPostSamples=1000, verbose=FALSE, 
+resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE, 
                            includeClustEffect=FALSE, int.strategy="eb", 
                            genRegionLevel=TRUE, keepPixelPreds=TRUE, 
                            urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
@@ -1278,16 +1278,13 @@ resultsSPDEed = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
   
   # Must predict at clusters as well. Include clusters as 
   # first rows of prediction coordinates and prediction urban/rural
-  predCoords = rbind(cbind(ed$east, ed$north), predCoords)
-  predUrban = c(ed$urban, predUrban)
+  predCoords = rbind(cbind(clustDat$east, clustDat$north), predCoords)
+  predUrban = c(clustDat$urban, predUrban)
   
   # we only care about the probability, not counts, so not used except for the purposes 
   # of calling inla:
   # predNs = rep(25, nrow(predCoords))
   predNs = rep(1, nrow(predCoords))
-  
-  # get the simulated sample
-  clustDat = ed
   
   # get observations from dataset
   obsCoords = cbind(clustDat$east, clustDat$north)

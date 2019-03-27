@@ -45,7 +45,7 @@ extendData <- function(clustDatRow, v001, divideWeight=TRUE){
   return(res)
 }
 
-extendDataEd <- function(clustDatRow, v001, divideWeight=TRUE){
+extendDataDat <- function(clustDatRow, v001, divideWeight=TRUE){
   
   # add extra columns for ageMonth, ageGrpD, v001, v002
   n = clustDatRow$n
@@ -177,12 +177,12 @@ region.time.HTEd<-function(dataobj, svydesign, area, nationalEstimate){
 
 
 
-defineSurvey <- function(education_obj, stratVar, useSamplingWeights=TRUE){
+defineSurvey <- function(dat_obj, stratVar, useSamplingWeights=TRUE){
   
   options(survey.lonely.psu="adjust")
   
   # --- setting up a place to store results --- #
-  regions <- sort(unique(education_obj$admin1))
+  regions <- sort(unique(dat_obj$admin1))
   regions_num  <- 1:length(regions)
   
   results<-data.frame(admin1=rep(regions,each=1))
@@ -190,9 +190,9 @@ defineSurvey <- function(education_obj, stratVar, useSamplingWeights=TRUE){
   results$converge <- NA
   
   if(useSamplingWeights){
-    education_obj$wt <- education_obj$samplingWeight
+    dat_obj$wt <- dat_obj$samplingWeight
   } else {
-    education_obj$wt <- NULL
+    dat_obj$wt <- NULL
   }
 
   if(is.null(stratVar)){
@@ -203,11 +203,11 @@ defineSurvey <- function(education_obj, stratVar, useSamplingWeights=TRUE){
     ##        nest = T argument nests clusters within strata
     my.svydesign <- svydesign(id= ~v001,
                               strata =NULL,
-                              weights=NULL, data=education_obj)
+                              weights=NULL, data=dat_obj)
   } else {
     ## not in all surveys does v022 contain the correct sampling strata
     ## Thus, the correct vector has to be provided externally
-    education_obj$strat <- stratVar
+    dat_obj$strat <- stratVar
   
     # --- setting up the design object --- #
     ## NOTE: -the v001 denote
@@ -216,23 +216,23 @@ defineSurvey <- function(education_obj, stratVar, useSamplingWeights=TRUE){
     ##        nest = T argument nests clusters within strata
     my.svydesign <- svydesign(id= ~v001,
                               strata=~strat, nest=T, 
-                              weights=~wt, data=education_obj)
+                              weights=~wt, data=dat_obj)
   }
   
   for(i in 1:nrow(results)){
-    results[i, 2:7] <- region.time.HT(dataobj=education_obj, svydesign=my.svydesign, 
+    results[i, 2:7] <- region.time.HT(dataobj=dat_obj, svydesign=my.svydesign, 
                                       area=results$admin1[i])
   }
   return(results)
 }
 
-defineSurveyEd <- function(education_obj, stratVar, useSamplingWeights=TRUE, nationalEstimate=FALSE, 
+defineSurveyEd <- function(dat_obj, stratVar, useSamplingWeights=TRUE, nationalEstimate=FALSE, 
                              getContrast=nationalEstimate){
   
   options(survey.lonely.psu="adjust")
   
   # --- setting up a place to store results --- #
-  regions <- sort(unique(education_obj$admin1))
+  regions <- sort(unique(dat_obj$admin1))
   regions_num  <- 1:length(regions)
   
   if(!nationalEstimate) {
@@ -247,9 +247,9 @@ defineSurveyEd <- function(education_obj, stratVar, useSamplingWeights=TRUE, nat
   }
   
   if(useSamplingWeights){
-    education_obj$wt <- education_obj$samplingWeight
+    dat_obj$wt <- dat_obj$samplingWeight
   } else {
-    education_obj$wt <- NULL
+    dat_obj$wt <- NULL
   }
   
   if(is.null(stratVar)){
@@ -260,11 +260,11 @@ defineSurveyEd <- function(education_obj, stratVar, useSamplingWeights=TRUE, nat
     ##        nest = T argument nests clusters within strata
     my.svydesign <- svydesign(id= ~v001,
                               strata =NULL,
-                              weights=NULL, data=education_obj)
+                              weights=NULL, data=dat_obj)
   } else {
     ## not in all surveys does v022 contain the correct sampling strata
     ## Thus, the correct vector has to be provided externally
-    education_obj$strat <- stratVar
+    dat_obj$strat <- stratVar
     
     # --- setting up the design object --- #
     ## NOTE: -the v001 denote
@@ -273,16 +273,16 @@ defineSurveyEd <- function(education_obj, stratVar, useSamplingWeights=TRUE, nat
     ##        nest = T argument nests clusters within strata
     my.svydesign <- svydesign(id= ~v001,
                               strata=~strat, nest=T, 
-                              weights=~wt, data=education_obj)
+                              weights=~wt, data=dat_obj)
   }
   
   for(i in 1:nrow(results)){
     if(!nationalEstimate) {
-      results[i, 2:7] <- region.time.HTEd(dataobj=education_obj, svydesign=my.svydesign, 
+      results[i, 2:7] <- region.time.HTEd(dataobj=dat_obj, svydesign=my.svydesign, 
                                             area=results$admin1[i], nationalEstimate=nationalEstimate)
     }
     else {
-      results[i, 2:7] <- region.time.HTEd(dataobj=education_obj, svydesign=my.svydesign, 
+      results[i, 2:7] <- region.time.HTEd(dataobj=dat_obj, svydesign=my.svydesign, 
                                             area=i, nationalEstimate=nationalEstimate)
     }
   }
@@ -307,9 +307,9 @@ defineSurveyEd <- function(education_obj, stratVar, useSamplingWeights=TRUE, nat
   
 }
 
-# Set education_obj$admin1 to be something else for different kinds of aggregations
-run_naive <- function(education_obj){
-  regions <- sort(unique(education_obj$admin1))
+# Set dat_obj$admin1 to be something else for different kinds of aggregations
+run_naive <- function(dat_obj){
+  regions <- sort(unique(dat_obj$admin1))
   regions_num  <- 1:length(regions)
   
   results<-data.frame(admin1=rep(regions,each=1))
@@ -318,9 +318,9 @@ run_naive <- function(education_obj){
   
   for(i in 1:nrow(results)){
     my.glm <- glm(y.x~1, family=binomial, 
-                  data=education_obj, 
+                  data=dat_obj, 
                   subset = admin1 == results$admin1[i] ) 
-    # newdat = education_obj[education_obj$admin1==results$admin1[i], ]
+    # newdat = dat_obj[dat_obj$admin1==results$admin1[i], ]
     # my.glm2 <- glm(y.x~1, family=binomial, 
     #               data=newdat) 
     
@@ -330,8 +330,8 @@ run_naive <- function(education_obj){
 }
 
 # running the analysis for the actual mortality dataset is slightly different
-run_naiveEd <- function(education_obj){
-  regions <- sort(unique(education_obj$admin1))
+run_naiveEd <- function(dat_obj){
+  regions <- sort(unique(dat_obj$admin1))
   regions_num  <- 1:length(regions)
   
   results<-data.frame(admin1=rep(regions,each=1))
@@ -340,9 +340,9 @@ run_naiveEd <- function(education_obj){
   
   for(i in 1:nrow(results)){
     my.glm <- glm(y~1, family=binomial, 
-                  data=education_obj, 
+                  data=dat_obj, 
                   subset = admin1 == results$admin1[i] ) 
-    # newdat = education_obj[education_obj$admin1==results$admin1[i], ]
+    # newdat = dat_obj[dat_obj$admin1==results$admin1[i], ]
     # my.glm2 <- glm(y.x~1, family=binomial, 
     #               data=newdat) 
     

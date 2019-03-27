@@ -503,12 +503,12 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
 }
 
 # same as runBYM2, except fits a single data set (the ed global data frame)
-runBYM2Ed = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveResults=TRUE) {
+runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveResults=TRUE) {
   includeUrban = includeUrbanRural
   
   # Get true ratios of urban/rural
   urbRatio = vector('numeric', length = 47)
-  counties = sort(unique(as.character(ed$admin1)))
+  counties = sort(unique(as.character(dat$admin1)))
   urbRatio = poppc$popUrb / poppc$popTotal
   sortI = matchMultiple(counties, poppc$County)
   urbRatio = urbRatio[sortI]
@@ -563,29 +563,29 @@ runBYM2Ed = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveRe
   parNames = parNames[includeI]
   
   # Go through education data set
-  sampCountyEd = matrix(NA, nrow=47, ncol=Nsim)
+  sampCountyDat = matrix(NA, nrow=47, ncol=Nsim)
   
   # for the final parameters to store, 2 fixed effects, 2 + includeCluster estimated 
   # hyperparameters, and 2 hyperparameters we will get via transformation
-  sampCountyEdPar = numeric(5 + includeUrban + includeCluster)
-  sampCountyEdSD = numeric(5 + includeUrban + includeCluster)
-  sampCountyEd10 = numeric(5 + includeUrban + includeCluster)
-  sampCountyEd90 = numeric(5 + includeUrban + includeCluster)
+  sampCountyDatPar = numeric(5 + includeUrban + includeCluster)
+  sampCountyDatSD = numeric(5 + includeUrban + includeCluster)
+  sampCountyDat10 = numeric(5 + includeUrban + includeCluster)
+  sampCountyDat90 = numeric(5 + includeUrban + includeCluster)
   
-  names(sampCountyEdPar) = parNames
-  names(sampCountyEdSD) = parNames
-  names(sampCountyEd10) = parNames
-  names(sampCountyEd90) = parNames
+  names(sampCountyDatPar) = parNames
+  names(sampCountyDatSD) = parNames
+  names(sampCountyDat10) = parNames
+  names(sampCountyDat90) = parNames
   
   # Extract data
-  ed$admin1 = factor(ed$admin1)
+  dat$admin1 = factor(dat$admin1)
   
   # INLA data
-  dat = list(y = ed$y,
-             Ntrials = ed$n,
-             rural = 1-ed$urban,
-             idx = as.numeric(ed$admin1),
-             idxEps = 1:length(ed$y))
+  dat = list(y = dat$y,
+             Ntrials = dat$n,
+             rural = 1-dat$urban,
+             idx = as.numeric(dat$admin1),
+             idxEps = 1:length(dat$y))
   
   # Add unobserved data to make sampling easier
   dat$y = c(rep(NA, 47*2), dat$y)
@@ -605,16 +605,16 @@ runBYM2Ed = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveRe
   
   ## include parameter estimates in the table
   # fixed effects
-  sampCountyEdPar[1:(1 + includeUrban)] = result$summary.fixed[,1]
-  sampCountyEdSD[1:(1 + includeUrban)] = result$summary.fixed[,2]
-  sampCountyEd10[1:(1 + includeUrban)] = result$summary.fixed[,3]
-  sampCountyEd90[1:(1 + includeUrban)] = result$summary.fixed[,5]
+  sampCountyDatPar[1:(1 + includeUrban)] = result$summary.fixed[,1]
+  sampCountyDatSD[1:(1 + includeUrban)] = result$summary.fixed[,2]
+  sampCountyDat10[1:(1 + includeUrban)] = result$summary.fixed[,3]
+  sampCountyDat90[1:(1 + includeUrban)] = result$summary.fixed[,5]
   
   # BYM2 hyperparameter phi
-  sampCountyEdPar[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,1]
-  sampCountyEdSD[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,2]
-  sampCountyEd10[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,3]
-  sampCountyEd90[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,5]
+  sampCountyDatPar[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,1]
+  sampCountyDatSD[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,2]
+  sampCountyDat10[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,3]
+  sampCountyDat90[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,5]
   
   ## transformed hyperparameters
   # sample the hyperparameters, using the marginals to improve the sampling
@@ -625,17 +625,17 @@ runBYM2Ed = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveRe
   transformedOut = apply(out, 1, transformFunction)
   
   # now calculate the summary statistics of the transformed BYM2 hyperparameters
-  sampCountyEdPar[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = rowMeans(transformedOut[1:3,])
-  sampCountyEdSD[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = apply(transformedOut[1:3,], 1, sd)
-  sampCountyEd10[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = apply(transformedOut[1:3,], 1, quantile, probs=.1)
-  sampCountyEd90[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = apply(transformedOut[1:3,], 1, quantile, probs=.9)
+  sampCountyDatPar[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = rowMeans(transformedOut[1:3,])
+  sampCountyDatSD[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = apply(transformedOut[1:3,], 1, sd)
+  sampCountyDat10[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = apply(transformedOut[1:3,], 1, quantile, probs=.1)
+  sampCountyDat90[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = apply(transformedOut[1:3,], 1, quantile, probs=.9)
   
   # calculate summary statistics for cluster variance if necessary
   if(includeCluster) {
-    sampCountyEdPar[2 + includeUrban] = mean(transformedOut[4,])
-    sampCountyEdSD[2 + includeUrban] = sd(transformedOut[4,])
-    sampCountyEd10[2 + includeUrban] = quantile(transformedOut[4,], probs=.1)
-    sampCountyEd90[2 + includeUrban] = quantile(transformedOut[4,], probs=.9)
+    sampCountyDatPar[2 + includeUrban] = mean(transformedOut[4,])
+    sampCountyDatSD[2 + includeUrban] = sd(transformedOut[4,])
+    sampCountyDat10[2 + includeUrban] = quantile(transformedOut[4,], probs=.1)
+    sampCountyDat90[2 + includeUrban] = quantile(transformedOut[4,], probs=.9)
   }
   
   if(includeCluster)
@@ -661,8 +661,8 @@ runBYM2Ed = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveRe
         sampUrbanMod[, j] = logitNormMean(muSigmaMat = muSigmaMatUrban)
       }
     }
-    sampCountyEd = logit(expit(sampUrban)*urbRatio + expit(sampRural)*(1-urbRatio))
-    sampCountyEdMod = logit(sampUrbanMod*urbRatio + sampRuralMod*(1-urbRatio))
+    sampCountyDat = logit(expit(sampUrban)*urbRatio + expit(sampRural)*(1-urbRatio))
+    sampCountyDatMod = logit(sampUrbanMod*urbRatio + sampRuralMod*(1-urbRatio))
   } else {
     samp = inla.posterior.sample(n = Nsim, result = result)
     sampCounty = matrix(NA, nrow = 47, ncol = Nsim)
@@ -676,8 +676,8 @@ runBYM2Ed = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveRe
         sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMat)
       }
     }
-    sampCountyEd = sampCounty
-    sampCountyEdMod = logit(sampCountyMod)
+    sampCountyDat = sampCounty
+    sampCountyDatMod = logit(sampCountyMod)
   }
   
   processSamples = function(samp){
@@ -699,75 +699,75 @@ runBYM2Ed = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveRe
   mm = numeric(47)
   ss = numeric(47)
   
-  tmp = processSamples(sampCountyEd)
+  tmp = processSamples(sampCountyDat)
   Q10 = tmp$logit$CI[,1]
   Q50 = tmp$logit$CI[,2]
   Q90 = tmp$logit$CI[,3]
   mm = tmp$logit$mean
   ss = tmp$logit$stddev
   
-  resEd = list(Q10 = Q10,
+  resDat = list(Q10 = Q10,
                  Q50 = Q50,
                  Q90 = Q90,
                  mean = mm,
                  stddev = ss)
   
   if(includeCluster) {
-    tmp = processSamples(sampCountyEdMod)
+    tmp = processSamples(sampCountyDatMod)
     Q10 = tmp$logit$CI[,1]
     Q50 = tmp$logit$CI[,2]
     Q90 = tmp$logit$CI[,3]
     mm = tmp$logit$mean
     ss = tmp$logit$stddev
-    resEdMod = list(Q10 = Q10,
+    resDatMod = list(Q10 = Q10,
                       Q50 = Q50,
                       Q90 = Q90,
                       mean = mm,
                       stddev = ss)
   } else {
-    resEdMod = NULL
+    resDatMod = NULL
   }
   
   ## now collect the parameters
   # make rural parameter the urban parameter
   if(includeUrban) {
-    sampCountyEdPar[2] = -sampCountyEdPar[2]
-    sampCountyEd10[2] = -sampCountyEd10[2]
-    sampCountyEd90[2] = -sampCountyEd90[2]
+    sampCountyDatPar[2] = -sampCountyDatPar[2]
+    sampCountyDat10[2] = -sampCountyDat10[2]
+    sampCountyDat90[2] = -sampCountyDat90[2]
   }
-  mm = sampCountyEdPar
-  ss = sampCountyEdSD
-  Q10 = sampCountyEd10
-  Q90 = sampCountyEd90
-  resEdPar = data.frame(list(Q10 = Q10,
+  mm = sampCountyDatPar
+  ss = sampCountyDatSD
+  Q10 = sampCountyDat10
+  Q90 = sampCountyDat90
+  resDatPar = data.frame(list(Q10 = Q10,
                                Q90 = Q90,
                                mean = mm,
                                stddev = ss))
   
   # Full result
-  designRes = list(predictions = resEd,
-                   parameters = resEdPar)
+  designRes = list(predictions = resDat,
+                   parameters = resDatPar)
   # save(file = 'kenyaSpatialDesignResultNew.RData', designRes = designRes)
   # save(file = paste0('kenyaSpatialDesignResultNewTausq0UrbRur', 
   #                      includeUrbanRural, '.RData'), designRes = designRes)
   if(saveResults) {
-    save(file = paste0('bym2EdUrbRur',includeUrbanRural, 'Cluster', includeCluster, '.RData'), 
+    save(file = paste0('bym2DatUrbRur',includeUrbanRural, 'Cluster', includeCluster, '.RData'), 
          designRes = designRes)
   }
   
   # include the debiased results if cluster effect is included
   if(includeCluster) {
-    designRes = list(predictions = resEdMod,
-                     parameters = resEdPar)
+    designRes = list(predictions = resDatMod,
+                     parameters = resDatPar)
     
     if(saveResults) {
-      save(file = paste0('bym2EdUrbRur',includeUrbanRural, 'Cluster', includeCluster, 'debiased.RData'), 
+      save(file = paste0('bym2DatUrbRur',includeUrbanRural, 'Cluster', includeCluster, 'debiased.RData'), 
            designRes = designRes)
     }
   }
   
-  designRes = list(predictions = resEdMod,
-                   parameters = resEdPar)
+  designRes = list(predictions = resDatMod,
+                   parameters = resDatPar)
 }
 
 runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluster=TRUE) {

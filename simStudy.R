@@ -24,6 +24,35 @@ simEAs = function(kenyaPop, numEAs=96251, totalKenyaPop=43.0 * 10^6, seed=123) {
   kenyaEAs
 }
 
+# for kmres=2.5: nx=350, ny=430
+makeUrbanMap = function(popGrid=NULL, kmres=2.5, savePlot=FALSE, fileName="figures/urbanMap.png", nx=850, ny=1050, 
+                        width=1000, height=1200) {
+  # get prediction locations from population grid
+  if(is.null(popGrid)) {
+    if(kmres == 5)
+      load("popGrid.RData")
+    else
+      popGrid = makeInterpPopGrid(kmres)
+  }
+  
+  # determine which points in Kenya are urban
+  threshes = setThresholds2()
+  popThreshes = sapply(1:nrow(popGrid), function(i) {threshes$threshes[threshes$counties == popGrid$admin1[i]]})
+  urban = popGrid$popOrig > popThreshes
+  
+  if(savePlot) {
+    png(file=fileName, width=500, height=500)
+  }
+  quilt.plot(popGrid$lon, popGrid$lat, urban, col=c("green", "blue"), nx=850, ny=1050, add.legend = FALSE, 
+             xlab="Longitude", ylab="Latitude", main=TeX("Urbanicity"), xlim=kenyaLonRange, ylim=kenyaLatRange)
+  legend("bottomleft", c("urban", "rural"), col=c("blue", "green"), pch=19)
+  # world(add=TRUE)
+  plotMapDat(adm1)
+  if(savePlot) {
+    dev.off()
+  }
+}
+
 # simulate enumeration areas from population data.  stratified by urban 
 # and rural and county
 simEAs2 = function(kenyaPop, numEAs=96251, totalKenyaPop=43.0 * 10^6, seed=123, 
