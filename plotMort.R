@@ -145,4 +145,5 @@ if(FALSE) {
 makeAllPlots(ed, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2, 
              meanRangeSPDE, meanRangeSPDE2, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 
              sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
-             varName="SCR", plotNameRoot="Education", resultNameRoot="Ed")
+             meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
+             varName="NMR", plotNameRoot="Mort", resultNameRoot="Mort")

@@ -41,7 +41,7 @@ generateExampleResults = function(dat=ed, resultNameRoot="Ed") {
   res2 = defineSurveyDat(dat_obj2, 
                          stratVar=dat_obj2$regionRural,
                          useSamplingWeights = TRUE)
-  directEstDat = res2
+  directEstResults = res2
   defineSurvey
   resnA2 = run_naiveDat(dat_obj2)
   

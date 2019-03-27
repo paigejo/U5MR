@@ -135,7 +135,7 @@ resultsSPDEHelper = function(clustDatMulti, eaDat, nPostSamples=100, verbose=TRU
   
   # first make a function for combining the results that can work either in parallel or serial
   combineResults = function(...) {
-    results = as.list(...)
+    results = list(...)
     countyResults = do.call("rbind", lapply(results, function(x) {x$countyResults}))
     regionResults = do.call("rbind", lapply(results, function(x) {x$regionResults}))
     pixelResults = do.call("rbind", lapply(results, function(x) {x$pixelResults}))

@@ -95,13 +95,13 @@ get.est<-function(glm.ob){
 
   beta<-summary(glm.ob)$coef[,1]
  
-  ed.est <-expit(beta)
+  est <-expit(beta)
   var.est <- vcov(glm.ob)[1,1]
   
   # compute 80% CI intervals
-  lower <- logit(ed.est)+qnorm(c(0.9))*sqrt(var.est)
-  upper <- logit(ed.est)+qnorm(c(0.1))*sqrt(var.est)
-  return(c(ed.est,lower, upper,logit(ed.est),var.est))
+  lower <- logit(est)+qnorm(c(0.9))*sqrt(var.est)
+  upper <- logit(est)+qnorm(c(0.1))*sqrt(var.est)
+  return(c(est,lower, upper,logit(est),var.est))
 }
 
 # -- a function to subset the design based on a region and time period -- #
@@ -139,7 +139,7 @@ region.time.HT<-function(dataobj, svydesign, area){
   }
 }
 
-region.time.HTEd<-function(dataobj, svydesign, area, nationalEstimate){
+region.time.HTDat<-function(dataobj, svydesign, area, nationalEstimate){
   
   if(!nationalEstimate) {
     
@@ -226,7 +226,7 @@ defineSurvey <- function(dat_obj, stratVar, useSamplingWeights=TRUE){
   return(results)
 }
 
-defineSurveyEd <- function(dat_obj, stratVar, useSamplingWeights=TRUE, nationalEstimate=FALSE, 
+defineSurveyDat <- function(dat_obj, stratVar, useSamplingWeights=TRUE, nationalEstimate=FALSE, 
                              getContrast=nationalEstimate){
   
   options(survey.lonely.psu="adjust")
@@ -278,11 +278,11 @@ defineSurveyEd <- function(dat_obj, stratVar, useSamplingWeights=TRUE, nationalE
   
   for(i in 1:nrow(results)){
     if(!nationalEstimate) {
-      results[i, 2:7] <- region.time.HTEd(dataobj=dat_obj, svydesign=my.svydesign, 
+      results[i, 2:7] <- region.time.HTDat(dataobj=dat_obj, svydesign=my.svydesign, 
                                             area=results$admin1[i], nationalEstimate=nationalEstimate)
     }
     else {
-      results[i, 2:7] <- region.time.HTEd(dataobj=dat_obj, svydesign=my.svydesign, 
+      results[i, 2:7] <- region.time.HTDat(dataobj=dat_obj, svydesign=my.svydesign, 
                                             area=i, nationalEstimate=nationalEstimate)
     }
   }
@@ -330,7 +330,7 @@ run_naive <- function(dat_obj){
 }
 
 # running the analysis for the actual mortality dataset is slightly different
-run_naiveEd <- function(dat_obj){
+run_naiveDat <- function(dat_obj){
   regions <- sort(unique(dat_obj$admin1))
   regions_num  <- 1:length(regions)
   
