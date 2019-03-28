@@ -437,7 +437,7 @@ resultsSPDEHelper2 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
   combineResults = function(...) {
     print("Combining results...")
     
-    results = as.list(...)
+    results = list(...)
     
     # scoring rules
     scoresEaInexact = do.call("rbind", lapply(results, function(x) {x$scoresEaInexact}))
@@ -872,7 +872,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
   combineResults = function(...) {
     print("Combining results...")
     
-    results = as.list(...)
+    results = list(...)
     
     # scoring rules
     scoresEaExact = do.call("rbind", lapply(results, function(x) {x$scoresEaExact}))
@@ -1116,7 +1116,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     # nuggetSDSummary=as.list(1:nsim)
     # for(i in 1:nsim) {
     #   results = mainFunction(i, FALSE)
-    #   
+    # 
     #   # collect results in a list, one element for each simulation
     #   scoresEaExact[[i]]=results$scoresEaExact
     #   scoresEaExactBVar[[i]]=results$scoresEaExactBVar
@@ -1129,7 +1129,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     #   scoresRegionInexact[[i]]=results$scoresRegionInexact
     #   scoresRegionExact[[i]]=results$scoresRegionExact
     #   scoresRegionExactBVar[[i]]=results$scoresRegionExactBVar
-    #   
+    # 
     #   interceptSummary[[i]]=results$interceptSummary
     #   urbanSummary[[i]]=results$urbanSummary
     #   rangeSummary[[i]]=results$rangeSummary
@@ -1176,9 +1176,15 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     #   nuggetSDSummary = NULL
     # }
     
-    results = foreach(i = 1:nsim, .combine=combineResults, .verbose=TRUE, .multicombine=TRUE) %do% {
-      mainFunction(i, FALSE)
+    # results = foreach(i = 1:nsim, .combine=combineResults, .verbose=TRUE, .multicombine=TRUE) %do% {
+    #   mainFunction(i, FALSE)
+    # }
+    
+    surveyResults = list()
+    for(i in 1:nsim) {
+      surveyResults = c(surveyResults, list(mainFunction(i, FALSE)))
     }
+    results = combinedResults(surveyResults)
   } else {
     # parallel version
     

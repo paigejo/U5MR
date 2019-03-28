@@ -6,12 +6,12 @@
 ##### includes the naive and direct estimates, on anther that does not
 # naive and direct
 out = load("resultsDirectNaiveEd.RData")
-meanRange = range(c(expit(naiveEd$upper),expit(naiveEd$lower) ))
-meanRange = range(c(meanRange, expit(naiveEd$upper),expit(naiveEd$lower)))
-zlim = range(c(expit(directEstEd$upper),expit(directEstEd$lower) ))
+meanRange = range(c(expit(naiveResults$upper),expit(naiveResults$lower) ))
+meanRange = range(c(meanRange, expit(naiveResults$upper),expit(naiveResults$lower)))
+zlim = range(c(expit(directEstResults$upper),expit(directEstResults$lower) ))
 meanRange = range(c(meanRange, zlim))
-sdRange = range(sqrt(naiveEd$var.est))
-zlim = range(sqrt(directEstEd$var.est))
+sdRange = range(sqrt(naiveResults$var.est))
+zlim = range(sqrt(directEstResults$var.est))
 sdRange = range(c(sdRange, zlim))
 
 # make scales specialized for the direct and naive models
@@ -25,11 +25,11 @@ meanTickLabelsND = as.character(meanTicksND)
 
 # mercer
 out = load("resultsMercerEd.RData")
-zlim = range(c(expit(mercerEd$lower.mercer),expit(mercerEd$upper.mercer)))
+zlim = range(c(expit(mercerResults$lower.mercer),expit(mercerResults$upper.mercer)))
 meanRange = range(c(meanRange, zlim))
-sdRange = range(c(sdRange, sqrt(mercerEd$var.est.mercer)))
+sdRange = range(c(sdRange, sqrt(mercerResults$var.est.mercer)))
 meanRange2 = zlim
-sdRange2 = range(sqrt(mercerEd$var.est.mercer))
+sdRange2 = range(sqrt(mercerResults$var.est.mercer))
 
 # bym2
 argList = list(list(includeUrbanRural = FALSE, includeCluster = FALSE), 
@@ -48,7 +48,7 @@ for(i in 1:length(argList)) {
   meanRange = range(c(meanRange, zlim))
   sdRange = range(c(sdRange, designRes$predictions$stddev))
   meanRange2 = range(c(meanRange2, zlim))
-  sdRange2 = range(c(sdRange2, sqrt(mercerEd$var.est.mercer)))
+  sdRange2 = range(c(sdRange2, sqrt(mercerResults$var.est.mercer)))
   
   if(includeCluster) {
     # also gather and plot the debiased results
