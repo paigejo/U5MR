@@ -979,7 +979,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     # pixel level
     if(keepPixelPreds) {
       print(paste0("Pixel results generating: iteration ", i, "/", nsim))
-      
+      # TODO: fix NA problem with CRPS
       # calculate estimates, but convert to the logit scale (estimates are the same with or without binomial variation)
       thisu1mPixelInexact = logit(rowMeans(pixelPreds$pixelPredMatInexact))
       thisu1mPixelExact = logit(rowMeans(pixelPreds$pixelPredMatExact))
@@ -1305,11 +1305,11 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
   
   # fit model, get all predictions for each areal level and each posterior sample
   fit = fitSPDEModel3(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
-                      predUrban, clusterIndices=1:nrow(ed), genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
+                      predUrban, clusterIndices=1:nrow(clustDat), genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
                       verbose = verbose, clusterEffect=includeClustEffect, 
                       int.strategy=int.strategy, genRegionLevel=TRUE, counties=sort(unique(kenyaEAs$admin1)), 
                       keepPixelPreds=keepPixelPreds, genEALevel=TRUE, regions=sort(unique(kenyaEAs$region)), 
-                      urbanEffect=urbanEffect, eaIndices=1:nrow(ed), 
+                      urbanEffect=urbanEffect, eaIndices=1:nrow(clustDat), 
                       eaDat=eaDat, truthByCounty=TRUE, truthByRegion=TRUE, 
                       truthByPixel=TRUE, nSamplePixel=nSamplePixel, 
                       significance=significance, onlyInexact=TRUE, allPixels=TRUE, 
@@ -1390,7 +1390,8 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
   list(resultsPixel=resultsPixel, resultsCounty=resultsCounty, resultsRegion=resultsRegion, 
        interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
        rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
-       nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary)
+       nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary, 
+       pixelDraws=pixelPreds$pixelPredMatInexact)
 }
 
 # compute true proportion of women that completed secondary education in each county in the order of the 

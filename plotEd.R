@@ -1,4 +1,5 @@
 # script for plotting predictions for secondary education completion in Kenya
+source("plotGenerator.R")
 
 ##### before we make any plots, put all of them on the same scale
 ##### make multiple scales, two for estimates and quantiles, and two
@@ -50,6 +51,14 @@ for(i in 1:length(argList)) {
   meanRange2 = range(c(meanRange2, zlim))
   sdRange2 = range(c(sdRange2, sqrt(mercerResults$var.est.mercer)))
   
+  if(i==1) {
+    meanRangeBYM2 = zlim
+    sdRangeBYM2 = range(designRes$predictions$stddev)
+  } else {
+    meanRangeBYM2 = range(c(meanRangeBYM2, zlim))
+    sdRangeBYM2 = range(c(sdRangeBYM2, designRes$predictions$stddev))
+  }
+  
   if(includeCluster) {
     # also gather and plot the debiased results
     nameRoot = paste0('bym2EdUrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
@@ -60,6 +69,9 @@ for(i in 1:length(argList)) {
     sdRange = range(c(sdRange, designRes$predictions$stddev))
     meanRange2 = range(c(meanRange2, zlim))
     sdRange2 = range(c(sdRange2, designRes$predictions$stddev))
+    
+    meanRangeBYM2 = range(c(meanRangeBYM2, zlim))
+    sdRangeBYM2 = range(c(sdRangeBYM2, designRes$predictions$stddev))
   }
 }
 
@@ -88,7 +100,7 @@ for(i in 1:length(argList)) {
   zlim = range(c(spdeResults$resultsPixel$lower,spdeResults$resultsPixel$upper))
   if(i==1) {
     meanRangeSPDE = zlim
-    sdRangeSPDE = range(spdeResults$resultsCounty$sds)
+    sdRangeSPDE = range(spdeResults$resultsPixel$sds)
   } else {
     meanRangeSPDE = range(c(meanRangeSPDE, zlim))
     sdRangeSPDE = range(c(sdRangeSPDE, spdeResults$resultsPixel$sds))
@@ -115,6 +127,12 @@ sdTicksSPDE = c(0.05, sdTicksSPDE[-1])
 meanTickLabelsSPDE = as.character(meanTicksSPDE)
 sdTickLabelsSPDE = as.character(sdTicksSPDE)
 
+meanTicksBYM2 = pretty(meanRangeBYM2, n=5)
+meanTicksBYM2 = meanTicksBYM2[-1]
+sdTicksBYM2 = pretty(sdRangeBYM2, n=5)
+meanTickLabelsBYM2 = as.character(meanTicksBYM2)
+sdTickLabelsBYM2 = as.character(sdTicksBYM2)
+
 # add in a few extra tick marks
 meanTicks = c(.01, meanTicks)
 meanTickLabels = c("0.01", meanTickLabels)
@@ -126,7 +144,8 @@ meanTicksSPDE = c(0.005, 0.01, 0.05, meanTicksSPDE)
 meanTickLabelsSPDE = as.character(meanTicksSPDE)
 
 makeAllPlots(ed, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2, 
-             meanRangeSPDE, meanRangeSPDE2, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 
+             meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 
              sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
              meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
+             meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
              varName="SCR", plotNameRoot="Education", resultNameRoot="Ed")

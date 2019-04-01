@@ -426,9 +426,9 @@ crpsNormal <- function(truth, my.est, my.var=NULL, logit=TRUE, nsim=10, n=25, bV
           firstGreater = match(TRUE, sorted >= thisTruth)
           vals = (1:length(sorted))/length(sorted)
           if(is.na(firstGreater))
-            return((vals)^2 * deltas)
+            return(sum((vals)^2 * deltas))
           else if(firstGreater == 1)
-            return(deltas[1] + (1-vals[1:(length(sorted)-1)])^2 * deltas[2:length(deltas)])
+            return(deltas[1] + sum((1-vals[1:(length(sorted)-1)])^2 * deltas[2:length(deltas)]))
           else {
             left = sum(vals[1:(firstGreater-1)]^2 * deltas[1:(firstGreater-1)])
             mid = sum((1 - vals[firstGreater-1])^2 * deltas[firstGreater])

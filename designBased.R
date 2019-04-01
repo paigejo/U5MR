@@ -503,7 +503,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
 }
 
 # same as runBYM2, except fits a single data set (the ed global data frame)
-runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveResults=TRUE) {
+runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveResults=TRUE, fileNameRoot="Ed") {
   includeUrban = includeUrbanRural
   
   # Get true ratios of urban/rural
@@ -751,7 +751,7 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   # save(file = paste0('kenyaSpatialDesignResultNewTausq0UrbRur', 
   #                      includeUrbanRural, '.RData'), designRes = designRes)
   if(saveResults) {
-    save(file = paste0('bym2DatUrbRur',includeUrbanRural, 'Cluster', includeCluster, '.RData'), 
+    save(file = paste0('bym2', fileNameRoot, 'UrbRur',includeUrbanRural, 'Cluster', includeCluster, '.RData'), 
          designRes = designRes)
   }
   
