@@ -1387,7 +1387,7 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
     nuggetSDSummary = c(est=nuggetSDMoments[1], sd=sqrt(nuggetSDMoments[2] - nuggetSDMoments[1]^2), var=nuggetSDMoments[2] - nuggetSDMoments[1]^2, nuggetSDQuants, width=nuggetSDQuants[3] - nuggetSDQuants[1])
   }
   
-  list(resultsPixel=resultsPixel, resultsCounty=resultsCounty, resultsRegion=resultsRegion, 
+  list(resultsCluster=resultsCluster, resultsPixel=resultsPixel, resultsCounty=resultsCounty, resultsRegion=resultsRegion, 
        interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
        rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
        nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary, 

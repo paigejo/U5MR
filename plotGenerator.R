@@ -1204,6 +1204,8 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
   dev.off()
   
   ## Plot 9: make pair plots of the models
+  print("printing pair plots...")
+  
   pdf(file=paste0("figures/", resultNameRoot, "/pairPlot", resultNameRoot, ".pdf"), width=6, height=6)
   # first load full BYM2 and SPDE models
   includeUrban = TRUE
@@ -1233,17 +1235,41 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
   notBothText = ifelse(both, "", " ")
   typeTextSPDE = paste0(notBothText, urbanText, clusterText)
   
+  valMat = cbind(naiveResults$est, directEstResults$est, 
+                 mercerResults$est.mercer, 
+                 expit(designRes$predictions$mean), spdeResults$resultsCounty$pred)
+  zlim = range(valMat)
+  zlim2 = range(valMat[3:5])
+  
+  # valMat = rbind(1:5, valMat)
   my_line <- function(x,y,...){
+    if(diff(range(x)) >= .04)
+      xlim = zlim
+    else
+      xlim = zlim2
+    if(diff(range(y)) >= .04)
+      ylim = zlim
+    else
+      ylim = zlim2
+    # if(diff(range(c(x, y))) > 0.04)
+    #   par(usr = c(zlim, zlim))
+    # else
+    #   par(usr = c(zlim2, zlim2))
+    # par(usr = c(xlim, ylim))
     points(x,y,..., col="blue")
     abline(a = 0,b = 1,...)
   }
   
-  pairs(cbind(naiveResults$est, directEstResults$est, 
-              mercerResults$est.mercer, 
-              expit(designRes$predictions$mean), spdeResults$resultsCounty$pred), 
+  # pairs(valMat, 
+  #       c("Naive", "Direct", "Mercer et al.", "Full BYM2", "Full SPDE"), 
+  #       pch=19, cex=.3, lower.panel=my_line, upper.panel = my_line, 
+  #       main=paste0("County ", varName, " estimate comparisons"))
+  lims = c(list(zlim), list(zlim), list(zlim2), list(zlim2), list(zlim2))
+  myPairs(valMat, 
         c("Naive", "Direct", "Mercer et al.", "Full BYM2", "Full SPDE"), 
         pch=19, cex=.3, lower.panel=my_line, upper.panel = my_line, 
-        main=paste0("County ", varName, " estimate comparisons"))
+        main=paste0("County ", varName, " estimate comparisons"), 
+        lims=lims)
   dev.off()
   
   ## Plot 10: make pair plots of the BYM2 models
@@ -1299,9 +1325,11 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
     abline(a = 0,b = 1,...)
   }
   
+  zlim = range(valMat)
   pairs(valMat, labels, 
         pch=19, cex=.3, lower.panel=my_line, upper.panel = my_line, 
-        main=paste0("BYM2 ", varName, " estimate comparisons"))
+        main=paste0("BYM2 ", varName, " estimate comparisons"), 
+        ylim=zlim, xlim=zlim)
   dev.off()
   
   ## Plot 11: make pair plots of the SPDE models region estimates
@@ -1342,9 +1370,11 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
     abline(a = 0,b = 1,...)
   }
   
+  zlim = range(valMat)
   pairs(valMat, labels, 
         pch=19, cex=.8, lower.panel=my_line, upper.panel = my_line, 
-        main=paste0("SPDE region ", varName, " estimate comparisons"))
+        main=paste0("SPDE region ", varName, " estimate comparisons"), 
+        ylim=zlim, xlim=zlim)
   dev.off()
   
   ## Plot 12: make pair plots of the SPDE models county estimates
@@ -1385,13 +1415,15 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
     abline(a = 0,b = 1,...)
   }
   
+  zlim = range(valMat)
   pairs(valMat, labels, 
         pch=19, cex=.3, lower.panel=my_line, upper.panel = my_line, 
-        main=paste0("SPDE county ", varName, " estimate comparisons"))
+        main=paste0("SPDE county ", varName, " estimate comparisons"), 
+        ylim=zlim, xlim=zlim)
   dev.off()
   
   ## Plot 13: make pair plots of the SPDE models pixel estimates
-  pdf(file=paste0("figures/", resultNameRoot, "/pairPlotSPDE", resultNameRoot, "Pixel.pdf"), width=6, height=6)
+  png(file=paste0("figures/", resultNameRoot, "/pairPlotSPDE", resultNameRoot, "Pixel.pdf"), width=1000, height=1000)
   argList = list(list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = FALSE), 
                  list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
@@ -1430,9 +1462,167 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
     abline(a = 0,b = 1,...)
   }
   
+  zlim = range(valMat)
   pairs(valMat, labels, 
         pch=".", lower.panel=my_line, upper.panel = my_line, 
-        main=paste0("SPDE pixel ", varName, " estimate comparisons"))
+        main=paste0("SPDE pixel ", varName, " estimate comparisons"), 
+        ylim=zlim, xlim=zlim)
+  dev.off()
+  
+  ## Plot 14: make pair plots of the SPDE models cluster estimates
+  pdf(file=paste0("figures/", resultNameRoot, "/pairPlotSPDE", resultNameRoot, "Cluster.pdf"), width=6, height=6)
+  argList = list(list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = FALSE), 
+                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
+                 list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
+                 list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE))
+  
+  # collect the estimates and model labels
+  valMat = c()
+  labels = c()
+  for(i in 1:length(argList)) {
+    args = argList[[i]]
+    includeUrban = args$urbanEffect
+    includeCluster = args$includeClustEffect
+    clusterText = ifelse(includeCluster, "", "NoClust")
+    
+    nameRoot = paste0("SPDE", resultNameRootLower, "_includeClustEffect", includeCluster, 
+                      "_urbanEffect", includeUrban)
+    out = load(paste0("results", nameRoot, '.RData'))
+    
+    urbanText = ifelse(includeUrban, "", "noUrb")
+    clusterText = ifelse(includeCluster, "", "NoClust")
+    both = includeUrban && includeUrban
+    notBothText = ifelse(both, "", " ")
+    typeText = paste0(notBothText, urbanText, clusterText)
+    
+    vals = spdeResults$resultsCluster$pred
+    
+    valMat = cbind(valMat, vals)
+    labels = c(labels, paste0("SPDE", typeText))
+  }
+  
+  # now construct the pair plot
+  urban = dat$urban
+  my_line <- function(x,y,...){
+    points(x[!urban],y[!urban],..., col="green")
+    points(x[urban],y[urban],..., col="blue")
+    abline(a = 0,b = 1,...)
+  }
+  
+  zlim = range(valMat)
+  pairs(valMat, labels, 
+        pch=".", lower.panel=my_line, upper.panel = my_line, 
+        main=paste0("SPDE cluster ", varName, " estimate comparisons"), 
+        ylim=zlim, xlim=zlim)
+  dev.off()
+  
+  ## Plot 15: make pair plots of the SPDE models with and without urban effects at different aggregation levels
+  png(file=paste0("figures/", resultNameRoot, "/pairPlotSPDEUrb", resultNameRoot, "All.pdf"), width=1000, height=1000)
+  argList = list(list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
+                 list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE))
+  
+  # collect the estimates and model labels
+  valList = list()
+  labels = c()
+  for(i in 1:length(argList)) {
+    args = argList[[i]]
+    includeUrban = args$urbanEffect
+    includeCluster = args$includeClustEffect
+    clusterText = ifelse(includeCluster, "", "NoClust")
+    
+    nameRoot = paste0("SPDE", resultNameRootLower, "_includeClustEffect", includeCluster, 
+                      "_urbanEffect", includeUrban)
+    out = load(paste0("results", nameRoot, '.RData'))
+    
+    urbanText = ifelse(includeUrban, "", "noUrb")
+    clusterText = ifelse(includeCluster, "", "NoClust")
+    both = includeUrban && includeUrban
+    notBothText = ifelse(both, "", " ")
+    typeText = paste0(notBothText, urbanText, clusterText)
+    
+    vals = spdeResults$resultsCluster$pred
+    
+    valList = c(valList, list(spdeResults$resultsCluster$pred))
+    valList = c(valList, list(spdeResults$resultsPixel$pred))
+    valList = c(valList, list(spdeResults$resultsCounty$pred))
+    valList = c(valList, list(spdeResults$resultsRegion$pred))
+    labels = c(labels, paste0("SPDE", typeText))
+  }
+  
+  # now construct the pair plot
+  urban = dat$urban
+  my_line <- function(x,y,...){
+    points(x[!urban],y[!urban],..., col="green")
+    points(x[urban],y[urban],..., col="blue")
+    abline(a = 0,b = 1,...)
+  }
+  
+  zlim = range(sapply(valList, range))
+  par(mfrow=c(2,2))
+  clusterUrban = dat$urban
+  pixelUrban = popGrid$urban
+  plot(valList[[1]][clusterUrban], valList[[5]][clusterUrban], main=paste0("SPDE cluster ", varName, " estimates"), 
+       ylim=zlim, xlim=zlim, xlab=labels[1], ylab=labels[2], col="blue", pch=".")
+  points(valList[[1]][!clusterUrban], valList[[5]][!clusterUrban], col="green", pch=".")
+  abline(0, 1)
+  plot(valList[[2]][pixelUrban], valList[[6]][pixelUrban], main=paste0("SPDE pixel ", varName, " estimates"), 
+       ylim=zlim, xlim=zlim, xlab=labels[1], ylab=labels[2], col="blue", pch=".")
+  points(valList[[1]][!pixelUrban], valList[[5]][!pixelUrban], col="green", pch=".")
+  abline(0, 1)
+  plot(valList[[3]], valList[[7]], main=paste0("SPDE county ", varName, " estimates"), 
+       ylim=zlim, xlim=zlim, xlab=labels[1], ylab=labels[2], pch=19, cex=.5, col="blue")
+  abline(0, 1)
+  plot(valList[[4]], valList[[8]], main=paste0("SPDE region ", varName, " estimates"), 
+       ylim=zlim, xlim=zlim, xlab=labels[1], ylab=labels[2], pch=19, cex=.8, col="blue")
+  abline(0, 1)
+  dev.off()
+  
+  ## Plot 16: make pair plots of the SPDE models county estimates with and without urban effects versus direct estimates
+  pdf(file=paste0("figures/", resultNameRoot, "/pairPlotSPDEUrbDirect", resultNameRoot, "County.pdf"), width=6, height=6)
+  argList = list(list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
+                 list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE))
+  
+  # collect the estimates and model labels
+  valMat = c(directEstResults$est)
+  labels = c("Direct")
+  for(i in 1:length(argList)) {
+    args = argList[[i]]
+    includeUrban = args$urbanEffect
+    includeCluster = args$includeClustEffect
+    clusterText = ifelse(includeCluster, "", "NoClust")
+    
+    nameRoot = paste0("SPDE", resultNameRootLower, "_includeClustEffect", includeCluster, 
+                      "_urbanEffect", includeUrban)
+    out = load(paste0("results", nameRoot, '.RData'))
+    
+    urbanText = ifelse(includeUrban, "", "noUrb")
+    clusterText = ifelse(includeCluster, "", "NoClust")
+    both = includeUrban && includeUrban
+    notBothText = ifelse(both, "", " ")
+    typeText = paste0(notBothText, urbanText, clusterText)
+    
+    vals = spdeResults$resultsCounty$pred
+    
+    valMat = cbind(valMat, vals)
+    labels = c(labels, paste0("SPDE", typeText))
+  }
+  
+  # now construct the pair plot
+  my_line <- function(x,y,...){
+    points(x,y,..., col="blue")
+    abline(a = 0,b = 1,...)
+  }
+  
+  zlim = range(valMat)
+  lims = c(list(range(valMat[,1])), list(range(valMat[,2])), list(range(valMat[,3])))
+  # pairs(valMat, labels, 
+  #       pch=19, cex=.3, lower.panel=my_line, upper.panel = my_line, 
+  #       main=paste0("SPDE and direct county ", varName, " estimate comparisons"), 
+  #       ylim=zlim, xlim=zlim)
+  myPairs(valMat, labels, 
+        pch=19, cex=.3, lower.panel=my_line, upper.panel = my_line, 
+        main=paste0("SPDE and direct county ", varName, " estimate comparisons"), 
+        lims=lims)
   dev.off()
   
   ##### now print the parameter estimates:
@@ -1527,4 +1717,164 @@ makeRedGreenDivergingColors = function(n) {
   # library("colorspace")
   # pal <-choose_palette()
   diverging_hcl(n, h1=265, h2=101, c1=100, l1=50, l2=92, p1=0.6, p2=1.5)
+}
+
+myPairs = function(x, labels, panel = points, ..., horInd = 1:nc, verInd = 1:nc, 
+          lower.panel = panel, upper.panel = panel, diag.panel = NULL, 
+          text.panel = textPanel, label.pos = 0.5 + has.diag/3, line.main = 3, 
+          cex.labels = NULL, font.labels = 1, row1attop = TRUE, gap = 1, 
+          log = "", lims=NULL) 
+{
+  if (doText <- missing(text.panel) || is.function(text.panel)) 
+    textPanel <- function(x = 0.5, y = 0.5, txt, cex, font) text(x, 
+                                                                 y, txt, cex = cex, font = font)
+  localAxis <- function(side, x, y, i, j, xpd, bg, col = NULL, main, 
+                        oma, ...) {
+    if(!is.null(lims)) {
+      x = lims[[i]]
+      y = lims[[j]]
+    }
+    xpd <- NA
+    if (side%%2L == 1L && xl[j]) 
+      xpd <- FALSE
+    if (side%%2L == 0L && yl[i]) 
+      xpd <- FALSE
+    if (side%%2L == 1L) 
+      Axis(x, side = side, xpd = xpd, ...)
+    else Axis(y, side = side, xpd = xpd, ...)
+  }
+  localPlot <- function(..., main, oma, font.main, cex.main) plot(...)
+  localLowerPanel <- function(..., main, oma, font.main, cex.main) lower.panel(...)
+  localUpperPanel <- function(..., main, oma, font.main, cex.main) upper.panel(...)
+  localDiagPanel <- function(..., main, oma, font.main, cex.main) diag.panel(...)
+  dots <- list(...)
+  nmdots <- names(dots)
+  if (!is.matrix(x)) {
+    x <- as.data.frame(x)
+    for (i in seq_along(names(x))) {
+      if (is.factor(x[[i]]) || is.logical(x[[i]])) 
+        x[[i]] <- as.numeric(x[[i]])
+      if (!is.numeric(unclass(x[[i]]))) 
+        stop("non-numeric argument to 'pairs'")
+    }
+  }
+  else if (!is.numeric(x)) 
+    stop("non-numeric argument to 'pairs'")
+  panel <- match.fun(panel)
+  if ((has.lower <- !is.null(lower.panel)) && !missing(lower.panel)) 
+    lower.panel <- match.fun(lower.panel)
+  if ((has.upper <- !is.null(upper.panel)) && !missing(upper.panel)) 
+    upper.panel <- match.fun(upper.panel)
+  if ((has.diag <- !is.null(diag.panel)) && !missing(diag.panel)) 
+    diag.panel <- match.fun(diag.panel)
+  if (row1attop) {
+    tmp <- lower.panel
+    lower.panel <- upper.panel
+    upper.panel <- tmp
+    tmp <- has.lower
+    has.lower <- has.upper
+    has.upper <- tmp
+  }
+  nc <- ncol(x)
+  if (nc < 2L) 
+    stop("only one column in the argument to 'pairs'")
+  if (!all(horInd >= 1L && horInd <= nc)) 
+    stop("invalid argument 'horInd'")
+  if (!all(verInd >= 1L && verInd <= nc)) 
+    stop("invalid argument 'verInd'")
+  if (doText) {
+    if (missing(labels)) {
+      labels <- colnames(x)
+      if (is.null(labels)) 
+        labels <- paste("var", 1L:nc)
+    }
+    else if (is.null(labels)) 
+      doText <- FALSE
+  }
+  oma <- if ("oma" %in% nmdots) 
+    dots$oma
+  main <- if ("main" %in% nmdots) 
+    dots$main
+  if (is.null(oma)) 
+    oma <- c(4, 4, if (!is.null(main)) 6 else 4, 4)
+  opar <- par(mfcol = c(length(horInd), length(verInd)), mar = rep.int(gap/2, 
+                                                                       4), oma = oma)
+  on.exit(par(opar))
+  dev.hold()
+  on.exit(dev.flush(), add = TRUE)
+  xl <- yl <- logical(nc)
+  if (is.numeric(log)) 
+    xl[log] <- yl[log] <- TRUE
+  else {
+    xl[] <- grepl("x", log)
+    yl[] <- grepl("y", log)
+  }
+  ni <- length(iSet <- if (row1attop) horInd else rev(horInd))
+  nj <- length(jSet <- verInd)
+  for (j in jSet) for (i in iSet) {
+    l <- paste0(if (xl[j]) 
+      "x"
+      else "", if (yl[i]) 
+        "y"
+      else "")
+    if(is.null(lims)) {
+      localPlot(x[, j], x[, i], xlab = "", ylab = "", axes = FALSE, 
+                type = "n", ..., log = l)
+    } else {
+      localPlot(x[, j], x[, i], xlab = "", ylab = "", axes = FALSE, 
+                type = "n", xlim=lims[[j]], ylim=lims[[i]], ..., log = l)
+    }
+    if (i == j || (i < j && has.lower) || (i > j && has.upper)) {
+      box()
+      j.odd <- (match(j, jSet) + !row1attop)%%2L
+      i.odd <- (match(i, iSet) + !row1attop)%%2L
+      if (i == iSet[1L] && (!j.odd || !has.upper || !has.lower)) 
+        localAxis(3L, x[, j], x[, i], j, i, ...)
+      if (i == iSet[ni] && (j.odd || !has.upper || !has.lower)) 
+        localAxis(1L, x[, j], x[, i], j, i, ...)
+      if (j == jSet[1L] && (!i.odd || !has.upper || !has.lower)) 
+        localAxis(2L, x[, j], x[, i], j, i, ...)
+      if (j == jSet[nj] && (i.odd || !has.upper || !has.lower)) 
+        localAxis(4L, x[, j], x[, i], j, i, ...)
+      mfg <- par("mfg")
+      if (i == j) {
+        if (has.diag) 
+          localDiagPanel(as.vector(x[, i]), ...)
+        if (doText) {
+          par(usr = c(0, 1, 0, 1))
+          if (is.null(cex.labels)) {
+            l.wid <- strwidth(labels, "user")
+            cex.labels <- max(0.8, min(2, 0.9/max(l.wid)))
+          }
+          xlp <- if (xl[i]) 
+            10^0.5
+          else 0.5
+          ylp <- if (yl[j]) 
+            10^label.pos
+          else label.pos
+          text.panel(xlp, ylp, labels[i], cex = cex.labels, 
+                     font = font.labels)
+        }
+      }
+      else if (i < j) 
+        localLowerPanel(as.vector(x[, j]), as.vector(x[, 
+                                                       i]), ...)
+      else localUpperPanel(as.vector(x[, j]), as.vector(x[, 
+                                                          i]), ...)
+      if (any(par("mfg") != mfg)) 
+        stop("the 'panel' function made a new plot")
+    }
+    else par(new = FALSE)
+  }
+  if (!is.null(main)) {
+    font.main <- if ("font.main" %in% nmdots) 
+      dots$font.main
+    else par("font.main")
+    cex.main <- if ("cex.main" %in% nmdots) 
+      dots$cex.main
+    else par("cex.main")
+    mtext(main, 3, line.main, outer = TRUE, at = 0.5, cex = cex.main, 
+          font = font.main)
+  }
+  invisible(NULL)
 }

@@ -8,7 +8,7 @@ setwd("~/git/U5MR/")
 source("setup.R")
 
 # assign("cl", detectCores() - 1, envir=.GlobalEnv)
-assign("cl", makeCluster(2, outfile="log.txt"), envir=.GlobalEnv)
+assign("cl", makeCluster(7, outfile="log.txt"), envir=.GlobalEnv)
 clusterEvalQ(cl, {setwd("~/git/U5MR/"); source("setup.R")})
 registerDoParallel(cl)
 options(error=recover)

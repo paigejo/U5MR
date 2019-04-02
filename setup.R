@@ -12,6 +12,8 @@ library(data.table)
 library(sampling)
 library(fastmatch)
 
+setwd("~/git/U5MR/")
+
 source('~/git/U5MR/utilityFuns.R')
 source('~/git/U5MR/matchPoints.R')
 source('~/git/U5MR/simStudy.R')
