@@ -7,7 +7,7 @@
 # ...: arguments to polygon function
 plotMapDat = function(mapDat = adm0, plotVar=NULL, varCounties=sort(as.character(unique(mort$admin1))), zlim=NULL, project=FALSE, cols=tim.colors(), 
                       legend.mar=7, new=FALSE, plotArgs=NULL, main=NULL, xlim=NULL, xlab=NULL, scaleFun = function(x) {x}, scaleFunInverse = function(x) {x}, 
-                      ylim=NULL, ylab=NULL, n.ticks=5, min.n=5, ticks=NULL, tickLabels=NULL, ...) {
+                      ylim=NULL, ylab=NULL, n.ticks=5, min.n=5, ticks=NULL, tickLabels=NULL, asp=1, ...) {
   # do setup for ploting data by county if necessary
   if(!is.null(plotVar)) {
     if(is.null(zlim)) {
@@ -56,7 +56,7 @@ plotMapDat = function(mapDat = adm0, plotVar=NULL, varCounties=sort(as.character
       }
       if(is.null(main))
         main = ""
-      plotArgs = list(main=main, xlab=xlab, ylab=ylab, xlim=xlim, ylim=ylim)
+      plotArgs = list(main=main, xlab=xlab, ylab=ylab, xlim=xlim, ylim=ylim, asp=asp)
     }
     # par( oma=c( 0,0,0,6)) # leave room for the legend
     do.call("plot", c(list(1, 2, type="n"), plotArgs))
@@ -210,6 +210,45 @@ getKenyaGrid = function(res=.25, nc=NULL, nx=NULL, ny=NULL) {
 }
 
 ##### put Kenya population density on a grid of the chosen resolution
+# generate just the population density surface
+makeKenyaPop = function(kmRes=5) {
+  # load population density data
+  require(raster)
+  
+  # pop = raster("Kenya2014Pop/worldpop_total_1y_2014_00_00.tif", values= TRUE)
+  load("Kenya2014Pop/pop.RData")
+  
+  # get a rectangular grid
+  eastGrid = seq(eastLim[1], eastLim[2], by=kmRes)
+  northGrid = seq(northLim[1], northLim[2], by=kmRes)
+  utmGrid = make.surface.grid(list(east=eastGrid, north=northGrid))
+  
+  # project coordinates into lat/lon
+  lonLatGrid = projKenya(utmGrid, inverse=TRUE)
+  
+  # subset grid so it's in Kenya
+  polys = adm0@polygons
+  kenyaPoly = polys[[1]]@Polygons[[77]]@coords
+  inKenya = in.poly(lonLatGrid, kenyaPoly)
+  utmGrid = utmGrid[inKenya,]
+  lonLatGrid = lonLatGrid[inKenya,]
+  
+  # get population density at those coordinates
+  interpPopVals = extract(pop, SpatialPoints(lonLatGrid),method="bilinear")
+  
+  # compute counties associated with locations
+  counties = getRegion(lonLatGrid, adm1)$regionNames
+  
+  # determine which points are urban
+  newPop = data.frame(list(lon=lonLatGrid[,1], lat=lonLatGrid[,2], popOrig=interpPopVals, admin1=counties))
+  
+  newPop$east = utmGrid[,1]
+  newPop$north = utmGrid[,2]
+  
+  newPop
+}
+
+# generate the population density surface along with urbanicity estimates
 makeInterpPopGrid = function(kmRes=5) {
   # load population density data
   require(raster)

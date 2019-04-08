@@ -67,10 +67,10 @@ generateExampleResults = function(dat=ed, resultNameRoot="Ed") {
   
   ##### run BYM models
   source("designBased.R")
-  runBYM2Dat(dat, includeUrbanRural = FALSE, includeCluster = FALSE)
-  runBYM2Dat(dat, includeUrbanRural = FALSE, includeCluster = TRUE)
-  runBYM2Dat(dat, includeUrbanRural = TRUE, includeCluster = FALSE)
-  runBYM2Dat(dat, includeUrbanRural = TRUE, includeCluster = TRUE)
+  runBYM2Dat(dat, includeUrbanRural = FALSE, includeCluster = FALSE, fileNameRoot=resultNameRoot)
+  runBYM2Dat(dat, includeUrbanRural = FALSE, includeCluster = TRUE, fileNameRoot=resultNameRoot)
+  runBYM2Dat(dat, includeUrbanRural = TRUE, includeCluster = FALSE, fileNameRoot=resultNameRoot)
+  runBYM2Dat(dat, includeUrbanRural = TRUE, includeCluster = TRUE, fileNameRoot=resultNameRoot)
   
   ##### run SPDE 
   argList = list(list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = FALSE), 

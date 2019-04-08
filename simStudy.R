@@ -26,7 +26,7 @@ simEAs = function(kenyaPop, numEAs=96251, totalKenyaPop=43.0 * 10^6, seed=123) {
 
 # for kmres=2.5: nx=350, ny=430
 makeUrbanMap = function(popGrid=NULL, kmres=2.5, savePlot=FALSE, fileName="figures/urbanMap.png", nx=850, ny=1050, 
-                        width=1000, height=1200) {
+                        width=500, height=500, lonLim=kenyaLonRange, latLim=kenyaLatRange) {
   # get prediction locations from population grid
   if(is.null(popGrid)) {
     if(kmres == 5)
@@ -41,10 +41,13 @@ makeUrbanMap = function(popGrid=NULL, kmres=2.5, savePlot=FALSE, fileName="figur
   urban = popGrid$popOrig > popThreshes
   
   if(savePlot) {
-    png(file=fileName, width=500, height=500)
+    png(file=fileName, width=width, height=height)
+    par(oma=c( 0,0,0,0), mar=c(5.1, 4.1, 4.1, 4.1))
   }
-  quilt.plot(popGrid$lon, popGrid$lat, urban, col=c("green", "blue"), nx=850, ny=1050, add.legend = FALSE, 
-             xlab="Longitude", ylab="Latitude", main=TeX("Urbanicity"), xlim=kenyaLonRange, ylim=kenyaLatRange)
+  plot(popGrid$lon, popGrid$lat, xlab="Longitude", ylab="Latitude", main=TeX("Urbanicity"), xlim=lonLim, ylim=latLim, asp=1, type="n")
+  # quilt.plot(popGrid$lon, popGrid$lat, urban, col=c("green", "blue"), nx=850, ny=1050, add.legend = FALSE, 
+  #            xlab="Longitude", ylab="Latitude", main=TeX("Urbanicity"), xlim=lonLim, ylim=latLim, asp=1)
+  quilt.plot(popGrid$lon, popGrid$lat, urban, col=c("green", "blue"), nx=850, ny=1050, add.legend = FALSE, add=TRUE)
   legend("bottomleft", c("urban", "rural"), col=c("blue", "green"), pch=19)
   # world(add=TRUE)
   plotMapDat(adm1)
@@ -343,7 +346,10 @@ setThresholds = function() {
 }
 
 # set thresholds within each county based on percent population urban
-setThresholds2 = function() {
+setThresholds2 = function(popRaster=NULL) {
+  if(is.null(popRaster)) {
+    popRaster
+  }
   
   getCountyThresh = function(countyName) {
     # if Nairobi or Mombasa, always urban

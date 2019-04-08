@@ -42,8 +42,9 @@ out = load("kenyaDataEd.RData")
 # tmp = projKenya(kenyaPop$lon, kenyaPop$lat)
 # kenyaPop$east = tmp[,1]
 # kenyaPop$north = tmp[,2]
+# kenyaPop=makeKenyaPop(kmres=5)
 # save(kenyaPop, file="kenyaPopProj.RData")
-# load("kenyaPopProj.RData")
+load("kenyaPopProj.RData")
 
 # map data
 # adm1 = readRDS("mapData/KEN_adm1.rds")

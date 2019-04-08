@@ -761,7 +761,7 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
                      parameters = resDatPar)
     
     if(saveResults) {
-      save(file = paste0('bym2DatUrbRur',includeUrbanRural, 'Cluster', includeCluster, 'debiased.RData'), 
+      save(file = paste0('bym2', fileNameRoot, 'UrbRur',includeUrbanRural, 'Cluster', includeCluster, 'debiased.RData'), 
            designRes = designRes)
     }
   }

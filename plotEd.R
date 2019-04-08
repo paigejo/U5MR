@@ -148,4 +148,11 @@ makeAllPlots(ed, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, m
              sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
              meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
              meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
-             varName="SCR", plotNameRoot="Education", resultNameRoot="Ed")
+             varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", plotUrbanMap=FALSE)
+
+makePairPlots(ed, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2, 
+             meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 
+             sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
+             meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
+             meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
+             varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", plotUrbanMap=FALSE, makeScreenSplitPlot=TRUE)
