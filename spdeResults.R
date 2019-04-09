@@ -5,7 +5,7 @@
 # cluster random effect in urban fixed effect in the model
 # genRegionLevel, keepPixelPreds, genEALevel: control whether to include 
 # regional, pixel, and enumeration area level predictions
-resultsSPDE = function(nPostSamples=100, test=TRUE, nTest=2, verbose=TRUE, 
+resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE, 
                        includeClustEffect=TRUE, int.strategy="eb", 
                        genRegionLevel=TRUE, keepPixelPreds=TRUE, kmres=5, 
                        genEALevel=TRUE, urbanEffect=TRUE, tausq=0, 
