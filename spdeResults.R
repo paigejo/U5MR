@@ -872,7 +872,11 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
   combineResults = function(...) {
     print("Combining results...")
     
-    results = list(...)[[1]]
+    # not sure why the [[1]] is necessary in the non-parallel case
+    if(!doParallel)
+      results = list(...)[[1]]
+    else
+      results = list(...)
     
     # scoring rules
     scoresEaExact = do.call("rbind", lapply(results, function(x) {x$scoresEaExact}))
