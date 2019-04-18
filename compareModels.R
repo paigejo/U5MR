@@ -134,7 +134,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       includeCluster = FALSE
       aggregateByPopulation = FALSE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
-                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
       # out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterTRUE", testText, ".RData"))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
@@ -147,7 +147,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       includeCluster = TRUE
       aggregateByPopulation = FALSE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
-                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
@@ -171,7 +171,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       includeCluster = FALSE
       aggregateByPopulation = FALSE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
-                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
@@ -183,7 +183,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       includeCluster = TRUE
       aggregateByPopulation = FALSE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
-                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
@@ -191,7 +191,11 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       designResMod = designRes
     }
     if("BYM2 IVa" %in% models) {
-      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterTRUE", testText, ".RData"))
+      includeUrbanRural = TRUE
+      includeCluster = TRUE
+      aggregateByPopulation = FALSE
+      load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
@@ -203,7 +207,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       includeCluster = FALSE
       aggregateByPopulation = TRUE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
-                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
       # out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterTRUE", testText, ".RData"))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
@@ -216,7 +220,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       includeCluster = TRUE
       aggregateByPopulation = TRUE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
-                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
@@ -240,7 +244,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       includeCluster = FALSE
       aggregateByPopulation = TRUE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
-                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
@@ -252,7 +256,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       includeCluster = TRUE
       aggregateByPopulation = TRUE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
-                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
@@ -260,14 +264,19 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       designResModPopAgg = designRes
     }
     if("BYM2 IVb" %in% models) {
-      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterTRUE", testText, ".RData"))
+      includeUrbanRural = TRUE
+      includeCluster = TRUE
+      aggregateByPopulation = TRUE
+      load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
         designRes$SRSdat = NULL
       designResPopAgg = designRes
     }
-    designRes = designResTemp # for BYM2 IVa
+    if("BYM2 IVa" %in% models)
+      designRes = designResTemp # for BYM2 IVa
     if("SPDE I" %in% models) {
       urbanEffect = FALSE
       includeClustEffect = FALSE

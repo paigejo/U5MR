@@ -1,2 +1,2 @@
 #!/bin/bash
-sbatch --array=1-72 runCompareModelAll.sbatch
+sbatch --array=1-16 runCompareModelsAll.sbatch
