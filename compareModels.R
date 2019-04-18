@@ -333,9 +333,12 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     # relabel direct, naive, and mercer county names
     counties=sort(unique(poppc$admin1))
     for(i in 1:maxDataSets) {
-      mercer[[i]]$admin1 = counties
-      directEst[[i]]$admin1 = counties
-      naive[[i]]$admin1 = counties
+      if("Mercer et al." %in% models)
+        mercer[[i]]$admin1 = counties
+      if("Direct" %in% models)
+        directEst[[i]]$admin1 = counties
+      if("Naive" %in% models)
+        naive[[i]]$admin1 = counties
     }
     
     # commented out the below code, since it's not clear within strata predictions are necessary

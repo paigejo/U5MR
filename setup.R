@@ -31,6 +31,9 @@ if(inf$platform != "x86_64-apple-darwin15.6.0 (64-bit)") {
   INLA:::inla.dynload.workaround()
   # avoid setting too many threads and thereby using too much memory
   inla.setOption(num.threads=1)
+  options(error=traceback)
+} else {
+  options(error=recover)
 }
 
 setwd("~/git/U5MR/")
@@ -114,5 +117,3 @@ if(!exists("doParallel") || (exists("doParallel") && doParallel == FALSE)) {
   assign("cores", NULL, envir=.GlobalEnv)
   assign("cl", NULL, envir=.GlobalEnv)
 }
-
-options(error=recover)
