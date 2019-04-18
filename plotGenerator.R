@@ -10,7 +10,8 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
                         varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", meanCols=makeRedBlueDivergingColors(64), 
                         sdCols=makeBlueYellowSequentialColors(64), popCols=makeBlueSequentialColors(64), 
                         ncols=29, relativeCols=makeRedGreenDivergingColors(ncols), urbCols=makeGreenBlueSequentialColors(ncols), 
-                        plotUrbanMap=FALSE, kenyaLatRange=c(-4.6, 5), kenyaLonRange=c(33.5, 42.0)) {
+                        plotUrbanMap=FALSE, kenyaLatRange=c(-4.6, 5), kenyaLonRange=c(33.5, 42.0), 
+                        makeScreenSplitPlot=FALSE) {
   plotNameRootLower = tolower(plotNameRoot)
   resultNameRootLower = tolower(resultNameRoot)
   
@@ -36,7 +37,8 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
                 meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
                 meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
                 varName, plotNameRoot, resultNameRoot, meanCols, sdCols, popCols, ncols, 
-                relativeCols, urbCols, plotUrbanMap, kenyaLatRange, kenyaLonRange)
+                relativeCols, urbCols, plotUrbanMap, kenyaLatRange, kenyaLonRange, 
+                makeScreenSplitPlot=makeScreenSplitPlot)
   
   ##### now print the parameter estimates:
   print("printing parameter estimates...")
@@ -59,7 +61,7 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     # add on interval width
     designRes$parameters$width = designRes$parameters$Q90 - designRes$parameters$Q10
@@ -76,8 +78,8 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
   
   # SPDE
   argList = list(list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = FALSE), 
-                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
+                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE))
   for(i in 1:length(argList)) {
     args = argList[[i]]
@@ -93,7 +95,7 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     parameters = spdeResults
     parameters$resultsPixel = NULL
@@ -239,7 +241,7 @@ plotDataVisualizations = function(dat=ed, meanRange, meanRange2, meanTicks, mean
              col=popCols, zlim=log(zlim), scaleFun=log, scaleFunInverse=exp, ticks = ticks, xlim=kenyaLonRange, ylim=kenyaLatRange)
   dev.off()
   
-  # plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE logit predictive SDs", typeText), ylim=kenyaLatRange, 
+  # plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " logit predictive SDs"), ylim=kenyaLatRange, 
   #      xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude")
   # quilt.plot(cbind(popGrid$lon, popGrid$lat), log(spdeResults$resultsPixel$sds), 
   #            nx=150, ny=150, add.legend=FALSE, add=TRUE, zlim=range(log(sdRange2)))
@@ -388,56 +390,51 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     args = argList[[i]]
     includeUrban = args$includeUrbanRural
     includeCluster = args$includeCluster
-    clusterText = ifelse(includeCluster, "", "NoClust")
     
     nameRoot = paste0('bym2', resultNameRoot, 'UrbRur',includeUrban, 'Cluster', includeCluster)
     out = load(paste0(nameRoot, '.RData'))
     
-    urbanText = ifelse(includeUrban, "", "noUrb")
-    clusterText = ifelse(includeCluster, "", "NoClust")
-    both = includeUrban && includeCluster
-    notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     zlim = range(c(expit(designRes$predictions$Q10),expit(designRes$predictions$Q90)))
     png(file=paste0("figures/", resultNameRoot, "/", nameRoot, ".png"), width=800, height=1000)
     par(mfrow=c(2,2))
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", varName, " estimates", typeText), 
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", typeText, " ", varName, " estimates"), 
                zlim=meanRange, cols=meanCols, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 logit predictive SDs", typeText), 
+    plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 ", typeText, " logit predictive SDs"), 
                zlim=sdRange, cols=sdCols, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 10th percentile", typeText), 
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 ", typeText, " 10th percentile"), 
                zlim=meanRange, cols=meanCols, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 90th percentile", typeText), 
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 ", typeText, " 90th percentile"), 
                zlim=meanRange, cols=meanCols, xlim=kenyaLonRange, ylim=kenyaLatRange)
     dev.off()
     
     png(file=paste0("figures/", resultNameRoot, "/", nameRoot, "Logit.png"), width=800, height=1000)
     par(mfrow=c(2,2))
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", varName, " estimates", typeText), xlim=kenyaLonRange, ylim=kenyaLatRange, 
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", typeText, " ", varName, " estimates"), xlim=kenyaLonRange, ylim=kenyaLatRange, 
                zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, cols=meanCols)
-    plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 logit predictive SDs", typeText), xlim=kenyaLonRange, ylim=kenyaLatRange, 
+    plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 ", typeText, " logit predictive SDs"), xlim=kenyaLonRange, ylim=kenyaLatRange, 
                zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels, cols=sdCols)
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 10th percentile", typeText), xlim=kenyaLonRange, ylim=kenyaLatRange, 
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 ", typeText, " 10th percentile"), xlim=kenyaLonRange, ylim=kenyaLatRange, 
                zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, cols=meanCols)
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 90th percentile", typeText), xlim=kenyaLonRange, ylim=kenyaLatRange, 
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 ", typeText, " 90th percentile"), xlim=kenyaLonRange, ylim=kenyaLatRange, 
                zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, cols=meanCols)
     dev.off()
     
     png(file=paste0("figures/", resultNameRoot, "/", nameRoot, "2.png"), width=800, height=1000)
     par(mfrow=c(2,2))
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", varName, " estimates", typeText), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 logit predictive SDs", typeText), cols=sdCols, zlim=sdRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 10th percentile", typeText), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 90th percentile", typeText), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", typeText, " ", varName, " estimates"), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 ", typeText, " logit predictive SDs"), cols=sdCols, zlim=sdRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 ", typeText, " 10th percentile"), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 ", typeText, " 90th percentile"), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
     dev.off()
     
     png(file=paste0("figures/", resultNameRoot, "/", nameRoot, "Logit2.png"), width=800, height=1000)
     par(mfrow=c(2,2))
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", varName, " estimates", typeText), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 logit predictive SDs", typeText), cols=sdCols, zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 10th percentile", typeText), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 90th percentile", typeText), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", typeText, " ", varName, " estimates"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 ", typeText, " logit predictive SDs"), cols=sdCols, zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 ", typeText, " 10th percentile"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 ", typeText, " 90th percentile"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
     dev.off()
     
     if(includeCluster) {
@@ -445,45 +442,38 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
       nameRoot = paste0('bym2', resultNameRoot, 'UrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
       out = load(paste0(nameRoot, '.RData'))
       
-      urbanText = ifelse(includeUrban, "", "noUrb")
-      clusterText = ifelse(includeCluster, "", "NoClust")
-      both = includeUrban && includeCluster
-      if(!both)
-        debiasedText = "Debiased"
-      else
-        debiasedText = "debiased"
-      typeText = paste0(" ", urbanText, clusterText, debiasedText)
+      typeText = paste0(typeText, "'")
       
       png(file=paste0("figures/", resultNameRoot, "/", nameRoot, ".png"), width=800, height=1000)
       par(mfrow=c(2,2))
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", varName, " estimates", typeText), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
-      plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 logit predictive SDs", typeText), cols=sdCols, zlim=sdRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 10th percentile", typeText), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 90th percentile", typeText), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", typeText, " ", varName, " estimates"), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 ", typeText, " logit predictive SDs"), cols=sdCols, zlim=sdRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 ", typeText, " 10th percentile"), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 ", typeText, " 90th percentile"), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
       dev.off()
       
       png(file=paste0("figures/", resultNameRoot, "/", nameRoot, "Logit.png"), width=800, height=1000)
       par(mfrow=c(2,2))
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", varName, " estimates", typeText), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
-      plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 logit predictive SDs", typeText), cols=sdCols, zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 10th percentile", typeText), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 90th percentile", typeText), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", typeText, " ", varName, " estimates"), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 ", typeText, " logit predictive SDs"), cols=sdCols, zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 ", typeText, " 10th percentile"), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 ", typeText, " 90th percentile"), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
       dev.off()
       
       png(file=paste0("figures/", resultNameRoot, "/", nameRoot, "2.png"), width=800, height=1000)
       par(mfrow=c(2,2))
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", varName, " estimates", typeText), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-      plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 logit predictive SDs", typeText), cols=sdCols, zlim=sdRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 10th percentile", typeText), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 90th percentile", typeText), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", typeText, " ", varName, " estimates"), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 ", typeText, " logit predictive SDs"), cols=sdCols, zlim=sdRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 ", typeText, " 10th percentile"), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 ", typeText, " 90th percentile"), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
       dev.off()
       
       png(file=paste0("figures/", resultNameRoot, "/", nameRoot, "Logit2.png"), width=800, height=1000)
       par(mfrow=c(2,2))
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", varName, " estimates", typeText), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-      plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 logit predictive SDs", typeText), cols=sdCols, zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 10th percentile", typeText), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 90th percentile", typeText), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", typeText, " ", varName, " estimates"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 ", typeText, " logit predictive SDs"), cols=sdCols, zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 ", typeText, " 10th percentile"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 ", typeText, " 90th percentile"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
       dev.off()
     }
   }
@@ -492,8 +482,8 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
   print("plotting SPDE estimates...")
   
   argList = list(list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = FALSE), 
-                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
+                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE))
   for(i in 1:length(argList)) {
     args = argList[[i]]
@@ -509,61 +499,61 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     zlim = range(c(spdeResults$resultsCounty$lower,spdeResults$resultsCounty$upper))
     
     png(file=paste0("figures/", resultNameRoot, "/preds", nameRoot, ".png"), width=800, height=1000)
     par(mfrow=c(2,2))
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", varName, " estimates", typeText), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE logit predictive SDs", typeText), cols=sdCols, zlim=sdRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE 10th percentile", typeText), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE 90th percentile", typeText), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", typeText, " ", varName, " estimates"), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE ", typeText, " logit predictive SDs"), cols=sdCols, zlim=sdRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE ", typeText, " 10th percentile"), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE ", typeText, " 90th percentile"), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
     dev.off()
     
     png(file=paste0("figures/", resultNameRoot, "/preds", nameRoot, "Logit.png"), width=800, height=1000)
     par(mfrow=c(2,2))
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", varName, " estimates", typeText), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE logit predictive SDs", typeText), cols=sdCols, zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE 10th percentile", typeText), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE 90th percentile", typeText), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", typeText, " ", varName, " estimates"), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE ", typeText, " logit predictive SDs"), cols=sdCols, zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE ", typeText, " 10th percentile"), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE ", typeText, " 90th percentile"), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
     dev.off()
     
     png(file=paste0("figures/", resultNameRoot, "/preds", nameRoot, "2.png"), width=800, height=1000)
     par(mfrow=c(2,2))
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", varName, " estimates", typeText), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE logit predictive SDs", typeText), cols=sdCols, zlim=sdRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE 10th percentile", typeText), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE 90th percentile", typeText), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", typeText, " ", varName, " estimates"), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE ", typeText, " logit predictive SDs"), cols=sdCols, zlim=sdRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE ", typeText, " 10th percentile"), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE ", typeText, " 90th percentile"), cols=meanCols, zlim=meanRange2, xlim=kenyaLonRange, ylim=kenyaLatRange)
     dev.off()
     
     png(file=paste0("figures/", resultNameRoot, "/preds", nameRoot, "Logit2.png"), width=800, height=1000)
     par(mfrow=c(2,2))
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", varName, " estimates", typeText), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE logit predictive SDs", typeText), cols=sdCols, zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE 10th percentile", typeText), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE 90th percentile", typeText), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", typeText, " ", varName, " estimates"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE ", typeText, " logit predictive SDs"), cols=sdCols, zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE ", typeText, " 10th percentile"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE ", typeText, " 90th percentile"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
     dev.off()
     
     ## plot continuous prediction surface
     png(file=paste0("figures/", resultNameRoot, "/preds", nameRoot, ".png"), width=800, height=1000)
     par(mfrow=c(2,2))
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", varName, " estimates", typeText), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE logit predictive SDs", typeText), cols=sdCols, zlim=sdRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE 10th percentile", typeText), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE 90th percentile", typeText), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", typeText, " ", varName, " estimates"), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE ", typeText, " logit predictive SDs"), cols=sdCols, zlim=sdRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE ", typeText, " 10th percentile"), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE ", typeText, " 90th percentile"), cols=meanCols, zlim=meanRange, xlim=kenyaLonRange, ylim=kenyaLatRange)
     dev.off()
     png(file=paste0("figures/", resultNameRoot, "/preds", nameRoot, "Logit.png"), width=800, height=1000)
     par(mfrow=c(2,2))
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", varName, " estimates", typeText), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE logit predictive SDs", typeText), cols=sdCols, zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE 10th percentile", typeText), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
-    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE 90th percentile", typeText), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", typeText, " ", varName, " estimates"), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE ", typeText, " logit predictive SDs"), cols=sdCols, zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE ", typeText, " 10th percentile"), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
+    plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE ", typeText, " 90th percentile"), cols=meanCols, zlim=logit(meanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange)
     dev.off()
     
     png(file=paste0("figures/", resultNameRoot, "/preds", nameRoot, "ContinuousLogit.png"), width=800, height=1000)
     par(mfrow=c(2,2), oma=c( 0,0,0,1.5), mar=c(5.1, 4.1, 4.1, 6))
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", varName, " estimates", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " ", varName, " estimates"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$pred), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=meanCols, zlim=range(logit(meanRange)))
@@ -572,7 +562,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     image.plot(zlim=range(logit(meanRange)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
                col=meanCols, add = TRUE, axis.args=list(at=logit(meanTicks), labels=meanTickLabels), legend.mar = 0)
     
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE logit predictive SDs", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " logit predictive SDs"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), log(spdeResults$resultsPixel$sds), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=sdCols, zlim=range(log(sdRange)))
@@ -581,7 +571,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     image.plot(zlim=range(log(sdRange)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
                col=sdCols, add = TRUE, axis.args=list(at=log(sdTicks), labels=sdTickLabels), legend.mar = 0)
     
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE 10th percentile", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " 10th percentile"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$lower), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=meanCols, zlim=range(logit(meanRange)))
@@ -590,7 +580,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     image.plot(zlim=range(logit(meanRange)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
                col=meanCols, add = TRUE, axis.args=list(at=logit(meanTicks), labels=meanTickLabels), legend.mar = 0)
     
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE 90th percentile", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " 90th percentile"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$upper), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=meanCols, zlim=range(logit(meanRange)))
@@ -602,7 +592,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     
     png(file=paste0("figures/", resultNameRoot, "/preds", nameRoot, "ContinuousLogit2.png"), width=800, height=1000)
     par(mfrow=c(2,2), oma=c( 0,0,0,1.5), mar=c(5.1, 4.1, 4.1, 6))
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", varName, " estimates", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " ", varName, " estimates"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$pred), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=meanCols, zlim=range(logit(meanRange2)))
@@ -611,7 +601,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     image.plot(zlim=range(logit(meanRange2)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
                col=meanCols, add = TRUE, axis.args=list(at=logit(meanTicks2), labels=meanTickLabels2), legend.mar = 0)
     
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE logit predictive SDs", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " logit predictive SDs"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), log(spdeResults$resultsPixel$sds), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=sdCols, zlim=range(log(sdRange2)))
@@ -620,7 +610,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     image.plot(zlim=range(log(sdRange2)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
                col=sdCols, add = TRUE, axis.args=list(at=log(sdTicks2), labels=sdTickLabels2), legend.mar = 0)
     
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE 10th percentile", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " 10th percentile"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$lower), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=meanCols, zlim=range(logit(meanRange2)))
@@ -629,7 +619,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     image.plot(zlim=range(logit(meanRange2)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
                col=meanCols, add = TRUE, axis.args=list(at=logit(meanTicks2), labels=meanTickLabels2), legend.mar = 0)
     
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE 90th percentile", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " 90th percentile"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$upper), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=meanCols, zlim=range(logit(meanRange2)))
@@ -641,7 +631,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     
     png(file=paste0("figures/", resultNameRoot, "/preds", nameRoot, "ContinuousLogitSelf.png"), width=800, height=1000)
     par(mfrow=c(2,2), oma=c( 0,0,0,1.5), mar=c(5.1, 4.1, 4.1, 6))
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", varName, " estimates", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " ", varName, " estimates"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$pred), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=meanCols, zlim=range(logit(meanRangeSPDE)))
@@ -650,7 +640,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     image.plot(zlim=range(logit(meanRangeSPDE)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
                col=meanCols, add = TRUE, axis.args=list(at=logit(meanTicksSPDE), labels=meanTickLabelsSPDE), legend.mar = 0)
     
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE logit predictive SDs", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " logit predictive SDs"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), log(spdeResults$resultsPixel$sds), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=sdCols, zlim=range(log(sdRangeSPDE)))
@@ -659,7 +649,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     image.plot(zlim=range(log(sdRangeSPDE)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
                col=sdCols, add = TRUE, axis.args=list(at=log(sdTicksSPDE), labels=sdTickLabelsSPDE), legend.mar = 0)
     
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE 10th percentile", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " 10th percentile"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$lower), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=meanCols, zlim=range(logit(meanRangeSPDE)))
@@ -668,7 +658,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     image.plot(zlim=range(logit(meanRangeSPDE)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
                col=meanCols, add = TRUE, axis.args=list(at=logit(meanTicksSPDE), labels=meanTickLabelsSPDE), legend.mar = 0)
     
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE 90th percentile", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " 90th percentile"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$upper), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=meanCols, zlim=range(logit(meanRangeSPDE)))
@@ -732,7 +722,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
   clusterText = ifelse(includeCluster, "", "NoClust")
   both = includeUrban && includeCluster
   debiasedText = "Debiased"
-  typeTextBYM = paste0(" ", urbanText, clusterText, debiasedText)
+  typeTextBYM = "IV'"
   
   includeUrban = TRUE
   includeCluster = TRUE
@@ -746,31 +736,31 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
   clusterText = ifelse(includeCluster, "", "NoClust")
   both = includeUrban && includeCluster
   notBothText = ifelse(both, "", " ")
-  typeTextSPDE = paste0(notBothText, urbanText, clusterText)
+  typeTextSPDE = "IV"
   
   plotMapDat(adm1, plotVar=mercerResults$est.mercer, new = TRUE, main=paste0("Mercer et al. ", varName, " estimates"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-  plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", varName, " estimates", typeTextBYM), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", varName, " estimates", typeTextSPDE), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+  plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", typeTextBYM, " ", varName, " estimates"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", typeTextSPDE, " ", varName, " estimates"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
   
   plotMapDat(adm1, plotVar=sqrt(mercerResults$var.est.mercer), new = TRUE, main=paste0("Mercer et al. logit predictive SDs"), cols=sdCols, zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-  plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 logit predictive SDs", typeTextBYM), cols=sdCols, zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE logit predictive SDs", typeTextSPDE), cols=sdCols, zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+  plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 ", typeTextBYM, " logit predictive SDs"), cols=sdCols, zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE ", typeTextSPDE, " logit predictive SDs"), cols=sdCols, zlim=log(sdRange2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks2, tickLabels=sdTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
   
   plotMapDat(adm1, plotVar=expit(mercerResults$lower.mercer), new = TRUE, main=paste0("Mercer et al. 10th percentile"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-  plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 10th percentile", typeTextBYM), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE 10th percentile", typeTextSPDE), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+  plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 ", typeTextBYM, " 10th percentile"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE ", typeTextSPDE, " 10th percentile"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
   
   plotMapDat(adm1, plotVar=expit(mercerResults$upper.mercer), new = TRUE, main=paste0("Mercer et al. 90th percentile"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-  plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 90th percentile", typeTextBYM), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
-  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE 90th percentile", typeTextSPDE), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+  plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 ", typeTextBYM, " 90th percentile"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE ", typeTextSPDE, " 90th percentile"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
   dev.off()
   
   ## Plot 3: plot all of the SPDE plots together (4 x 4 plot)
   print("plotting SPDE models together...")
   
   argList = list(list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = FALSE), 
-                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
+                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE))
   
   png(file=paste0("figures/", resultNameRoot, "/preds", nameRoot, "ContinuousTogetherSelf.png"), width=1400, height=1400)
@@ -789,9 +779,9 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", varName, " estimates", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " ", varName, " estimates"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$pred), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=meanCols, zlim=range(logit(meanRangeSPDE)))
@@ -815,9 +805,9 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE logit predictive SDs", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " logit predictive SDs"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), log(spdeResults$resultsPixel$sds), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=sdCols, zlim=range(log(sdRangeSPDE)))
@@ -841,9 +831,9 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE 10th percentile", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " 10th percentile"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$lower), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=meanCols, zlim=range(logit(meanRangeSPDE)))
@@ -867,9 +857,9 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE 90th percentile", typeText), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " 90th percentile"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$upper), 
                nx=150, ny=150, add.legend=FALSE, add=TRUE, col=meanCols, zlim=range(logit(meanRangeSPDE)))
@@ -921,7 +911,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
   plotMapDat(adm1, plotVar=(mercerResults$est.mercer - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), 
              new = TRUE, main=paste0("Mercer et al. relative to BYM2 ", varName, " estimates"), zlim=zlim, col=cols, xlim=kenyaLonRange, ylim=kenyaLatRange)
   plotMapDat(adm1, plotVar=(spdeResults$resultsCounty$pred - expit(designRes$predictions$mean)) / expit(designRes$predictions$mean), 
-             new = TRUE, main=paste0("SPDE relative to BYM2 ", varName, " estimates", typeTextSPDE), zlim=zlim, col=cols, xlim=kenyaLonRange, ylim=kenyaLatRange)
+             new = TRUE, main=paste0("SPDE relative to BYM2 ", varName, " estimates"), zlim=zlim, col=cols, xlim=kenyaLonRange, ylim=kenyaLatRange)
   dev.off()
   
   ## Plot 5: plot the BYM2 models together (four by six plot)
@@ -946,9 +936,9 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", varName, " estimates", typeText), 
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", typeText, " ", varName, " estimates"), 
                zlim=logit(meanRangeBYM2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksBYM2, tickLabels=meanTickLabelsBYM2, 
                cols=meanCols, xlim=kenyaLonRange, ylim=kenyaLatRange)
     
@@ -964,10 +954,10 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
         debiasedText = "Debiased"
       else
         debiasedText = "debiased"
-      typeText = paste0(" ", urbanText, clusterText, debiasedText)
+      typeText = paste0(typeText, "'")
       
       
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", varName, " estimates", typeText), xlim=kenyaLonRange, ylim=kenyaLatRange, 
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", typeText, " ", varName, " estimates"), xlim=kenyaLonRange, ylim=kenyaLatRange, 
                  cols=meanCols, zlim=logit(meanRangeBYM2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksBYM2, tickLabels=meanTickLabelsBYM2)
     }
   }
@@ -986,9 +976,9 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
-    plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 logit predictive SDs", typeText), xlim=kenyaLonRange, ylim=kenyaLatRange, 
+    plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 ", typeText, " logit predictive SDs"), xlim=kenyaLonRange, ylim=kenyaLatRange, 
                zlim=log(sdRangeBYM2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicksBYM2, tickLabels=sdTickLabelsBYM2, cols=sdCols)
     
     if(includeCluster) {
@@ -1003,9 +993,9 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
         debiasedText = "Debiased"
       else
         debiasedText = "debiased"
-      typeText = paste0(" ", urbanText, clusterText, debiasedText)
+      typeText = paste0(typeText, "'")
       
-      plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 logit predictive SDs", typeText), 
+      plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 ", typeText, " logit predictive SDs"), 
                  cols=sdCols, zlim=log(sdRangeBYM2), scaleFun=log, scaleFunInverse=exp, ticks=sdTicksBYM2, 
                  tickLabels=sdTickLabelsBYM2, xlim=kenyaLonRange, ylim=kenyaLatRange)
     }
@@ -1025,9 +1015,9 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 10th percentile", typeText), xlim=kenyaLonRange, ylim=kenyaLatRange, 
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 ", typeText, " 10th percentile"), xlim=kenyaLonRange, ylim=kenyaLatRange, 
                zlim=logit(meanRangeBYM2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksBYM2, tickLabels=meanTickLabelsBYM2, cols=meanCols)
     
     if(includeCluster) {
@@ -1042,9 +1032,9 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
         debiasedText = "Debiased"
       else
         debiasedText = "debiased"
-      typeText = paste0(" ", urbanText, clusterText, debiasedText)
+      typeText = paste0(typeText, "'")
       
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 10th percentile", typeText), 
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 ", typeText, " 10th percentile"), 
                  cols=meanCols, zlim=logit(meanRangeBYM2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksBYM2, 
                  tickLabels=meanTickLabelsBYM2, xlim=kenyaLonRange, ylim=kenyaLatRange)
     }
@@ -1064,9 +1054,9 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
-    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 90th percentile", typeText), xlim=kenyaLonRange, ylim=kenyaLatRange, 
+    plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 ", typeText, " 90th percentile"), xlim=kenyaLonRange, ylim=kenyaLatRange, 
                zlim=logit(meanRangeBYM2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksBYM2, tickLabels=meanTickLabelsBYM2, cols=meanCols)
     
     if(includeCluster) {
@@ -1081,16 +1071,16 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
         debiasedText = "Debiased"
       else
         debiasedText = "debiased"
-      typeText = paste0(" ", urbanText, clusterText, debiasedText)
+      typeText = paste0(typeText, "'")
       
-      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 90th percentile", typeText), 
+      plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 ", typeText, " 90th percentile"), 
                  cols=meanCols, zlim=logit(meanRangeBYM2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksBYM2, 
                  tickLabels=meanTickLabelsBYM2, xlim=kenyaLonRange, ylim=kenyaLatRange)
     }
   }
   dev.off()
   
-  ## Plot 6: plot the BYM2 model relative differences versus the full BYM2 model
+  ## Plot 6: plot the BYM2 model relative differences versus the BYM2 IV' model
   # 2 x 3 plot. Columns: debiased cluster, cluster, no cluster. Rows: urban, no urban
   argList = list(list(includeUrbanRural = TRUE, includeCluster = TRUE), 
                  list(includeUrbanRural = TRUE, includeCluster = FALSE), 
@@ -1163,7 +1153,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
         debiasedText = "Debiased"
       else
         debiasedText = "debiased"
-      typeText = paste0(" ", urbanText, clusterText, debiasedText)
+      typeText = paste0(typeText, "'")
       
       if(i == 1) {
         expected = expit(designRes$predictions$mean)
@@ -1180,7 +1170,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     vals = expit(designRes$predictions$mean)
     plotMapDat(adm1, plotVar=(vals - expected) / expected, new = TRUE, main=paste0("BYM2 ", typeText, " ", varName, " relative to full debiased"), 
@@ -1188,7 +1178,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
   }
   dev.off()
   
-  ## Plot 7: plot the SPDE model relative differences versus the full SPDE model on continuous scale
+  ## Plot 7: plot the SPDE model relative differences versus the SPDE IV model on continuous scale
   # 2 x 2 plot. Columns: cluster, no cluster. Rows: urban, no urban
   argList = list(list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
@@ -1249,10 +1239,10 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     vals = spdeResults$resultsPixel$pred
-    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " ", varName, " relative to full SPDE"), ylim=kenyaLatRange, 
+    plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " ", varName, " relative to SPDE IV"), ylim=kenyaLatRange, 
          xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
     quilt.plot(cbind(popGrid$lon, popGrid$lat), (vals-expected)/expected, 
                nx=150, ny=150, add.legend=TRUE, add=TRUE, col=cols, zlim=zlim)
@@ -1263,7 +1253,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
   }
   dev.off()
   
-  ## Plot 8: plot the SPDE model relative differences versus the full SPDE model on discrete scale
+  ## Plot 8: plot the SPDE model relative differences versus the SPDE IV model on discrete scale
   # 2 x 2 plot. Columns: cluster, no cluster. Rows: urban, no urban
   argList = list(list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
@@ -1324,11 +1314,11 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     vals = spdeResults$resultsCounty$pred
     plotMapDat(adm1, plotVar=(vals-expected)/expected, new = TRUE, 
-               main=paste0("SPDE ", typeText, " ", varName, " relative to full SPDE"), 
+               main=paste0("SPDE ", typeText, " ", varName, " relative to SPDE IV"), 
                cols=cols, zlim=zlim, xlim=kenyaLonRange, ylim=kenyaLatRange)
   }
   dev.off()
@@ -1350,6 +1340,7 @@ makeRedBlueDivergingColors = function(n) {
   # library("colorspace")
   # pal <-choose_palette()
   diverging_hcl(n, h1=10, h2=-115, c1=90, l1=40, l2=100, p1=0.9)
+  # diverging_hcl(n, h1=10, h2=-115, c1=90, l1=40, l2=100, p1=0.9, p2=0.6)
 }
 
 makeBlueSequentialColors = function(n) {
@@ -1565,7 +1556,7 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   regionCols = urbCols[colI]
   
   pdf(file=paste0("figures/", resultNameRoot, "/pairPlot", resultNameRoot, ".pdf"), width=6, height=6)
-  # first load full BYM2 and SPDE models
+  # first load BYM2 IV' and SPDE models
   includeUrban = TRUE
   includeCluster = TRUE
   clusterText = ifelse(includeCluster, "", "NoClust")
@@ -1577,7 +1568,7 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   clusterText = ifelse(includeCluster, "", "NoClust")
   both = includeUrban && includeCluster
   debiasedText = "Debiased"
-  typeTextBYM = paste0(" ", urbanText, clusterText, debiasedText)
+  typeTextBYM = "IV'"
   
   includeUrban = TRUE
   includeCluster = TRUE
@@ -1591,7 +1582,7 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   clusterText = ifelse(includeCluster, "", "NoClust")
   both = includeUrban && includeCluster
   notBothText = ifelse(both, "", " ")
-  typeTextSPDE = paste0(notBothText, urbanText, clusterText)
+  typeTextSPDE = "IV"
   
   valMat = cbind(naiveResults$est, directEstResults$est, 
                  mercerResults$est.mercer, 
@@ -1620,19 +1611,19 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   }
   
   # pairs(valMat, 
-  #       c("Naive", "Direct", "Mercer et al.", "Full BYM2", "Full SPDE"), 
+  #       c("Naive", "Direct", "Mercer et al.", "BYM2 IV'", "SPDE IV"), 
   #       pch=19, cex=.3, lower.panel=my_line, upper.panel = my_line, 
   #       main=paste0("County ", varName, " estimate comparisons"))
   lims = c(list(zlim), list(zlim), list(zlim2), list(zlim2), list(zlim2))
   myPairs(valMat, 
-          c("Naive", "Direct", "Mercer et al.", "Full BYM2", "Full SPDE"), 
+          c("Naive", "Direct", "Mercer et al.", "BYM2 IV'", "SPDE IV"), 
           pch=19, cex=.4, lower.panel=my_line, upper.panel = my_line, 
           main=paste0("County ", varName, " estimate comparisons"), 
           lims=lims)
   dev.off()
   
   pdf(file=paste0("figures/", resultNameRoot, "/pairPlot", resultNameRoot, "UrbCol.pdf"), width=6, height=6)
-  # first load full BYM2 and SPDE models
+  # first load BYM2 IV' and SPDE models
   includeUrban = TRUE
   includeCluster = TRUE
   clusterText = ifelse(includeCluster, "", "NoClust")
@@ -1644,7 +1635,7 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   clusterText = ifelse(includeCluster, "", "NoClust")
   both = includeUrban && includeCluster
   debiasedText = "Debiased"
-  typeTextBYM = paste0(" ", urbanText, clusterText, debiasedText)
+  typeTextBYM = "IV'"
   
   includeUrban = TRUE
   includeCluster = TRUE
@@ -1658,7 +1649,7 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   clusterText = ifelse(includeCluster, "", "NoClust")
   both = includeUrban && includeCluster
   notBothText = ifelse(both, "", " ")
-  typeTextSPDE = paste0(notBothText, urbanText, clusterText)
+  typeTextSPDE = "IV"
   
   valMat = cbind(naiveResults$est, directEstResults$est, 
                  mercerResults$est.mercer, 
@@ -1687,15 +1678,15 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   }
   
   # pairs(valMat, 
-  #       c("Naive", "Direct", "Mercer et al.", "Full BYM2", "Full SPDE"), 
+  #       c("Naive", "Direct", "Mercer et al.", "BYM2 IV'", "SPDE IV"), 
   #       pch=19, cex=.3, lower.panel=my_line, upper.panel = my_line, 
   #       main=paste0("County ", varName, " estimate comparisons"))
   lims = c(list(zlim), list(zlim), list(zlim2), list(zlim2), list(zlim2))
   myPairs(valMat, 
-          c("Naive", "Direct", "Mercer et al.", "Full BYM2", "Full SPDE"), 
+          c("Naive", "Direct", "Mercer et al.", "BYM2 IV'", "SPDE IV"), 
           pch=19, cex=.4, lower.panel=my_line, upper.panel = my_line, 
           main=paste0("County ", varName, " estimate comparisons"), 
-          lims=lims, oma=c(3,3,6,7), asp=1)
+          lims=lims, oma=c(3,3,6,7))
   image.plot(legend.only = TRUE, zlim=c(0,1), nlevel=29, legend.mar=3.3, col=urbCols, add=TRUE, 
              legend.lab = "Urbanicity", legend.line=1.2, legend.width=.5, legend.shrink=.8, 
              legend.cex=.8, axis.args=list(cex.axis=.5, tck=-1, hadj=.8))
@@ -1719,15 +1710,10 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     
     nameRoot = paste0('bym2', resultNameRoot, 'UrbRur',includeUrban, 'Cluster', includeCluster)
     out = load(paste0(nameRoot, '.RData'))
-    
-    urbanText = ifelse(includeUrban, "", "noUrb")
-    clusterText = ifelse(includeCluster, "", "NoClust")
-    both = includeUrban && includeCluster
-    notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     valMat = cbind(valMat, expit(designRes$predictions$mean))
-    labels = c(labels, paste0("BYM2", typeText))
+    labels = c(labels, paste0("BYM2 ", typeText))
     
     if(includeCluster) {
       # also gather and plot the debiased results
@@ -1741,10 +1727,10 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
         debiasedText = "Debiased"
       else
         debiasedText = "debiased"
-      typeText = paste0(" ", urbanText, clusterText, debiasedText)
+      typeText = paste0(typeText, "'")
       
       valMat = cbind(valMat, expit(designRes$predictions$mean))
-      labels = c(labels, paste0("BYM2", typeText))
+      labels = c(labels, paste0("BYM2 ", typeText))
     }
   }
   
@@ -1783,27 +1769,20 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     valMat = cbind(valMat, expit(designRes$predictions$mean))
-    labels = c(labels, paste0("BYM2", typeText))
+    labels = c(labels, paste0("BYM2 ", typeText))
     
     if(includeCluster) {
       # also gather and plot the debiased results
       nameRoot = paste0('bym2', resultNameRoot, 'UrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
       out = load(paste0(nameRoot, '.RData'))
       
-      urbanText = ifelse(includeUrban, "", "noUrb")
-      clusterText = ifelse(includeCluster, "", "NoClust")
-      both = includeUrban && includeCluster
-      if(!both)
-        debiasedText = "Debiased"
-      else
-        debiasedText = "debiased"
-      typeText = paste0(" ", urbanText, clusterText, debiasedText)
+      typeText = paste0(typeText, "'")
       
       valMat = cbind(valMat, expit(designRes$predictions$mean))
-      labels = c(labels, paste0("BYM2", typeText))
+      labels = c(labels, paste0("BYM2 ", typeText))
     }
   }
   
@@ -1826,8 +1805,8 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   ## Plot 11: make pair plots of the SPDE models region estimates
   pdf(file=paste0("figures/", resultNameRoot, "/pairPlotSPDE", resultNameRoot, "Region.pdf"), width=6, height=6)
   argList = list(list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = FALSE), 
-                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
+                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE))
   
   # collect the estimates and model labels
@@ -1847,12 +1826,12 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     vals = spdeResults$resultsRegion$pred
     
     valMat = cbind(valMat, vals)
-    labels = c(labels, paste0("SPDE", typeText))
+    labels = c(labels, paste0("SPDE ", typeText))
   }
   
   # now construct the pair plot
@@ -1870,8 +1849,8 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   
   pdf(file=paste0("figures/", resultNameRoot, "/pairPlotSPDE", resultNameRoot, "RegionUrbCol.pdf"), width=6, height=6)
   argList = list(list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = FALSE), 
-                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
+                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE))
   
   # collect the estimates and model labels
@@ -1891,12 +1870,12 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     vals = spdeResults$resultsRegion$pred
     
     valMat = cbind(valMat, vals)
-    labels = c(labels, paste0("SPDE", typeText))
+    labels = c(labels, paste0("SPDE ", typeText))
   }
   
   # now construct the pair plot
@@ -1918,8 +1897,8 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   ## Plot 12: make pair plots of the SPDE models county estimates
   pdf(file=paste0("figures/", resultNameRoot, "/pairPlotSPDE", resultNameRoot, "County.pdf"), width=6, height=6)
   argList = list(list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = FALSE), 
-                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
+                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE))
   
   # collect the estimates and model labels
@@ -1939,12 +1918,12 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     vals = spdeResults$resultsCounty$pred
     
     valMat = cbind(valMat, vals)
-    labels = c(labels, paste0("SPDE", typeText))
+    labels = c(labels, paste0("SPDE ", typeText))
   }
   
   # now construct the pair plot
@@ -1962,8 +1941,8 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   
   pdf(file=paste0("figures/", resultNameRoot, "/pairPlotSPDE", resultNameRoot, "CountyUrbCol.pdf"), width=6, height=6)
   argList = list(list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = FALSE), 
-                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
+                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE))
   
   # collect the estimates and model labels
@@ -1983,12 +1962,12 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     vals = spdeResults$resultsCounty$pred
     
     valMat = cbind(valMat, vals)
-    labels = c(labels, paste0("SPDE", typeText))
+    labels = c(labels, paste0("SPDE ", typeText))
   }
   
   # now construct the pair plot
@@ -2010,8 +1989,8 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   ## Plot 13: make pair plots of the SPDE models pixel estimates
   png(file=paste0("figures/", resultNameRoot, "/pairPlotSPDE", resultNameRoot, "Pixel.png"), width=1000, height=1000)
   argList = list(list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = FALSE), 
-                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
+                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE))
   
   # collect the estimates and model labels
@@ -2031,12 +2010,12 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     vals = spdeResults$resultsPixel$pred
     
     valMat = cbind(valMat, vals)
-    labels = c(labels, paste0("SPDE", typeText))
+    labels = c(labels, paste0("SPDE ", typeText))
   }
   
   # now construct the pair plot
@@ -2057,8 +2036,8 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   ## Plot 14: make pair plots of the SPDE models cluster estimates
   pdf(file=paste0("figures/", resultNameRoot, "/pairPlotSPDE", resultNameRoot, "Cluster.pdf"), width=6, height=6)
   argList = list(list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = FALSE), 
-                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
+                 list(clustDat = dat, includeClustEffect = FALSE, urbanEffect = TRUE), 
                  list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE))
   
   # collect the estimates and model labels
@@ -2078,12 +2057,12 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i)
     
     vals = spdeResults$resultsCluster$pred
     
     valMat = cbind(valMat, vals)
-    labels = c(labels, paste0("SPDE", typeText))
+    labels = c(labels, paste0("SPDE ", typeText))
   }
   
   # now construct the pair plot
@@ -2123,7 +2102,7 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i*2)
     
     vals = spdeResults$resultsCluster$pred
     
@@ -2131,7 +2110,7 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     valList = c(valList, list(spdeResults$resultsPixel$pred))
     valList = c(valList, list(spdeResults$resultsCounty$pred))
     valList = c(valList, list(spdeResults$resultsRegion$pred))
-    labels = c(labels, paste0("SPDE", typeText))
+    labels = c(labels, paste0("SPDE ", typeText))
   }
   
   # now construct the pair plot
@@ -2146,26 +2125,26 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   par(mfrow=c(2,2))
   clusterUrban = dat$urban
   pixelUrban = popGrid$urban
-  plot(valList[[1]][!clusterUrban], valList[[5]][!clusterUrban], main=paste0("SPDE cluster ", varName, " estimates"), 
-       ylim=zlim, xlim=zlim, xlab=labels[1], ylab=labels[2], col="green", pch=19, cex=.15)
-  points(valList[[1]][clusterUrban], valList[[5]][clusterUrban], col="blue", pch=19, cex=.15)
+  plot(valList[[5]][!clusterUrban], valList[[1]][!clusterUrban], main=paste0("SPDE cluster ", varName, " estimates"), 
+       ylim=zlim, xlim=zlim, xlab=labels[2], ylab=labels[1], col="green", pch=19, cex=.15)
+  points(valList[[5]][clusterUrban], valList[[1]][clusterUrban], col="blue", pch=19, cex=.15)
   abline(0, 1)
   legend("topleft", c("urban", "rural"), pch=19, col=c("blue", "green"))
-  plot(valList[[2]][!pixelUrban], valList[[6]][!pixelUrban], main=paste0("SPDE pixel ", varName, " estimates"), 
-       ylim=zlim, xlim=zlim, xlab=labels[1], ylab=labels[2], col="green", pch=19, cex=.1)
-  points(valList[[1]][pixelUrban], valList[[5]][pixelUrban], col="blue", pch=19, cex=.2)
+  plot(valList[[6]][!pixelUrban], valList[[2]][!pixelUrban], main=paste0("SPDE pixel ", varName, " estimates"), 
+       ylim=zlim, xlim=zlim, xlab=labels[2], ylab=labels[1], col="green", pch=19, cex=.1)
+  points(valList[[6]][pixelUrban], valList[[2]][pixelUrban], col="blue", pch=19, cex=.2)
   abline(0, 1)
   legend("topleft", c("urban", "rural"), pch=19, col=c("blue", "green"))
-  plot(valList[[3]], valList[[7]], main=paste0("SPDE county ", varName, " estimates"), 
-       ylim=zlim, xlim=zlim, xlab=labels[1], ylab=labels[2], pch=19, cex=.5, col="blue")
+  plot(valList[[7]], valList[[3]], main=paste0("SPDE county ", varName, " estimates"), 
+       ylim=zlim, xlim=zlim, xlab=labels[2], ylab=labels[1], pch=19, cex=.5, col="blue")
   abline(0, 1)
-  plot(valList[[4]], valList[[8]], main=paste0("SPDE region ", varName, " estimates"), 
-       ylim=zlim, xlim=zlim, xlab=labels[1], ylab=labels[2], pch=19, cex=.8, col="blue")
+  plot(valList[[8]], valList[[4]], main=paste0("SPDE region ", varName, " estimates"), 
+       ylim=zlim, xlim=zlim, xlab=labels[2], ylab=labels[1], pch=19, cex=.8, col="blue")
   abline(0, 1)
   dev.off()
   
   if(makeScreenSplitPlot) {
-    png(file=paste0("figures/", resultNameRoot, "/pairPlotSPDEUrb", resultNameRoot, "AllUrbCol.png"), width=1000, height=8010000)
+    png(file=paste0("figures/", resultNameRoot, "/pairPlotSPDEUrb", resultNameRoot, "AllUrbCol.png"), width=1000, height=1000)
     argList = list(list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = FALSE), 
                    list(clustDat = dat, includeClustEffect = TRUE, urbanEffect = TRUE))
     
@@ -2186,7 +2165,7 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
       clusterText = ifelse(includeCluster, "", "NoClust")
       both = includeUrban && includeCluster
       notBothText = ifelse(both, "", " ")
-      typeText = paste0(notBothText, urbanText, clusterText)
+      typeText = romanText(i * 2)
       
       vals = spdeResults$resultsCluster$pred
       
@@ -2194,7 +2173,7 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
       valList = c(valList, list(spdeResults$resultsPixel$pred))
       valList = c(valList, list(spdeResults$resultsCounty$pred))
       valList = c(valList, list(spdeResults$resultsRegion$pred))
-      labels = c(labels, paste0("SPDE", typeText))
+      labels = c(labels, paste0("SPDE ", typeText))
     }
     
     # now construct the pair plot
@@ -2215,30 +2194,30 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     screen( ind[1])
     clusterUrban = dat$urban
     pixelUrban = popGrid$urban
-    plot(valList[[1]][!clusterUrban], valList[[5]][!clusterUrban], main=paste0("SPDE cluster ", varName, " estimates"), 
-         ylim=zlim, xlim=zlim, xlab=labels[1], ylab=labels[2], col=urbCols[1], pch=19, cex=.15)
-    points(valList[[1]][clusterUrban], valList[[5]][clusterUrban], col=urbCols[ncols], pch=19, cex=.15)
+    plot(valList[[5]][!clusterUrban], valList[[1]][!clusterUrban], main=paste0("SPDE cluster ", varName, " estimates"), 
+         ylim=zlim, xlim=zlim, xlab=labels[2], ylab=labels[1], col=urbCols[1], pch=19, cex=.15)
+    points(valList[[5]][clusterUrban], valList[[1]][clusterUrban], col=urbCols[ncols], pch=19, cex=.15)
     abline(0, 1)
     # legend("topleft", c("urban", "rural"), pch=19, col=c("blue", "green"))
     
     # second image
     screen( ind[2])
-    plot(valList[[2]][!pixelUrban], valList[[6]][!pixelUrban], main=paste0("SPDE pixel ", varName, " estimates"), 
-         ylim=zlim, xlim=zlim, xlab=labels[1], ylab=labels[2], col=urbCols[1], pch=19, cex=.1)
-    points(valList[[1]][pixelUrban], valList[[5]][pixelUrban], col=urbCols[ncols], pch=19, cex=.25)
+    plot(valList[[6]][!pixelUrban], valList[[2]][!pixelUrban], main=paste0("SPDE pixel ", varName, " estimates"), 
+         ylim=zlim, xlim=zlim, xlab=labels[2], ylab=labels[1], col=urbCols[1], pch=19, cex=.1)
+    points(valList[[6]][pixelUrban], valList[[2]][pixelUrban], col=urbCols[ncols], pch=19, cex=.25)
     abline(0, 1)
     # legend("topleft", c("urban", "rural"), pch=19, col=c("blue", "green"))
     
     # third image
     screen( ind[3])
-    plot(valList[[3]], valList[[7]], main=paste0("SPDE county ", varName, " estimates"), 
-         ylim=zlim, xlim=zlim, xlab=labels[1], ylab=labels[2], pch=19, cex=1, col=countyCols)
+    plot(valList[[7]], valList[[3]], main=paste0("SPDE county ", varName, " estimates"), 
+         ylim=zlim, xlim=zlim, xlab=labels[2], ylab=labels[1], pch=19, cex=1, col=countyCols)
     abline(0, 1)
     
     # fourth image
     screen( ind[4])
-    plot(valList[[4]], valList[[8]], main=paste0("SPDE region ", varName, " estimates"), 
-         ylim=zlim, xlim=zlim, xlab=labels[1], ylab=labels[2], pch=19, cex=1.2, col=regionCols)
+    plot(valList[[8]], valList[[4]], main=paste0("SPDE region ", varName, " estimates"), 
+         ylim=zlim, xlim=zlim, xlab=labels[2], ylab=labels[1], pch=19, cex=1.2, col=regionCols)
     abline(0, 1)
     
     # move to skinny region on right and draw the legend strip 
@@ -2277,12 +2256,12 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i * 2)
     
     vals = spdeResults$resultsCounty$pred
     
     valMat = cbind(valMat, vals)
-    labels = c(labels, paste0("SPDE", typeText))
+    labels = c(labels, paste0("SPDE ", typeText))
   }
   
   # now construct the pair plot
@@ -2324,12 +2303,12 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i * 2)
     
     vals = spdeResults$resultsCounty$pred
     
     valMat = cbind(valMat, vals)
-    labels = c(labels, paste0("SPDE", typeText))
+    labels = c(labels, paste0("SPDE ", typeText))
   }
   
   # now construct the pair plot
@@ -2347,7 +2326,7 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   myPairs(valMat, labels, 
           pch=19, cex=.5, lower.panel=my_line, upper.panel = my_line, 
           main=paste0("SPDE and direct county ", varName, " estimate comparisons"), 
-          lims=lims, oma=c(3,3,6,7), asp=1)
+          lims=lims, oma=c(3,3,6,7))
   image.plot(legend.only = TRUE, zlim=c(0,1), nlevel=29, legend.mar=3.3, col=urbCols, add=TRUE, 
              legend.lab = "Urbanicity", legend.line=1.2, legend.width=.5, legend.shrink=.8, 
              legend.cex=.8, axis.args=list(cex.axis=.5, tck=-1, hadj=.8))
@@ -2378,12 +2357,12 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
     clusterText = ifelse(includeCluster, "", "NoClust")
     both = includeUrban && includeCluster
     notBothText = ifelse(both, "", " ")
-    typeText = paste0(notBothText, urbanText, clusterText)
+    typeText = romanText(i * 2)
     
     vals = spdeResults$pixelDraws
     
     valList = c(valList, list(vals))
-    labels = c(labels, paste0("SPDE", typeText))
+    labels = c(labels, paste0("SPDE ", typeText))
   }
   
   fullDraws = valList[[2]]
@@ -2438,8 +2417,8 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   zlim = range(CI95s)
   
   # make the plot
-  plot(xsAll, CI95s[1,], main=paste0("Difference in pixel level ", varName, " predictions (SPDE - SPDE noUrb)"),
-       ylim=zlim, xlab=labels[1], ylab="Prediction differences", type="n")
+  plot(xsAll, CI95s[1,], main=paste0("Difference in pixel level ", varName, " predictions (SPDE IV - SPDE II)"),
+       ylim=zlim, xlab=labels[1], ylab="Prediction differences (SPDE IV - SPDE II)", type="n")
   
   # plot every pixel CI as a translucent line
   for(i in 1:ncol(CI95s)) {
@@ -2481,4 +2460,84 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
   abline(0, 0, lty=2)
   legend("topleft", c("urban", "rural"), pch=19, col=c("blue", "green"))
   dev.off()
+}
+
+# produce plot requested by jon of continuous and discrete level predictions
+makeJonPlot = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2, 
+                       meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 
+                       sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
+                       meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
+                       meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
+                       varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", meanCols=makeRedBlueDivergingColors(64), 
+                       sdCols=makeBlueYellowSequentialColors(64), popCols=makeBlueSequentialColors(64), 
+                       ncols=29, relativeCols=makeRedGreenDivergingColors(ncols), urbCols=makeGreenBlueSequentialColors(ncols), 
+                       plotUrbanMap=FALSE, kenyaLatRange=c(-4.6, 5), kenyaLonRange=c(33.5, 42.0), makeScreenSplitPlot=FALSE) {
+  plotNameRootLower = tolower(plotNameRoot)
+  resultNameRootLower = tolower(resultNameRoot)
+  
+  png(file=paste0("figures/", resultNameRoot, "/JonPlot", plotNameRoot, ".png"), width=500, height=900)
+  par(mfrow=c(2,1))
+  includeUrban = FALSE
+  includeCluster = TRUE
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  
+  nameRoot = paste0('bym2', resultNameRoot, 'UrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
+  out = load(paste0(nameRoot, '.RData'))
+  
+  urbanText = ifelse(includeUrban, "", "noUrb")
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  both = includeUrban && includeCluster
+  typeTextBYM = "Discrete model"
+  
+  includeUrban = FALSE
+  includeCluster = TRUE
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  
+  nameRoot = paste0("SPDE", resultNameRootLower, "_includeClustEffect", includeCluster, 
+                    "_urbanEffect", includeUrban)
+  out = load(paste0("results", nameRoot, '.RData'))
+  
+  urbanText = ifelse(includeUrban, "", "noUrb")
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  both = includeUrban && includeCluster
+  notBothText = ifelse(both, "", " ")
+  typeTextSPDE = "Continuous model"
+  
+  zlim = range(c(expit(designRes$predictions$mean), spdeResults$resultsPixel$pred))
+  # plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("Discrete ", varName, " estimates"), cols=meanCols, zlim=logit(meanRange2), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+  plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("Discrete Model"), cols=meanCols, zlim=zlim, ticks=meanTicks2, tickLabels=meanTickLabels2, xlim=kenyaLonRange, ylim=kenyaLatRange)
+  
+  # par(mfrow=c(2,2), oma=c( 0,0,0,1.5), mar=c(5.1, 4.1, 4.1, 6))
+  # plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("SPDE ", typeText, " ", varName, " estimates"), ylim=kenyaLatRange, 
+  #      xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
+  # quilt.plot(cbind(popGrid$lon, popGrid$lat), logit(spdeResults$resultsPixel$pred), 
+  #            nx=150, ny=150, add.legend=FALSE, add=TRUE, col=meanCols, zlim=range(logit(meanRange2)))
+  # plotMapDat(adm1, lwd=.5)
+  # points(dat$lon, dat$lat, pch=".")
+  # image.plot(zlim=range(logit(meanRange2)), nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
+  #            col=meanCols, add = TRUE, axis.args=list(at=logit(meanTicks2), labels=meanTickLabels2), legend.mar = 0)
+  plot(cbind(popGrid$lon, popGrid$lat), type="n", main=paste0("Continuous Model"), ylim=kenyaLatRange, 
+       xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
+  # quilt.plot(cbind(popGrid$lon, popGrid$lat), spdeResults$resultsPixel$pred, 
+  #            nx=150, ny=150, add=TRUE, col=meanCols, zlim=meanRange2, 
+  #            axis.args=list(at=meanTicks2, labels=meanTickLabels2))
+  quilt.plot(cbind(popGrid$lon, popGrid$lat), spdeResults$resultsPixel$pred, 
+             nx=150, ny=150, add=TRUE, col=meanCols, zlim=zlim, legend.mar=7, 
+             axis.args=list(at=meanTicks2, labels=meanTickLabels2))
+  plotMapDat(adm1, lwd=.5)
+  dev.off()
+}
+
+romanText = function(number) {
+  if(number == 1) {
+    "I"
+  } else if(number == 2) {
+    "II"
+  } else if(number == 3) {
+    "III"
+  } else if(number == 4){
+    "IV"
+  } else {
+    stop(paste0("unsupported roman-numeral number: ", number))
+  }
 }

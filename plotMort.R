@@ -141,19 +141,19 @@ sdTickLabels2 = c("0.005", "0.01", "0.05", sdTickLabels2)
 meanTicksSPDE = c(0.005, 0.01, 0.05, meanTicksSPDE)
 meanTickLabelsSPDE = as.character(meanTicksSPDE)
 
-makeAllPlots(mort, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2, 
-             meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 
-             sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
-             meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
-             meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
-             varName="NMR", plotNameRoot="Mort", resultNameRoot="Mort", meanCols=rev(makeRedBlueDivergingColors(64)), 
-             relativeCols=rev(makeRedGreenDivergingColors(29)), plotUrbanMap=FALSE)
+# makeAllPlots(mort, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2, 
+#              meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 
+#              sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
+#              meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
+#              meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
+#              varName="NMR", plotNameRoot="Mort", resultNameRoot="Mort", meanCols=rev(makeRedBlueDivergingColors(64)), 
+#              relativeCols=rev(makeRedGreenDivergingColors(29)), plotUrbanMap=FALSE, makeScreenSplitPlot=TRUE)
 
-makePairPlots(mort, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2, 
-              meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 
-              sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
-              meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
-              meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
-              varName="NMR", plotNameRoot="Mort", resultNameRoot="Mort", meanCols=rev(makeRedBlueDivergingColors(64)), 
-              relativeCols=rev(makeRedGreenDivergingColors(29)), plotUrbanMap=FALSE, makeScreenSplitPlot=TRUE)
+makePairPlots(mort, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2,
+              meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2,
+              sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE,
+              meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND,
+              meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2,
+              varName="NMR", plotNameRoot="Mort", resultNameRoot="Mort", meanCols=rev(makeRedBlueDivergingColors(64)),
+              relativeCols=rev(makeRedGreenDivergingColors(29)), plotUrbanMap=FALSE, makeScreenSplitPlot=FALSE)
 

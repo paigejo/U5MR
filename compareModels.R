@@ -28,14 +28,14 @@ source("scores.R")
 #              If "2", binomial scores are put on extra rows of the printed table
 runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1, 
                              beta0=-1.75, resultType=c("county", "pixel", "EA"), 
-                            sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:15, 
-                            produceFigures=FALSE, big=FALSE, printIEvery=50, 
-                            maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=FALSE, 
-                            xtable.args=list(digits=c(0, 1, 1, 1, 1, 0, 1), display=rep("f", 7), auto=TRUE), 
-                            tableFormat=c("2", "1"), colScale=c(10^4, 10^5, 100^2, 10^3, 100, 100), 
-                            colUnits=c(" ($\\times 10^{-4}$)", " ($\\times 10^{-5}$)", " ($\\times 10^{-4}$)", 
-                                       " ($\\times 10^{-3}$)", " ($\\times 10^{-2}$)", " ($\\times 10^{-2}$)"), 
-                            colDigits=c(1, 1, 1, 1, 0, 1)) {
+                             sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:19, 
+                             produceFigures=FALSE, big=FALSE, printIEvery=50, 
+                             maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=FALSE, 
+                             xtable.args=list(digits=c(0, 1, 1, 1, 1, 0, 1), display=rep("f", 7), auto=TRUE), 
+                             tableFormat=c("2", "1"), colScale=c(10^4, 10^5, 100^2, 10^3, 100, 100), 
+                             colUnits=c(" ($\\times 10^{-4}$)", " ($\\times 10^{-5}$)", " ($\\times 10^{-4}$)", 
+                                        " ($\\times 10^{-3}$)", " ($\\times 10^{-2}$)", " ($\\times 10^{-2}$)"), 
+                             colDigits=c(1, 1, 1, 1, 0, 1), counties=sort(unique(poppc$admin1))) {
   
   # match the arguments with their correct values
   resultType = match.arg(resultType)
@@ -68,13 +68,11 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   # allNames = c("Naive", "Direct ", "Mercer et al.", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
   # allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer et al. Binom.", "BYM Binom. (no urb/clust)", "BYM Binom. (no urb)", "BYM Binom. (no clust)", "BYM Binom.", "SPDE Binom. (no urb)", "SPDE Binom.")
   # BYM models are in order of complexity: no urban/cluster, no urban, no cluster, full
-  allNames = c("Naive", "Direct", "Mercer", "BYM2 1", "BYM2 2", "BYM2 2'", "BYM2 3", "BYM2 4", "BYM2 4'", 
-               "BYM2 Pop 1", "BYM2 Pop 2", "BYM2 Pop 2'", "BYM2 Pop 3", "BYM2 Pop 4", "BYM2 Pop 4'", 
-               "SPDE 1", "SPDE 2", "SPDE 3", "SPDE 4")
-  allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer Binom.", "BYM2 1 Binom.", "BYM2 2 Binom.", "BYM2 2' Binom.", "BYM2 3 Binom.", "BYM2 4 Binom.", "BYM2 4' Binom.", 
-                       "BYM2 Pop 1 Binom.", "BYM2 Pop 2 Binom.", "BYM2 Pop 2' Binom.", "BYM2 Pop 3 Binom.", "BYM2 Pop 4 Binom.", "BYM2 Pop 4' Binom.", 
-                       "SPDE 1 Binom.", "SPDE 2 Binom.", "SPDE 3 Binom.", "SPDE 4")
-  # allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer Binom.", "BYM 1 Binom.", "BYM 2 Binom.", "BYM 2' Binom.", "BYM 3 Binom.", "BYM 4 Binom.", "BYM 4' Binom.", "SPDE 1 Binom.", "SPDE 2 Binom.")
+  allNames = c("Naive", "Direct", "Mercer et al.", "BYM2 Ia", "BYM2 IIa", "BYM2 IIa'", "BYM2 IIIa", "BYM2 IVa", "BYM2 IVa'", 
+               "BYM2 Ib", "BYM2 IIb", "BYM2 IIb'", "BYM2 IIIb", "BYM2 IVb", "BYM2 IVb'", 
+               "SPDE I", "SPDE II", "SPDE III", "SPDE IV")
+  allNamesBinomial = paste0(allNames, " Binom.")
+  allModels = allNames
   models = allModels[modelsI]
   
   # this string carries all the information about the run
@@ -104,12 +102,12 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     
     ## Now pick which models to include in the results
     
-    # load data
+    # load data  # TODO: FIX THIS
     tauText = ifelse(tausq == 0, "0", "0.01")
     testText = ifelse(test, "Test", "")
-    if("naive" %in% models || "direct" %in% models) {
+    if("Naive" %in% models || "Direct" %in% models) {
       out = load(paste0("resultsDirectNaiveBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
-                       "HHoldVar0urbanOverSamplefrac0Test", bigText, ".RData"))
+                        "HHoldVar0urbanOverSamplefrac0Test", bigText, ".RData"))
       if(sampling == "SRS") {
         directEst = directEstSRS
         naive = naiveSRS
@@ -119,24 +117,24 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         naive = naiveoverSamp
       }
     }
-    if("mercer" %in% models) {
+    if("Mercer et al." %in% models) {
       if(!test)
         load(paste0("resultsMercerBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
-                                                    "HHoldVar0urbanOverSamplefrac0.RData"))
+                    "HHoldVar0urbanOverSamplefrac0.RData"))
       else
         load(paste0("resultsMercerBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
-                                                    "HHoldVar0urbanOverSamplefrac0Test.RData"))
+                    "HHoldVar0urbanOverSamplefrac0Test.RData"))
       if(sampling == "SRS")
         mercer = mercerSRS
       else
         mercer = merceroverSamp
     }
-    if("bymNoUrb" %in% models) {
+    if("BYM2 Ia" %in% models) {
       includeUrbanRural = FALSE
-      includeCluster = TRUE
+      includeCluster = FALSE
       aggregateByPopulation = FALSE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
-                         includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
       # out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterTRUE", testText, ".RData"))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
@@ -144,58 +142,191 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         designRes$SRSdat = NULL
       designResNoUrb = designRes
     }
-    if("bymNoUrbMod" %in% models) {
-      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterTRUEdebiased", testText, ".RData"))
+    if("BYM2 IIa" %in% models) {
+      includeUrbanRural = FALSE
+      includeCluster = TRUE
+      aggregateByPopulation = FALSE
+      load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
         designRes$SRSdat = NULL
       designResNoUrbMod = designRes
     }
-    if("bymNoUrbClust" %in% models) {
-      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterFALSE", testText, ".RData"))
+    if("BYM2 IIa'" %in% models) {
+      includeUrbanRural = FALSE
+      includeCluster = TRUE
+      aggregateByPopulation = FALSE
+      load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "debiasedMaxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
         designRes$SRSdat = NULL
       designResNoUrbClust = designRes
     }
-    if("bymNoClust" %in% models) {
-      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterFALSE", testText, ".RData"))
+    if("BYM2 IIIa" %in% models) {
+      includeUrbanRural = TRUE
+      includeCluster = FALSE
+      aggregateByPopulation = FALSE
+      load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
         designRes$SRSdat = NULL
       designResNoClust = designRes
     }
-    if("bymMod" %in% models) {
-      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterTRUEdebiased", testText, ".RData"))
+    if("BYM2 IVa'" %in% models) {
+      includeUrbanRural = TRUE
+      includeCluster = TRUE
+      aggregateByPopulation = FALSE
+      load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
         designRes$SRSdat = NULL
       designResMod = designRes
     }
-    if("bym" %in% models) {
+    if("BYM2 IVa" %in% models) {
       out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterTRUE", testText, ".RData"))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
         designRes$SRSdat = NULL
+      designResTemp = designRes
     }
-    if("spdeNoUrb" %in% models) {
-      out = load(paste0("resultsSPDETausq", tauText, "urbanEffectFALSE", testText, ".RData"))
+    if("BYM2 Ib" %in% models) {
+      includeUrbanRural = FALSE
+      includeCluster = FALSE
+      aggregateByPopulation = TRUE
+      load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
+      # out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurFALSEClusterTRUE", testText, ".RData"))
+      if(sampling == "SRS")
+        designRes$overSampDat = NULL
+      else
+        designRes$SRSdat = NULL
+      designResNoUrbPopAgg = designRes
+    }
+    if("BYM2 IIb" %in% models) {
+      includeUrbanRural = FALSE
+      includeCluster = TRUE
+      aggregateByPopulation = TRUE
+      load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
+      if(sampling == "SRS")
+        designRes$overSampDat = NULL
+      else
+        designRes$SRSdat = NULL
+      designResNoUrbModPopAgg = designRes
+    }
+    if("BYM2 IIb'" %in% models) {
+      includeUrbanRural = FALSE
+      includeCluster = TRUE
+      aggregateByPopulation = TRUE
+      load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "debiasedMaxDataSets", 100, testText, '.RData'))
+      if(sampling == "SRS")
+        designRes$overSampDat = NULL
+      else
+        designRes$SRSdat = NULL
+      designResNoUrbClustPopAgg = designRes
+    }
+    if("BYM2 IIIb" %in% models) {
+      includeUrbanRural = TRUE
+      includeCluster = FALSE
+      aggregateByPopulation = TRUE
+      load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
+      if(sampling == "SRS")
+        designRes$overSampDat = NULL
+      else
+        designRes$SRSdat = NULL
+      designResNoClustPopAgg = designRes
+    }
+    if("BYM2 IVb'" %in% models) {
+      includeUrbanRural = TRUE
+      includeCluster = TRUE
+      aggregateByPopulation = TRUE
+      load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "MaxDataSets", 100, testText, '.RData'))
+      if(sampling == "SRS")
+        designRes$overSampDat = NULL
+      else
+        designRes$SRSdat = NULL
+      designResModPopAgg = designRes
+    }
+    if("BYM2 IVb" %in% models) {
+      out = load(paste0("kenyaSpatialDesignResultNewTausq", tauText, "UrbRurTRUEClusterTRUE", testText, ".RData"))
+      if(sampling == "SRS")
+        designRes$overSampDat = NULL
+      else
+        designRes$SRSdat = NULL
+      designResPopAgg = designRes
+    }
+    designRes = designResTemp # for BYM2 IVa
+    if("SPDE I" %in% models) {
+      urbanEffect = FALSE
+      includeClustEffect = FALSE
+      testText = ifelse(test, "Test", "")
+      fileName = paste0("resultsSPDEBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+                        round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
+                        "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, testText, ".RData")
+      out = load(fileName)
+      if(sampling == "SRS")
+        spdeNoUrbClust = spdeSRS
+      else
+        spdeNoUrbClust = spdeOverSamp
+    }
+    if("SPDE II" %in% models) {
+      urbanEffect = FALSE
+      includeClustEffect = TRUE
+      testText = ifelse(test, "Test", "")
+      fileName = paste0("resultsSPDEBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+                        round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
+                        "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, testText, ".RData")
+      out = load(fileName)
       if(sampling == "SRS")
         spdeNoUrb = spdeSRS
       else
         spdeNoUrb = spdeOverSamp
     }
-    if("spde" %in% models) {
-      out = load(paste0("resultsSPDETausq", tauText, "urbanEffectTRUE", testText, ".RData"))
+    if("SPDE III" %in% models) {
+      urbanEffect = TRUE
+      includeClustEffect = FALSE
+      testText = ifelse(test, "Test", "")
+      fileName = paste0("resultsSPDEBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+                        round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
+                        "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, testText, ".RData")
+      out = load(fileName)
+      if(sampling == "SRS")
+        spdeNoClust = spdeSRS
+      else
+        spdeNoClust = spdeOverSamp
+    }
+    if("SPDE IV" %in% models) {
+      urbanEffect = TRUE
+      includeClustEffect = TRUE
+      testText = ifelse(test, "Test", "")
+      fileName = paste0("resultsSPDEBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+                        round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
+                        "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, testText, ".RData")
+      out = load(fileName)
       if(sampling == "SRS")
         spde = spdeSRS
       else
         spde = spdeOverSamp
+    }
+    
+    # relabel direct, naive, and mercer county names
+    counties=sort(unique(poppc$admin1))
+    for(i in 1:maxDataSets) {
+      mercer[[i]]$admin1 = counties
+      directEst[[i]]$admin1 = counties
+      naive[[i]]$admin1 = counties
     }
     
     # commented out the below code, since it's not clear within strata predictions are necessary
@@ -240,6 +371,9 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       if(resultType == "pixel")
         resultTable = resultTable[as.numeric(as.character(truth$pixel)),]
       
+      if(is.data.frame(resultTable) && resultType == "county" && is.null(resultTable[[resultType]]))
+        resultTable[[resultType]] = counties
+      
       resultTable
     }
     
@@ -251,11 +385,22 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     numChildren = truth$numChildren
     
     # compute scores
-    scoresDirect = scoresNaive = scoresMercer = scoresBYMNoUrb = scoresBYM = scoresBYMNoUrbMod = scoresBYMMod = scoresBYMNoUrbClust = scoresBYMNoClust = scoresSPDENoUrb = scoresSPDE = data.frame()
+    scoresDirect = scoresNaive = scoresMercer = scoresBYMNoUrb = scoresBYM = scoresBYMNoUrbMod = scoresBYMMod = scoresBYMNoUrbClust = scoresBYMNoClust = 
+      scoresBYMNoUrbPopAgg = scoresBYMPopAgg = scoresBYMNoUrbModPopAgg = scoresBYMModPopAgg = scoresBYMNoUrbClustPopAgg = scoresBYMNoClustPopAgg = 
+      scoresSPDENoUrb = scoresSPDE = data.frame()
     
-    # convert results to the desired aggregation level
+    # convert results to the desired aggregation level 
+    # not including urban or cluster effect
+    if("BYM2 Ia" %in% models) {
+      designResNoUrbClust[[1]]$Q10 = getSubLevelResults(designResNoUrbClust[[1]]$Q10)
+      designResNoUrbClust[[1]]$Q50 = getSubLevelResults(designResNoUrbClust[[1]]$Q50)
+      designResNoUrbClust[[1]]$Q90 = getSubLevelResults(designResNoUrbClust[[1]]$Q90)
+      designResNoUrbClust[[1]]$mean = getSubLevelResults(designResNoUrbClust[[1]]$mean)
+      designResNoUrbClust[[1]]$stddev = getSubLevelResults(designResNoUrbClust[[1]]$stddev)
+    }
+    
     # not including urban effect
-    if("bymNoUrb" %in% models) {
+    if("BYM2 IIa" %in% models) {
       designResNoUrb[[1]]$Q10 = getSubLevelResults(designResNoUrb[[1]]$Q10)
       designResNoUrb[[1]]$Q50 = getSubLevelResults(designResNoUrb[[1]]$Q50)
       designResNoUrb[[1]]$Q90 = getSubLevelResults(designResNoUrb[[1]]$Q90)
@@ -264,25 +409,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     }
     
     # including urban effect
-    if("bym" %in% models) {
-      designRes[[1]]$Q10 = getSubLevelResults(designRes[[1]]$Q10)
-      designRes[[1]]$Q50 = getSubLevelResults(designRes[[1]]$Q50)
-      designRes[[1]]$Q90 = getSubLevelResults(designRes[[1]]$Q90)
-      designRes[[1]]$mean = getSubLevelResults(designRes[[1]]$mean)
-      designRes[[1]]$stddev = getSubLevelResults(designRes[[1]]$stddev)
-    }
-    
-    # not including urban effect
-    if("bymNoUrbClust" %in% models) {
-      designResNoUrbClust[[1]]$Q10 = getSubLevelResults(designResNoUrbClust[[1]]$Q10)
-      designResNoUrbClust[[1]]$Q50 = getSubLevelResults(designResNoUrbClust[[1]]$Q50)
-      designResNoUrbClust[[1]]$Q90 = getSubLevelResults(designResNoUrbClust[[1]]$Q90)
-      designResNoUrbClust[[1]]$mean = getSubLevelResults(designResNoUrbClust[[1]]$mean)
-      designResNoUrbClust[[1]]$stddev = getSubLevelResults(designResNoUrbClust[[1]]$stddev)
-    }
-    
-    # including urban effect
-    if("bymNoClust" %in% models) {
+    if("BYM2 IIIa" %in% models) {
       designResNoClust[[1]]$Q10 = getSubLevelResults(designResNoClust[[1]]$Q10)
       designResNoClust[[1]]$Q50 = getSubLevelResults(designResNoClust[[1]]$Q50)
       designResNoClust[[1]]$Q90 = getSubLevelResults(designResNoClust[[1]]$Q90)
@@ -290,8 +417,17 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       designResNoClust[[1]]$stddev = getSubLevelResults(designResNoClust[[1]]$stddev)
     }
     
+    # including urban effect
+    if("BYM2 IVa" %in% models) {
+      designRes[[1]]$Q10 = getSubLevelResults(designRes[[1]]$Q10)
+      designRes[[1]]$Q50 = getSubLevelResults(designRes[[1]]$Q50)
+      designRes[[1]]$Q90 = getSubLevelResults(designRes[[1]]$Q90)
+      designRes[[1]]$mean = getSubLevelResults(designRes[[1]]$mean)
+      designRes[[1]]$stddev = getSubLevelResults(designRes[[1]]$stddev)
+    }
+    
     # not including urban effect, modified to be debiased using marginal rather than conditional effect as prediction
-    if("bymNoUrbMod" %in% models) {
+    if("BYM2 IIa'" %in% models) {
       designResNoUrbMod[[1]]$Q10 = getSubLevelResults(designResNoUrbMod[[1]]$Q10)
       designResNoUrbMod[[1]]$Q50 = getSubLevelResults(designResNoUrbMod[[1]]$Q50)
       designResNoUrbMod[[1]]$Q90 = getSubLevelResults(designResNoUrbMod[[1]]$Q90)
@@ -300,12 +436,65 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     }
     
     # including urban effect, modified to be debiased using marginal rather than conditional effect as prediction
-    if("bymMod" %in% models) {
+    if("BYM2 IVa'" %in% models) {
       designResMod[[1]]$Q10 = getSubLevelResults(designResMod[[1]]$Q10)
       designResMod[[1]]$Q50 = getSubLevelResults(designResMod[[1]]$Q50)
       designResMod[[1]]$Q90 = getSubLevelResults(designResMod[[1]]$Q90)
       designResMod[[1]]$mean = getSubLevelResults(designResMod[[1]]$mean)
       designResMod[[1]]$stddev = getSubLevelResults(designResMod[[1]]$stddev)
+    }
+    
+    if("BYM2 Ib" %in% models) {
+      designResNoUrbClustPopAgg[[1]]$Q10 = getSubLevelResults(designResNoUrbClustPopAgg[[1]]$Q10)
+      designResNoUrbClustPopAgg[[1]]$Q50 = getSubLevelResults(designResNoUrbClustPopAgg[[1]]$Q50)
+      designResNoUrbClustPopAgg[[1]]$Q90 = getSubLevelResults(designResNoUrbClustPopAgg[[1]]$Q90)
+      designResNoUrbClustPopAgg[[1]]$mean = getSubLevelResults(designResNoUrbClustPopAgg[[1]]$mean)
+      designResNoUrbClustPopAgg[[1]]$stddev = getSubLevelResults(designResNoUrbClustPopAgg[[1]]$stddev)
+    }
+    
+    # not including urban effect
+    if("BYM2 IIb" %in% models) {
+      designResNoUrbPopAgg[[1]]$Q10 = getSubLevelResults(designResNoUrbPopAgg[[1]]$Q10)
+      designResNoUrbPopAgg[[1]]$Q50 = getSubLevelResults(designResNoUrbPopAgg[[1]]$Q50)
+      designResNoUrbPopAgg[[1]]$Q90 = getSubLevelResults(designResNoUrbPopAgg[[1]]$Q90)
+      designResNoUrbPopAgg[[1]]$mean = getSubLevelResults(designResNoUrbPopAgg[[1]]$mean)
+      designResNoUrbPopAgg[[1]]$stddev = getSubLevelResults(designResNoUrbPopAgg[[1]]$stddev)
+    }
+    
+    # including urban effect
+    if("BYM2 IIIb" %in% models) {
+      designResNoClustPopAgg[[1]]$Q10 = getSubLevelResults(designResNoClustPopAgg[[1]]$Q10)
+      designResNoClustPopAgg[[1]]$Q50 = getSubLevelResults(designResNoClustPopAgg[[1]]$Q50)
+      designResNoClustPopAgg[[1]]$Q90 = getSubLevelResults(designResNoClustPopAgg[[1]]$Q90)
+      designResNoClustPopAgg[[1]]$mean = getSubLevelResults(designResNoClustPopAgg[[1]]$mean)
+      designResNoClustPopAgg[[1]]$stddev = getSubLevelResults(designResNoClustPopAgg[[1]]$stddev)
+    }
+    
+    # including urban effect
+    if("BYM2 IVb" %in% models) {
+      designResPopAgg[[1]]$Q10 = getSubLevelResults(designResPopAgg[[1]]$Q10)
+      designResPopAgg[[1]]$Q50 = getSubLevelResults(designResPopAgg[[1]]$Q50)
+      designResPopAgg[[1]]$Q90 = getSubLevelResults(designResPopAgg[[1]]$Q90)
+      designResPopAgg[[1]]$mean = getSubLevelResults(designResPopAgg[[1]]$mean)
+      designResPopAgg[[1]]$stddev = getSubLevelResults(designResPopAgg[[1]]$stddev)
+    }
+    
+    # not including urban effect, modified to be debiased using marginal rather than conditional effect as prediction
+    if("BYM2 IIb'" %in% models) {
+      designResNoUrbModPopAgg[[1]]$Q10 = getSubLevelResults(designResNoUrbModPopAgg[[1]]$Q10)
+      designResNoUrbModPopAgg[[1]]$Q50 = getSubLevelResults(designResNoUrbModPopAgg[[1]]$Q50)
+      designResNoUrbModPopAgg[[1]]$Q90 = getSubLevelResults(designResNoUrbModPopAgg[[1]]$Q90)
+      designResNoUrbModPopAgg[[1]]$mean = getSubLevelResults(designResNoUrbModPopAgg[[1]]$mean)
+      designResNoUrbModPopAgg[[1]]$stddev = getSubLevelResults(designResNoUrbModPopAgg[[1]]$stddev)
+    }
+    
+    # including urban effect, modified to be debiased using marginal rather than conditional effect as prediction
+    if("BYM2 IVb'" %in% models) {
+      designResModPopAgg[[1]]$Q10 = getSubLevelResults(designResModPopAgg[[1]]$Q10)
+      designResModPopAgg[[1]]$Q50 = getSubLevelResults(designResModPopAgg[[1]]$Q50)
+      designResModPopAgg[[1]]$Q90 = getSubLevelResults(designResModPopAgg[[1]]$Q90)
+      designResModPopAgg[[1]]$mean = getSubLevelResults(designResModPopAgg[[1]]$mean)
+      designResModPopAgg[[1]]$stddev = getSubLevelResults(designResModPopAgg[[1]]$stddev)
     }
     
     for(i in c(1:maxDataSets)) { # for problem fitting mercerSRS for SRS sampling, tausq=0
@@ -317,100 +506,157 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         resultName = "eaResults"
       
       # convert results to the desired aggregation level
-      if("direct" %in% models)
+      if("Direct" %in% models)
         directEsti = getSubLevelResults(directEst[[i]])
-      if("naive" %in% models)
+      if("Naive" %in% models)
         naivei = getSubLevelResults(naive[[i]])
-      if("mercer" %in% models)
+      if("Mercer et al." %in% models)
         merceri = getSubLevelResults(mercer[[i]])
       if(resultType != "county") {
-        if("spdeNoUrb" %in% models)
-          spdeNoUrbi = spdeNoUrb[[resultName]][[i]][as.numeric(as.character(truth[[resultType]])),]
-        if("spde" %in% models)
-          spdei = spde[[resultName]][[i]][as.numeric(as.character(truth[[resultType]])),]
-        if("direct" %in% models)
+        # if("SPDE I" %in% models)
+        #   spdeNoUrbClusti = spdeNoUrbClust[[resultName]][[i]][as.numeric(as.character(truth[[resultType]])),]
+        # if("SPDE II" %in% models)
+        #   spdeNoUrbi = spdeNoUrb[[resultName]][[i]][as.numeric(as.character(truth[[resultType]])),]
+        # if("SPDE III" %in% models)
+        #   spdeNoClusti = spdeNoClust[[resultName]][[i]][as.numeric(as.character(truth[[resultType]])),]
+        # if("SPDE IV" %in% models)
+        #   spdei = spde[[resultName]][[i]][as.numeric(as.character(truth[[resultType]])),]
+        if("Direct" %in% models)
           directEsti = getSubLevelResults(directEst[[i]])
       } else {
-        if("spdeNoUrb" %in% models)
-          spdeNoUrbi = spdeNoUrb[[resultName]][[i]]
-        if("spde" %in% models)
-          spdei = spde[[resultName]][[i]]
+        # if("SPDE I" %in% models)
+        #   spdeNoUrbClusti = spdeNoUrbClust[[resultName]][[i]]
+        # if("SPDE II" %in% models)
+        #   spdeNoUrbi = spdeNoUrb[[resultName]][[i]]
+        # if("SPDE III" %in% models)
+        #   spdeNoClusti = spdeNoClust[[resultName]][[i]]
+        # if("SPDE IV" %in% models)
+        #   spdei = spde[[resultName]][[i]]
       }
       
       if(resultType == "EA") {
         # set first row of spde results to be the EA index
-        if("spdeNoUrb" %in% models) {
-          spdeNoUrbi[[resultType]] = 1:nrow(spdeNoUrbi)
-          
-          whichName = which(names(spdeNoUrbi) == "EA")
-          spdeNoUrbi = cbind(spdeNoUrbi[,whichName], spdeNoUrbi[,-whichName])
-          
-          names(spdeNoUrbi)[1] = "EA"
-        }
-        if("spde" %in% models) {
-          spdei[[resultType]] = 1:nrow(spdei)
-          
-          whichName = which(names(spdei) == "EA")
-          spdei = cbind(spdei[,whichName], spdei[,-whichName])
-          
-          names(spdei)[1] = "EA"
-        }
+        # if("SPDE I" %in% models) {
+        #   spdeNoUrbClusti[[resultType]] = 1:nrow(spdeNoUrbClusti)
+        #   
+        #   whichName = which(names(spdeNoUrbClusti) == "EA")
+        #   spdeNoUrbClusti = cbind(spdeNoUrbClusti[,whichName], spdeNoUrbClusti[,-whichName])
+        #   
+        #   names(spdeNoUrbClusti)[1] = "EA"
+        # }
+        # if("SPDE II" %in% models) {
+        #   spdeNoUrbi[[resultType]] = 1:nrow(spdeNoUrbi)
+        #   
+        #   whichName = which(names(spdeNoUrbi) == "EA")
+        #   spdeNoUrbi = cbind(spdeNoUrbi[,whichName], spdeNoUrbi[,-whichName])
+        #   
+        #   names(spdeNoUrbi)[1] = "EA"
+        # }
+        # if("SPDE III" %in% models) {
+        #   spdeNoClusti[[resultType]] = 1:nrow(spdeNoClusti)
+        #   
+        #   whichName = which(names(spdeNoClusti) == "EA")
+        #   spdeNoClusti = cbind(spdeNoClusti[,whichName], spdeNoClusti[,-whichName])
+        #   
+        #   names(spdeNoClusti)[1] = "EA"
+        # }
+        # if("SPDE IV" %in% models) {
+        #   spdei[[resultType]] = 1:nrow(spdei)
+        #   
+        #   whichName = which(names(spdei) == "EA")
+        #   spdei = cbind(spdei[,whichName], spdei[,-whichName])
+        #   
+        #   names(spdei)[1] = "EA"
+        # }
       }
       
       # for spde results, modify the name of the results
       # modify result row and column table names according to aggregation level
       if(resultType == "county") {
-        # without urban effect:
-        if("spdeNoUrb" %in% models) {
-          whichName = which(names(spdeNoUrbi) == "admin1")
-          names(spdeNoUrbi)[whichName] = resultType
-        }
-        
-        if("spde" %in% models) {
-          # with urban effect:
-          whichName = which(names(spdei) == "admin1")
-          names(spdei)[whichName] = resultType
-        }
+        # if("SPDE I" %in% models) {
+        #   whichName = which(names(spdeNoUrbClusti) == "admin1")
+        #   names(spdeNoUrbClusti)[whichName] = resultType
+        # }
+        # if("SPDE II" %in% models) {
+        #   whichName = which(names(spdeNoUrbi) == "admin1")
+        #   names(spdeNoUrbi)[whichName] = resultType
+        # }
+        # if("SPDE III" %in% models) {
+        #   whichName = which(names(spdeNoClusti) == "admin1")
+        #   names(spdeNoClusti)[whichName] = resultType
+        # }
+        # if("SPDE IV" %in% models) {
+        #   # with urban effect:
+        #   whichName = which(names(spdei) == "admin1")
+        #   names(spdei)[whichName] = resultType
+        # }
       }
       
       if(resultType == "pixel") {
         # set first row of spde results to be the pixel index
-        if("spdeNoUrb" %in% models) {
-          spdeNoUrbi[[resultType]] = truth$pixel
-          
-          whichName = which(names(spdeNoUrbi) == "pixel")
-          spdeNoUrbi = cbind(spdeNoUrbi[,whichName], spdeNoUrbi[,-whichName])
-          
-          names(spdeNoUrbi)[1] = "pixel"
-        }
-        if("spde" %in% models) {
-          spdei[[resultType]] = truth$pixel
-          
-          whichName = which(names(spdei) == "pixel")
-          spdei = cbind(spdei[,whichName], spdei[,-whichName])
-          
-          names(spdei)[1] = "pixel"
-        }
+        # if("SPDE I" %in% models) {
+        #   spdeNoUrbClusti[[resultType]] = truth$pixel
+        #   
+        #   whichName = which(names(spdeNoUrbClusti) == "pixel")
+        #   spdeNoUrbClusti = cbind(spdeNoUrbClusti[,whichName], spdeNoUrbClusti[,-whichName])
+        #   
+        #   names(spdeNoUrbClusti)[1] = "pixel"
+        # }
+        # if("SPDE II" %in% models) {
+        #   spdeNoUrbi[[resultType]] = truth$pixel
+        #   
+        #   whichName = which(names(spdeNoUrbi) == "pixel")
+        #   spdeNoUrbi = cbind(spdeNoUrbi[,whichName], spdeNoUrbi[,-whichName])
+        #   
+        #   names(spdeNoUrbi)[1] = "pixel"
+        # }
+        # if("SPDE III" %in% models) {
+        #   spdeNoClusti[[resultType]] = truth$pixel
+        #   
+        #   whichName = which(names(spdeNoClusti) == "pixel")
+        #   spdeNoClusti = cbind(spdeNoClusti[,whichName], spdeNoClusti[,-whichName])
+        #   
+        #   names(spdeNoClusti)[1] = "pixel"
+        # }
+        # if("SPDE IV" %in% models) {
+        #   spdei[[resultType]] = truth$pixel
+        #   
+        #   whichName = which(names(spdei) == "pixel")
+        #   spdei = cbind(spdei[,whichName], spdei[,-whichName])
+        #   
+        #   names(spdei)[1] = "pixel"
+        # }
       }
       
+      # TODO: fix the below code block
       # change names of table variables in spde model with no urban effect to reflect that
-      if("spdeNoUrb" %in% models)
-        names(spdeNoUrbi)[2:6] = paste0(names(spdeNoUrbi)[2:6], "NoUrb")
+      # if("SPDE I" %in% models)
+      #   names(spdeNoUrbClusti)[2:6] = paste0(names(spdeNoUrbClusti)[2:6], " I")
+      # if("SPDE II" %in% models)
+      #   names(spdeNoUrbi)[2:6] = paste0(names(spdeNoUrbi)[2:6], "NoUrb")
+      # if("SPDE II" %in% models)
+      #   names(spdeNoUrbi)[2:6] = paste0(names(spdeNoUrbi)[2:6], "NoUrb")
+      # if("SPDE II" %in% models)
+      #   names(spdeNoUrbi)[2:6] = paste0(names(spdeNoUrbi)[2:6], "NoUrb")
       
-      if("direct" %in% models) {
+      if("Direct" %in% models) {
         allres = merge(truth, directEsti, by=resultType)
-        colnames(allres) = c(resultType, "truth", paste(colnames(allres)[3:8], "direct", sep=""))
+        colnames(allres) = c(resultType, "truth", paste(colnames(allres)[3:8], "Direct", sep=""))
       } else {
         stop("direct estimates must be included at this point in order to name the estimate table columns")
       }
-      if("naive" %in% models)
+      if("Naive" %in% models)
         allres = merge(allres, naivei, by=resultType)
-      if("mercer" %in% models)
+      if("Mercer et al." %in% models)
         allres = merge(allres, merceri, by=resultType)
-      if("spdeNoUrb" %in% models)
-        allres = merge(allres, spdeNoUrbi, by=resultType)
-      if("spde" %in% models)
-        allres = merge(allres, spdei, by=resultType)
+      # if("SPDE I" %in% models)
+      #   allres = merge(allres, spdeNoUrbClusti, by=resultType)
+      # if("SPDE II" %in% models)
+      #   allres = merge(allres, spdeNoUrbi, by=resultType)
+      # if("SPDE III" %in% models)
+      #   allres = merge(allres, spdeNoClusti, by=resultType)
+      # if("SPDE IV" %in% models)
+      #   allres = merge(allres, spdei, by=resultType)
       
       # set whether or not to calculate scores on logit scale depending on result type
       thisTruth = allres$truth
@@ -425,76 +671,107 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       #   thisTruth = logit(thisTruth)
       # }
       
-      if("direct" %in% models) {
-        my.scoresdirect = getScores(thisTruth, numChildren, allres$logit.estdirect, allres$var.estdirect, nsim=nsim)
+      if("Direct" %in% models) {
+        my.scoresdirect = getScores(thisTruth, numChildren, allres$logit.estDirect, allres$var.estDirect, nsim=nsim)
         scoresDirect <- rbind(scoresDirect,
                               cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresdirect))
       }
-      if("naive" %in% models) {
+      if("Naive" %in% models) {
         my.scoresnaive = getScores(thisTruth, numChildren, allres$logit.est, allres$var.est, nsim=nsim)
         scoresNaive <- rbind(scoresNaive,
                              cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresnaive))
       }
-      if("mercer" %in% models) {
+      if("Mercer et al." %in% models) {
         my.scoresmercer = getScores(thisTruth, numChildren, allres$logit.est.mercer, allres$var.est.mercer, nsim=nsim)
         scoresMercer <- rbind(scoresMercer,
                               cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresmercer))
       }
-      if("bymNoUrbClust" %in% models) {
+      if("BYM2 Ia" %in% models) {
         my.scoresbymNoUrbClust = getScores(thisTruth, numChildren, designResNoUrbClust[[1]]$mean[,i], (designResNoUrbClust[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoUrbClust <- rbind(scoresBYMNoUrbClust,
                                      cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbClust))
       }
-      if("bymNoUrb" %in% models) {
+      if("BYM2 IIa" %in% models) {
         my.scoresbymNoUrb = getScores(thisTruth, numChildren, designResNoUrb[[1]]$mean[,i], (designResNoUrb[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoUrb <- rbind(scoresBYMNoUrb,
                                 cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrb))
       }
-      if("bymNoUrbMod" %in% models) {
+      if("BYM2 IIa'" %in% models) {
         my.scoresbymNoUrbMod = getScores(thisTruth, numChildren, designResNoUrbMod[[1]]$mean[,i], (designResNoUrbMod[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoUrbMod <- rbind(scoresBYMNoUrbMod,
-                                cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbMod))
+                                   cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbMod))
       }
-      if("bymNoClust" %in% models) {
+      if("BYM2 IIIa" %in% models) {
         my.scoresbymNoClust = getScores(thisTruth, numChildren, designResNoClust[[1]]$mean[,i], (designResNoClust[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoClust <- rbind(scoresBYMNoClust,
                                   cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoClust))
       }
-      if("bym" %in% models) {
+      if("BYM2 IVa" %in% models) {
         my.scoresbym = getScores(thisTruth, numChildren, designRes[[1]]$mean[,i], (designRes[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYM <- rbind(scoresBYM,
                            cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbym))
       }
-      if("bymMod" %in% models) {
+      if("BYM2 IVa'" %in% models) {
         my.scoresbymMod = getScores(thisTruth, numChildren, designResMod[[1]]$mean[,i], (designResMod[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMMod <- rbind(scoresBYMMod,
-                           cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymMod))
+                              cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymMod))
       }
-      if("spdeNoUrb" %in% models) {
-        stop("determine if the spde code should compute all of these directly")
-        my.biasspdeNoUrb = bias(thisTruth, allres$logit.est.spdeNoUrb, logit=useLogit, my.var=allres$var.est.spdeNoUrb)
-        my.msespdeNoUrb = mse(thisTruth, allres$logit.est.spdeNoUrb, logit=useLogit, my.var=allres$var.est.spdeNoUrb)
-        my.dssspdeNoUrb = dss(thisTruth, allres$logit.est.spdeNoUrb, allres$var.est.spdeNoUrb)
-        # the below line used to be commented for some reason
-        my.crpsspdeNoUrb = crpsNormal(thisTruth, allres$logit.est.spdeNoUrb, allres$var.est.spdeNoUrb, logit=useLogit, n=numChildren)
-        my.crpsspdeNoUrb = allres$crps.spdeNoUrb
-        my.coveragespdeNoUrb = coverage(thisTruth, allres$lower.spdeNoUrb, allres$upper.spdeNoUrb, logit=useLogit)
-        my.lengthspdeNoUrb = intervalWidth(allres$lower.spdeNoUrb, allres$upper.spdeNoUrb, logit=useLogit)
-        scoresSPDENoUrb <- rbind(scoresSPDENoUrb,
-                                 cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresspdeNoUrb))
+      if("BYM2 Ib" %in% models) {
+        my.scoresbymNoUrbClustPopAgg = getScores(thisTruth, numChildren, designResNoUrbClustPopAgg[[1]]$mean[,i], (designResNoUrbClustPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
+        scoresBYMNoUrbClustPopAgg <- rbind(scoresBYMNoUrbClustPopAgg,
+                                     cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbClustPopAgg))
       }
-      if("spde" %in% models) {
-        stop("determine if the spde code should compute all of these directly")
-        my.biasspde = bias(thisTruth, allres$logit.est.spde, logit=useLogit, my.var=allres$var.est.spde)
-        my.msespde = mse(thisTruth, allres$logit.est.spde, logit=useLogit, my.var=allres$var.est.spde)
-        my.dssspde = dss(thisTruth, allres$logit.est.spde, allres$var.est.spde)
-        # the below line needs to be commented for some reason
-        my.crpsspde = crpsNormal(thisTruth, allres$logit.est.spde, allres$var.est.spde, logit=useLogit, n=numChildren)
-        my.crpsspde = allres$crps.spde
-        my.coveragespde = coverage(thisTruth, allres$lower.spde, allres$upper.spde, logit=useLogit)
-        my.lengthspde = intervalWidth(allres$lower.spde, allres$upper.spde, logit=useLogit)
-        scoresSPDE <- rbind(scoresSPDE,
-                            cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresspde))
+      if("BYM2 IIb" %in% models) {
+        my.scoresbymNoUrbPopAgg = getScores(thisTruth, numChildren, designResNoUrbPopAgg[[1]]$mean[,i], (designResNoUrbPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
+        scoresBYMNoUrbPopAgg <- rbind(scoresBYMNoUrbPopAgg,
+                                cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbPopAgg))
+      }
+      if("BYM2 IIb'" %in% models) {
+        my.scoresbymNoUrbModPopAgg = getScores(thisTruth, numChildren, designResNoUrbModPopAgg[[1]]$mean[,i], (designResNoUrbModPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
+        scoresBYMNoUrbModPopAgg <- rbind(scoresBYMNoUrbModPopAgg,
+                                   cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbModPopAgg))
+      }
+      if("BYM2 IIIb" %in% models) {
+        my.scoresbymNoClustPopAgg = getScores(thisTruth, numChildren, designResNoClustPopAgg[[1]]$mean[,i], (designResNoClustPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
+        scoresBYMNoClustPopAgg <- rbind(scoresBYMNoClustPopAgg,
+                                  cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoClustPopAgg))
+      }
+      if("BYM2 IVb" %in% models) {
+        my.scoresbymPopAgg = getScores(thisTruth, numChildren, designResPopAgg[[1]]$mean[,i], (designResPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
+        scoresBYMPopAgg <- rbind(scoresBYMPopAgg,
+                           cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymPopAgg))
+      }
+      if("BYM2 IVb'" %in% models) {
+        my.scoresbymModPopAgg = getScores(thisTruth, numChildren, designResModPopAgg[[1]]$mean[,i], (designResModPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
+        scoresBYMModPopAgg <- rbind(scoresBYMModPopAgg,
+                              cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymModPopAgg))
+      }
+      if("SPDE II" %in% models) {
+        # stop("determine if the spde code should compute all of these directly")
+        # my.biasspdeNoUrb = bias(thisTruth, allres$logit.est.spdeNoUrb, logit=useLogit, my.var=allres$var.est.spdeNoUrb)
+        # my.msespdeNoUrb = mse(thisTruth, allres$logit.est.spdeNoUrb, logit=useLogit, my.var=allres$var.est.spdeNoUrb)
+        # my.dssspdeNoUrb = dss(thisTruth, allres$logit.est.spdeNoUrb, allres$var.est.spdeNoUrb)
+        # # the below line used to be commented for some reason
+        # my.crpsspdeNoUrb = crpsNormal(thisTruth, allres$logit.est.spdeNoUrb, allres$var.est.spdeNoUrb, logit=useLogit, n=numChildren)
+        # my.crpsspdeNoUrb = allres$crps.spdeNoUrb
+        # my.coveragespdeNoUrb = coverage(thisTruth, allres$lower.spdeNoUrb, allres$upper.spdeNoUrb, logit=useLogit)
+        # my.lengthspdeNoUrb = intervalWidth(allres$lower.spdeNoUrb, allres$upper.spdeNoUrb, logit=useLogit)
+        # scoresSPDENoUrb <- rbind(scoresSPDENoUrb,
+        #                          cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresspdeNoUrb))
+        # scoresSPDENoUrb = rbind(scoresSPDENoUrb # TODO: fix this
+      }
+      if("SPDE IV" %in% models) {
+        # stop("determine if the spde code should compute all of these directly")
+        # my.biasspde = bias(thisTruth, allres$logit.est.spde, logit=useLogit, my.var=allres$var.est.spde)
+        # my.msespde = mse(thisTruth, allres$logit.est.spde, logit=useLogit, my.var=allres$var.est.spde)
+        # my.dssspde = dss(thisTruth, allres$logit.est.spde, allres$var.est.spde)
+        # # the below line needs to be commented for some reason
+        # my.crpsspde = crpsNormal(thisTruth, allres$logit.est.spde, allres$var.est.spde, logit=useLogit, n=numChildren)
+        # my.crpsspde = allres$crps.spde
+        # my.coveragespde = coverage(thisTruth, allres$lower.spde, allres$upper.spde, logit=useLogit)
+        # my.lengthspde = intervalWidth(allres$lower.spde, allres$upper.spde, logit=useLogit)
+        # scoresSPDE <- rbind(scoresSPDE,
+        #                     cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresspde))
       }
     }
   }
@@ -507,52 +784,141 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   }
   
   # final table: 
-  if("naive" %in% models)
+  if("Naive" %in% models)
     naive = apply(scoresNaive[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("direct" %in% models)
+  if("Direct" %in% models)
     direct = apply(scoresDirect[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("mercer" %in% models)
+  if("Mercer et al." %in% models)
     mercer = apply(scoresMercer[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("bymNoUrbClust" %in% models)
+  if("BYM2 Ia" %in% models)
     bymNoUrbClust = apply(scoresBYMNoUrbClust[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("bymNoUrb" %in% models)
+  if("BYM2 IIa" %in% models)
     bymNoUrb = apply(scoresBYMNoUrb[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("bymNoUrbMod" %in% models)
+  if("BYM2 IIa'" %in% models)
     bymNoUrbMod = apply(scoresBYMNoUrbMod[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("bymNoClust" %in% models)
+  if("BYM2 IIIa" %in% models)
     bymNoClust = apply(scoresBYMNoClust[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("bym" %in% models)
+  if("BYM2 IVa" %in% models)
     bym = apply(scoresBYM[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("bymMod" %in% models)
+  if("BYM2 IVa'" %in% models)
     bymMod = apply(scoresBYMMod[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("spdeNoUrb" %in% models)
-    spdeNoUrb = apply(scoresSPDENoUrb[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("spde" %in% models)
-    spde = apply(scoresSPDE[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("BYM2 Ib" %in% models)
+    bymNoUrbClustPopAgg = apply(scoresBYMNoUrbClustPopAgg[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("BYM2 IIb" %in% models)
+    bymNoUrbPopAgg = apply(scoresBYMNoUrbPopAgg[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("BYM2 IIb'" %in% models)
+    bymNoUrbModPopAgg = apply(scoresBYMNoUrbModPopAgg[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("BYM2 IIIb" %in% models)
+    bymNoClustPopAgg = apply(scoresBYMNoClustPopAgg[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("BYM2 IVb" %in% models)
+    bymPopAgg = apply(scoresBYMPopAgg[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("BYM2 IVb'" %in% models)
+    bymModPopAgg = apply(scoresBYMModPopAgg[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
+  if("SPDE I" %in% models) {
+    theseNames = names(spdeNoUrbClust)
+    namesI = grepl(tolower(resultType), tolower(theseNames))
+    first = TRUE
+    for(i in 1:length(theseNames)) {
+      if(namesI[i]) {
+        if(first) {
+          spdeNoUrbClustScores = apply(spdeNoUrbClust[[i]], 2, mean)
+          first = FALSE
+        }
+        else {
+          spdeNoUrbClustScores = rbind(spdeNoUrbClustScores, apply(spdeNoUrbClust[[i]], 2, mean))
+        }
+      }
+    }
+  }
+  if("SPDE II" %in% models) {
+    theseNames = names(spdeNoUrb)
+    namesI = grepl(tolower(resultType), tolower(theseNames))
+    first = TRUE
+    for(i in 1:length(theseNames)) {
+      if(namesI[i]) {
+        if(first) {
+          spdeNoUrbScores = apply(spdeNoUrb[[i]], 2, mean)
+          first = FALSE
+        }
+        else {
+          spdeNoUrbScores = rbind(spdeNoUrbScores, apply(spdeNoUrb[[i]], 2, mean))
+        }
+      }
+    }
+  }
+  if("SPDE III" %in% models) {
+    theseNames = names(spdeNoClust)
+    namesI = grepl(tolower(resultType), tolower(theseNames))
+    first = TRUE
+    for(i in 1:length(theseNames)) {
+      if(namesI[i]) {
+        if(first) {
+          spdeNoClustScores = apply(spdeNoClust[[i]], 2, mean)
+          first = FALSE
+        }
+        else {
+          spdeNoClustScores = rbind(spdeNoClustScores, apply(spdeNoClust[[i]], 2, mean))
+        }
+      }
+    }
+  }
+  if("SPDE IV" %in% models) {
+    theseNames = names(spde)
+    namesI = grepl(tolower(resultType), tolower(theseNames))
+    first = TRUE
+    for(i in 1:length(theseNames)) {
+      if(namesI[i]) {
+        if(first) {
+          spdeScores = apply(spde[[i]], 2, mean)
+          first = FALSE
+        }
+        else {
+          spdeScores = rbind(spdeScores, apply(spde[[i]], 2, mean))
+        }
+      }
+    }
+  }
   idx = 1:9
   tab = c()
-  if("naive" %in% models)
+  if("Naive" %in% models)
     tab = rbind(tab, c(naive[idx]))
-  if("direct" %in% models)
+  if("Direct" %in% models)
     tab = rbind(tab, c(direct[idx]))
-  if("mercer" %in% models)
+  if("Mercer et al." %in% models)
     tab = rbind(tab, c(mercer[idx]))
-  if("bymNoUrbClust" %in% models)
+  if("BYM2 Ia" %in% models)
     tab = rbind(tab, c(bymNoUrbClust[idx]))
-  if("bymNoUrb" %in% models)
+  if("BYM2 IIa" %in% models)
     tab = rbind(tab, c(bymNoUrb[idx]))
-  if("bymNoUrbMod" %in% models)
+  if("BYM2 IIa'" %in% models)
     tab = rbind(tab, c(bymNoUrbMod[idx]))
-  if("bymNoClust" %in% models)
+  if("BYM2 IIIa" %in% models)
     tab = rbind(tab, c(bymNoClust[idx]))
-  if("bym" %in% models)
+  if("BYM2 IVa" %in% models)
     tab = rbind(tab, c(bym[idx]))
-  if("bymMod" %in% models)
+  if("BYM2 IVa'" %in% models)
     tab = rbind(tab, c(bymMod[idx]))
-  if("spdeNoUrb" %in% models)
-    tab = rbind(tab, c(spdeNoUrb[idx]))
-  if("spde" %in% models)
-    tab = rbind(tab, c(spde[idx]))
+  if("BYM2 Ib" %in% models)
+    tab = rbind(tab, c(bymNoUrbClustPopAgg[idx]))
+  if("BYM2 IIb" %in% models)
+    tab = rbind(tab, c(bymNoUrbPopAgg[idx]))
+  if("BYM2 IIb'" %in% models)
+    tab = rbind(tab, c(bymNoUrbModPopAgg[idx]))
+  if("BYM2 IIIb" %in% models)
+    tab = rbind(tab, c(bymNoClustPopAgg[idx]))
+  if("BYM2 IVb" %in% models)
+    tab = rbind(tab, c(bymPopAgg[idx]))
+  if("BYM2 IVb'" %in% models)
+    tab = rbind(tab, c(bymModPopAgg[idx]))
+  # SPDE models are in format 2
+  # if("SPDE I" %in% models)
+  #   tab = rbind(tab, c(spdeNoUrbClust[idx]))
+  # if("SPDE II" %in% models)
+  #   tab = rbind(tab, c(spdeNoUrb[idx]))
+  # if("SPDE III" %in% models)
+  #   tab = rbind(tab, c(spdeNoClust[idx]))
+  # if("SPDE IV" %in% models)
+  #   tab = rbind(tab, c(spde[idx]))
   colnames(tab) = c("Bias", "Var", "MSE", "CRPS", "CRPS Binom.", "80\\% Cvg", "80\\% Cvg Binom.", "CI Width", "CI Width Binom.")
   finalNames = allNames[modelsI]
   finalNamesBinomial = allNamesBinomial[modelsI]
@@ -568,12 +934,31 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     tab = otherTable[numeric(0),]
     thisFinalNames = c()
     
-    for(i in 1:length(modelsI)) {
+    for(i in 1:nrow(otherTable)) {
       tab = rbind(tab, 
                   otherTable[i,], 
                   binomialTable[i,])
       thisFinalNames = c(thisFinalNames, finalNames[i], finalNamesBinomial[i])
     }
+    
+    # add in SPDE models if necessary
+    if("SPDE I" %in% models) {
+      thisFinalNames = c(thisFinalNames, paste0("SPDE I", c(" Continuous", " Discrete", " Exact")))
+      tab = rbind(tab, spdeNoUrbClustScores)
+    }
+    if("SPDE II" %in% models) {
+      thisFinalNames = c(thisFinalNames, paste0("SPDE II", c(" Continuous", " Discrete", " Exact")))
+      tab = rbind(tab, spdeNoUrbScores)
+    }
+    if("SPDE III" %in% models) {
+      thisFinalNames = c(thisFinalNames, paste0("SPDE III", c(" Continuous", " Discrete", " Exact")))
+      tab = rbind(tab, spdeNoClustScores)
+    }
+    if("SPDE IV" %in% models) {
+      thisFinalNames = c(thisFinalNames, paste0("SPDE IV", c(" Continuous", " Discrete", " Exact")))
+      tab = rbind(tab, spdeScores)
+    }
+    
     rownames(tab) = thisFinalNames
   }
   
@@ -621,13 +1006,13 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     par(mar=c(10,4,2,1), las=2, cex.lab=2, cex.axis=1.4, cex.main=2)
     boxplot(crps~region, data=scoresDirect, at=seq(-1, 275, by=6), 
             col="yellow", xlim=c(0,279), names=FALSE, xaxt="n")
-    if("naive" %in% models)
+    if("Naive" %in% models)
       boxplot(crps~region, data=scoresNaive, at=seq(0, 276, by=6), col="orange", xlim=c(0,230), add=TRUE)
-    if("mercer" %in% models)
+    if("Mercer et al." %in% models)
       boxplot(crps~region, data=scoresMercer, at=seq(1, 277, by=6), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
     if("BYM" %in% models)
       boxplot(crps~region, data=scoresBYM, at=seq(2, 278, by=6), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
-    if("spde" %in% models)
+    if("SPDE" %in% models)
       boxplot(crps~region, data=scoresSPDE, at=seq(3, 279, by=6), col="purple", xlim=c(0,230), add=TRUE, xaxt="n")
     # axis(2, at=seq(0.5, 276.5, by=6), labels=scoresDirect$region[1:47])
     legend("top", c("Direct estimates", "Naive", "Mercer", "BYM", "SPDE"),
@@ -1124,10 +1509,10 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
     # SRS setting 
     if(sampling == "SRS") {
       if("direct" %in% models) {
-        my.biasSRSdirect = bias(thisTruth, allresSRS$logit.estdirect, logit=useLogit, my.var=allresSRS$var.estdirect)
-        my.mseSRSdirect = mse(thisTruth, allresSRS$logit.estdirect, logit=useLogit, my.var=allresSRS$var.estdirect)
-        my.dssSRSdirect = dss(thisTruth, allresSRS$logit.estdirect, allresSRS$var.estdirect)
-        my.crpsSRSdirect = crpsNormal(thisTruth, allresSRS$logit.estdirect, allresSRS$var.estdirect, logit=useLogit, n=numChildren)
+        my.biasSRSdirect = bias(thisTruth, allresSRS$logit.estDirect, logit=useLogit, my.var=allresSRS$var.estDirect)
+        my.mseSRSdirect = mse(thisTruth, allresSRS$logit.estDirect, logit=useLogit, my.var=allresSRS$var.estDirect)
+        my.dssSRSdirect = dss(thisTruth, allresSRS$logit.estDirect, allresSRS$var.estDirect)
+        my.crpsSRSdirect = crpsNormal(thisTruth, allresSRS$logit.estDirect, allresSRS$var.estDirect, logit=useLogit, n=numChildren)
         my.coverageSRSdirect = coverage(thisTruth, allresSRS$lowerdirect, allresSRS$upperdirect, doLogit=useLogit)
         my.lengthSRSdirect = intervalWidth(allresSRS$lowerdirect, allresSRS$upperdirect, logit=useLogit)
       }

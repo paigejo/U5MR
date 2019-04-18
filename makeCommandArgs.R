@@ -181,7 +181,7 @@ makeBYM2CommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarV
 
 makeCompareModelArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarVec=c(0, 0.15^2), 
                                 resultTypeVec=c("county", "pixel", "EA"), testVec=c(FALSE), 
-                                samplingVec=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsIList=list(1:2, 1:15, 1:19), 
+                                samplingVec=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsIList=list(1:2, 1:19), 
                                 produceFigures=FALSE, bigVec=c(FALSE, TRUE), printIEvery=50, 
                                 maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=FALSE, 
                                 xtable.args=list(digits=c(0, 1, 1, 1, 1, 0, 1), display=rep("f", 7), auto=TRUE), 
