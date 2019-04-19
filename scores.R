@@ -725,8 +725,8 @@ logitNormMean = function(muSigmaMat, parClust=NULL, ...) {
   else {
     mu = muSigmaMat[1]
     sigma = muSigmaMat[2]
-    fExp <- function(x) plogis(x) * dnorm(x, mean = mu, sd = sigma)
-    integrate(fExp, mu-20*sigma, mu+20*sigma, abs.tol = 0, ...)$value
+    fExp <- function(x) exp(plogis(x, log.p=TRUE) + dnorm(x, mean = mu, sd = sigma, log=TRUE))
+    integrate(fExp, mu-10*sigma, mu+10*sigma, abs.tol = 0, ...)$value
   }
 }
 
@@ -742,11 +742,11 @@ logitNormMoments = function(muSigmaMat, parClust=NULL, ...) {
   else {
     mu = muSigmaMat[1]
     sigma = muSigmaMat[2]
-    fExp <- function(x) plogis(x) * dnorm(x, mean = mu, sd = sigma)
-    expectation = integrate(fExp, mu-20*sigma, mu+20*sigma, abs.tol = 0, ...)$value
+    fExp <- function(x) exp(plogis(x, log.p=TRUE) + dnorm(x, mean = mu, sd = sigma, log=TRUE))
+    expectation = integrate(fExp, mu-10*sigma, mu+10*sigma, abs.tol = 0, ...)$value
     
     fVar = function(x) (plogis(x) - .exp)^2 * dnorm(x, mean = mu, sd = sigma)
-    variance = integrate(fVar, mu-20*sigma, mu+20*sigma, abs.tol = abs.tol, ...)$value
+    variance = integrate(fVar, mu-10*sigma, mu+10*sigma, abs.tol = abs.tol, ...)$value
     c(mean = expectation, var = variance)
   }
 }
@@ -765,8 +765,9 @@ logitNormCrossExpectation = function(muSigmaMat=matrix(c(0, 1), ncol=2), ...) {
   else {
     mu = muSigmaMat[1]
     sigma = muSigmaMat[2]
-    f11 <- function(x) plogis(x)^2 * dnorm(x, mean = mu, sd = sigma)
-    p11 = integrate(f11, mu-20*sigma, mu+20*sigma, abs.tol = 0, ...)$value
+    f11 <- function(x) exp(2 * plogis(x, log.p = TRUE) + dnorm(x, mean = mu, sd = sigma, log = TRUE))
+    p11 = integrate(f11, mu-10*sigma, mu+10*sigma, abs.tol = 0, ...)$value
+    
     p11
   }
 }

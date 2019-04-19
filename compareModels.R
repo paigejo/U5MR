@@ -140,7 +140,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         designRes$overSampDat = NULL
       else
         designRes$SRSdat = NULL
-      designResNoUrb = designRes
+      designResNoUrbClust = designRes
     }
     if("BYM2 IIa" %in% models) {
       includeUrbanRural = FALSE
@@ -152,7 +152,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         designRes$overSampDat = NULL
       else
         designRes$SRSdat = NULL
-      designResNoUrbMod = designRes
+      designResNoUrb = designRes
     }
     if("BYM2 IIa'" %in% models) {
       includeUrbanRural = FALSE
@@ -164,7 +164,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         designRes$overSampDat = NULL
       else
         designRes$SRSdat = NULL
-      designResNoUrbClust = designRes
+      designResNoUrbMod = designRes
     }
     if("BYM2 IIIa" %in% models) {
       includeUrbanRural = TRUE
@@ -213,7 +213,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         designRes$overSampDat = NULL
       else
         designRes$SRSdat = NULL
-      designResNoUrbPopAgg = designRes
+      designResNoUrbClustPopAgg = designRes
     }
     if("BYM2 IIb" %in% models) {
       includeUrbanRural = FALSE
@@ -225,7 +225,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         designRes$overSampDat = NULL
       else
         designRes$SRSdat = NULL
-      designResNoUrbModPopAgg = designRes
+      designResNoUrbPopAgg = designRes
     }
     if("BYM2 IIb'" %in% models) {
       includeUrbanRural = FALSE
@@ -237,7 +237,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         designRes$overSampDat = NULL
       else
         designRes$SRSdat = NULL
-      designResNoUrbClustPopAgg = designRes
+      designResNoUrbModPopAgg = designRes
     }
     if("BYM2 IIIb" %in% models) {
       includeUrbanRural = TRUE
