@@ -986,7 +986,8 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         math.style.exponents=TRUE, 
         sanitize.text.function=function(x){x})
   
-  runId = paste0("Tausq", round(tausq, 3), testText, bigText, sampling, 
+  runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                "HHoldVar0urbanOverSamplefrac0", testText, bigText, sampling, 
                  "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
   if(saveResults) {
     # first collect all the results. Save everything except for the postprocessing arguments: 
