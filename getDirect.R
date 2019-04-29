@@ -94,18 +94,24 @@ getDirectNaive = function(tausq=0.1^2, test=FALSE, loadResults=FALSE, big=FALSE,
     
     tc = ifelse(tausq == 0, "", paste0("Tausq", round(tausq, 4)))
     if(!test)
-      save(data4directSRS, data4directoverSamp, file=paste0("data4direct", tc, ".RData"))
+      save(data4directSRS, data4directoverSamp, 
+           file=paste0("data4direct", "simDataMultiBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                       "HHoldVar0urbanOverSamplefrac0", bigText, ".RData"))
     else
-      save(data4directSRS, data4directoverSamp, file=paste0("data4direct", tc, "Test.RData"))
+      save(data4directSRS, data4directoverSamp, 
+           file=paste0("data4direct", "simDataMultiBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                       "HHoldVar0urbanOverSamplefrac0", bigText, "Test.RData"))
     # save(data4directSRS, data4directoverSamp, file="data4directTausq0.01.RData")
     # save(data4directSRS, data4directoverSamp, file="data4directTest.RData")
     # save(data4directSRS, data4directoverSamp, file="data4directTausq0.01Test.RData")
   } else {
     tc = ifelse(tausq == 0, "", paste0("Tausq", round(tausq, 4)))
     if(!test)
-      load(paste0("data4direct", tc, ".RData"))
+      load(paste0("data4direct", "simDataMultiBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                  "HHoldVar0urbanOverSamplefrac0", bigText, ".RData"))
     else
-      load(paste0("data4direct", tc, "Test.RData"))
+      load(paste0("data4direct", "simDataMultiBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                  "HHoldVar0urbanOverSamplefrac0", bigText, "Test.RData"))
   }
   
   # start analysis using naive approach and computing direct estimates

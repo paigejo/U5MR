@@ -99,7 +99,6 @@ generateSimDataSets = function(nsim=100, nsimBig = 250, seeds=c(580252, 1234), b
   set.seed(seeds[2])
   # simulate the cluster sampling and add to the data sets
   overSampClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, urbanOverSamplefrac, verbose=FALSE)
-  overSampClustDat = simClustersEmpirical(kenyaEAs, kenyaEAsLong, nsimBig, NULL, urbanOverSamplefrac, verbose=FALSE)
   clustList = genAndreaFormatFromEAIs(simulatedEAs$eaDat, overSampClustDat$eaIs, overSampClustDat$sampleWeights)
   overSampDat = list(eaDat=kenyaEAs, clustDat=clustList)
   

@@ -76,8 +76,8 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   models = allModels[modelsI]
   
   # this string carries all the information about the run
-  runId = paste0("Tausq", round(tausq, 3), "margVar", round(margVar, 3), "gamma", round(gamma, 3), 
-                 testText, bigText, sampling, 
+  runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                 "HHoldVar0urbanOverSamplefrac0", testText, bigText, sampling, 
                  "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
   
   # compute the results if necessary
@@ -1972,3 +1972,47 @@ getTruth = function(resultType = c("county", "region", "EA", "pixel"), eaDat) {
   
   truth
 }
+
+# takes all precomputed scoring rules from compareModels2 listed in compareModelCommandArgs.RData, and outputs results
+runCompareModelsAllLocal = function() {
+  load("compareModelCommandArgs.RData")
+  for(i in 1:length(compareModelCommandArgs)) {
+    # get the arguments for the run, and specify that we want to load the precomputed results
+    argList = compareModelCommandArgs[[i]]
+    argList$loadResults = TRUE
+    
+    # get all elements from the list
+    tausq = argList$tausq
+    gamma = argList$gamma
+    margVar = argList$margVar
+    test = argList$test
+    resultType = argList$resultType
+    sampling = argList$sampling
+    recomputeTruth = argList$recomputeTruth
+    modelsI = argList$modelsI
+    produceFigures = argList$produceFigures
+    big = argList$big
+    maxDataSets = argList$maxDataSets 
+    nsim = argList$nsim
+    
+    # generate an informative id string to label the table we are about to print with
+    testText = ifelse(test, "Test", "")
+    bigText = ifelse(big, "Big", "")
+    runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                   "HHoldVar0urbanOverSamplefrac0", testText, bigText, sampling, 
+                   "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
+    print(runId)
+    
+    # print out the precomputed scoring rules results
+    do.call("runCompareModels2", argList)
+  }
+}
+
+
+
+
+
+
+
+
+
