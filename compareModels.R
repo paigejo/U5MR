@@ -71,7 +71,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   allNames = c("Naive", "Direct", "Mercer et al.", "BYM2 Ia", "BYM2 IIa", "BYM2 IIa'", "BYM2 IIIa", "BYM2 IVa", "BYM2 IVa'", 
                "BYM2 Ib", "BYM2 IIb", "BYM2 IIb'", "BYM2 IIIb", "BYM2 IVb", "BYM2 IVb'", 
                "SPDE I", "SPDE II", "SPDE III", "SPDE IV")
-  allNamesBinomial = paste0(allNames, " Binom.")
+  allNamesBinomial = paste0(allNames, " Bin.")
   allModels = allNames
   models = allModels[modelsI]
   
@@ -107,7 +107,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     testText = ifelse(test, "Test", "")
     if("Naive" %in% models || "Direct" %in% models) {
       out = load(paste0("resultsDirectNaiveBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
-                        "HHoldVar0urbanOverSamplefrac0Test", bigText, ".RData"))
+                        "HHoldVar0urbanOverSamplefrac0", testText, bigText, ".RData"))
       if(sampling == "SRS") {
         directEst = directEstSRS
         naive = naiveSRS
@@ -183,7 +183,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       includeCluster = TRUE
       aggregateByPopulation = FALSE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
-                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "debiasedMaxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
@@ -256,7 +256,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       includeCluster = TRUE
       aggregateByPopulation = TRUE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
-                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
+                  includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "debiasedMaxDataSets", 100, testText, '.RData'))
       if(sampling == "SRS")
         designRes$overSampDat = NULL
       else
@@ -791,6 +791,13 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     # in this case, we have already computed the results so just load them into the environment
     load(paste0("scores", runId, ".RData"))
     
+    allNames = c("Naive", "Direct", "Mercer et al.", "BYM2 Ia", "BYM2 IIa", "BYM2 IIa'", "BYM2 IIIa", "BYM2 IVa", "BYM2 IVa'", 
+                 "BYM2 Ib", "BYM2 IIb", "BYM2 IIb'", "BYM2 IIIb", "BYM2 IVb", "BYM2 IVb'", 
+                 "SPDE I", "SPDE II", "SPDE III", "SPDE IV")
+    allNamesBinomial = paste0(allNames, " Bin.")
+    allModels = allNames
+    models = allModels[modelsI]
+    
     # also, don't resave these results that we've already saved
     saveResults = FALSE
   }
@@ -931,7 +938,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   #   tab = rbind(tab, c(spdeNoClust[idx]))
   # if("SPDE IV" %in% models)
   #   tab = rbind(tab, c(spde[idx]))
-  colnames(tab) = c("Bias", "Var", "MSE", "CRPS", "CRPS Binom.", "80\\% Cvg", "80\\% Cvg Binom.", "CI Width", "CI Width Binom.")
+  colnames(tab) = c("Bias", "Var", "MSE", "CRPS", "CRPS Bin.", "80\\% Cvg", "80\\% Cvg Bin.", "CI Width", "CI Width Bin.")
   finalNames = allNames[modelsI]
   finalNamesBinomial = allNamesBinomial[modelsI]
   
@@ -955,19 +962,19 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     
     # add in SPDE models if necessary
     if("SPDE I" %in% models) {
-      thisFinalNames = c(thisFinalNames, paste0("SPDE I", c(" Continuous", " Discrete", " Exact")))
+      thisFinalNames = c(thisFinalNames, paste0("SPDE I", c(" Cts.", " Discrete", " Exact")))
       tab = rbind(tab, spdeNoUrbClustScores)
     }
     if("SPDE II" %in% models) {
-      thisFinalNames = c(thisFinalNames, paste0("SPDE II", c(" Continuous", " Discrete", " Exact")))
+      thisFinalNames = c(thisFinalNames, paste0("SPDE II", c(" Cts.", " Discrete", " Exact")))
       tab = rbind(tab, spdeNoUrbScores)
     }
     if("SPDE III" %in% models) {
-      thisFinalNames = c(thisFinalNames, paste0("SPDE III", c(" Continuous", " Discrete", " Exact")))
+      thisFinalNames = c(thisFinalNames, paste0("SPDE III", c(" Cts.", " Discrete", " Exact")))
       tab = rbind(tab, spdeNoClustScores)
     }
     if("SPDE IV" %in% models) {
-      thisFinalNames = c(thisFinalNames, paste0("SPDE IV", c(" Continuous", " Discrete", " Exact")))
+      thisFinalNames = c(thisFinalNames, paste0("SPDE IV", c(" Cts.", " Discrete", " Exact")))
       tab = rbind(tab, spdeScores)
     }
     
@@ -976,9 +983,15 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   
   # round the columns of tab and modify the column names to include the scale
   for(i in 1:ncol(tab)) {
-    tab[,i] = as.numeric(print(round(tab[,i] * colScale[i], digits=colDigits[i])))
+    tab[,i] = as.numeric(round(tab[,i] * colScale[i], digits=colDigits[i]))
     colnames(tab)[i] = paste0(colnames(tab)[i], colUnits[i])
   }
+  
+  # remove "Direct Bin." model, since direct estimates already account for Binomial variation
+  # if("Direct" %and% models) {
+  #   rowI = thisFinalNames == "Direct Bin."
+  #   tab = tab[!rowI,]
+  # }
   
   print(do.call("xtable", c(list(tab), xtable.args)), 
         include.colnames=TRUE,

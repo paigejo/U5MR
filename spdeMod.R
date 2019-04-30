@@ -1229,9 +1229,12 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   predMat <- predMatNoClust
   
   if(clusterEffect) {
+    # add in estimated cluster effects at the sampled enumeration areas
     predMat[clusterIndices,] = predMat[clusterIndices,] + latentMat[clustIndices,]
-    predMat[!clusterIndices,] = predMat[!clusterIndices,] + 
-      rnorm(sum(!clusterIndices) * nPostSamples, sd = rep(sqrt(clusterVars), each=sum(!clusterIndices)))
+    
+    # addend cluster effects we have no information about at the on sampled enumeration areas
+    predMat[eaIndices[-clusterIndices],] = predMat[eaIndices[-clusterIndices],] + 
+      rnorm(length(eaIndices[-clusterIndices]) * nPostSamples, sd = rep(sqrt(clusterVars), each=length(eaIndices[-clusterIndices])))
   }
   
   if(genEALevel) {
