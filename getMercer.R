@@ -21,7 +21,7 @@ getMercer = function(tausq=.1^2, test=FALSE, margVar=0.15^2, gamma=-1) {
   
   for(i in 1:100){
     print(i)
-    tmpoverSamp = mercer_u1m(directEstoverSamp[[i]]$logit.est, directEstoverSamp[[i]]$var.est, 
+    tmpoverSamp = mercer_u1m2(directEstoverSamp[[i]]$logit.est, directEstoverSamp[[i]]$var.est, 
                              graph.path = "Kenyaadm1.graph")
     resoverSamp=   data.frame(admin1=directEstoverSamp[[i]]$admin1, 
                               u1m.mercer=expit(tmpoverSamp$summary.linear.predictor$mean),

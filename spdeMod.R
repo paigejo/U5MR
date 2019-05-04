@@ -1079,17 +1079,21 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
 # genCountLevel: whether or not to generate predictions at the count level versus logistic. DEPRECATED
 # nSamplePixel: fewer samples are required for good approximation of the posterior at the pixel level 
 #               than county, so we only take this many of the posterior samples for pixel level estimation
+# allPixels: if TRUE, predict at all pixels. If FALSE, predict only at pixels with data
+# newMesh: this should definitely be set to TRUE, or the mesh will probably not be fine enough
+# doValidation: whether or not to perform validation
+# previousResult: the output of the inla call of a previous call to this function. Used for initialization
 fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, obsUrban, predCoords, 
                          predNs = rep(1, nrow(predCoords)), predUrban, clusterIndices, prior=NULL, 
-                         mesh=NULL, int.strategy="auto", strategy="laplace", 
+                         mesh=NULL, int.strategy="grid", strategy="laplace", 
                          genCountyLevel=FALSE, popGrid=NULL, nPostSamples=100, kmRes=5, 
                          counties=sort(unique(eaDat$admin1)), verbose=TRUE, genRegionLevel=FALSE, 
                          regions=sort(unique(eaDat$region)), keepPixelPreds=FALSE, genEALevel=FALSE, 
                          eaIndices=1:nrow(kenyaEAs), urbanEffect=TRUE, link=1, 
-                         predictionType=c("median", "mean"), eaDat=NULL, nSamplePixel=10, 
-                         truthByPixel=NULL, truthByCounty=NULL, truthByRegion=NULL, 
-                         truthByEa=NULL, clusterEffect=FALSE, significance=.8, 
-                         onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE) {
+                         predictionType=c("mean", "median"), eaDat=NULL, nSamplePixel=10, 
+                         clusterEffect=FALSE, significance=.8, 
+                         onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE, doValidation=FALSE, 
+                         previousResult=NULL) {
   
   # match the prediction type
   predictionType = match.arg(predictionType)
@@ -1168,7 +1172,23 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   mesh.index <- inla.spde.make.index(name = "field", n.spde = prior$n.spde)
   
   # fit model
-  control.inla = list(strategy=strategy, int.strategy=int.strategy) 
+  if(doValidation) {
+    # as recommended by http://www.r-inla.org/faq#TOC-How-can-I-compute-cross-validation-or-predictive-measures-of-fit-
+    if(strategy != "laplace" || int.strategy != "grid")
+      warning("Since doValidation has been set to TRUE, changing integration strategy to 'grid', and strategy to 'laplace'")
+    control.inla = list(strategy="laplace", int.strategy="grid", diff.logdens=4, npoints=21) 
+  }
+  else {
+    control.inla = list(strategy=strategy, int.strategy=int.strategy)
+  }
+  if(is.null(previousResult)) {
+    modeControl = inla.set.control.mode.default()
+  }
+  else {
+    # initialize the fitting process based on a previous optimum
+    modeControl = control.mode(result=previousResult, restart=TRUE)
+  }
+  
   allNs = obsNs
   stack.full = stack.est
   stackDat = inla.stack.data(stack.full, spde=prior)
@@ -1180,13 +1200,15 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                data = stackDat, Ntrials=stackDat$Ntrials,
                control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link, quantiles=allQuantiles),
                family="binomial", verbose=verbose, control.inla=control.inla,
-               control.compute=list(config=TRUE))
+               control.compute=list(config=TRUE, cpo=doValidation, dic=doValidation, waic=doValidation), 
+               control.mode=modeControl)
   } else {
     mod = inla(y ~ - 1 + X + f(field, model=prior), 
                data = stackDat, Ntrials=stackDat$Ntrials, 
                control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link, quantiles=allQuantiles), 
                family="binomial", verbose=verbose, control.inla=control.inla, 
-               control.compute=list(config=TRUE))
+               control.compute=list(config=TRUE, cpo=doValidation, dic=doValidation, waic=doValidation), 
+               control.mode=modeControl)
   }
   
   # get predictive surface, SD, and data
@@ -1742,3 +1764,76 @@ simSPDE = function(coords, nsim=1, mesh=NULL, effRange=(max(coords[,1])-min(coor
   
   simDat
 }
+
+# This function will validate the SPDE model for a given dataset using a number of different scoring rules, 
+# including CPO, DIC, WAIC, MSE, and CRPS. MSE and CRPS are computed by leaving out a given county's data, 
+# and comparing the predictive distribution for that county to the direct estimate (and repeating for all 
+# counties). Note that this function does not compute MSE and CRPS directly, but the predictor distributions 
+# for each left out county are given as an output so they can be computed later
+# obsCountyIs: a vector of indices of the same length as the number of observations were each value is a index in counties
+# predCountyIs: a vector of indices of the same length as nrow(predcoords) were each value is a index in counties
+fitSPDEModelValidate = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, obsUrban, obsCountyIs, predCoords, 
+                                predNs = rep(1, nrow(predCoords)), predUrban, predCountyIs, clusterIndices=1:nrow(thisObsCoords), 
+                                prior=NULL, mesh=NULL, int.strategy="grid", strategy="laplace", 
+                                popGrid=NULL, nPostSamples=100, kmRes=5, 
+                                counties=sort(unique(poppc$County)), verbose=TRUE, 
+                                eaIndices=1:nrow(thisObsCoords), urbanEffect=TRUE, link=1, 
+                                predictionType=c("mean", "median"), nSamplePixel=10, 
+                                clusterEffect=FALSE, significance=.8, newMesh=TRUE) {
+  
+  # compute CPO, DIC, and WAIC
+  fullFit = fitSPDEModel3(obsCoords, obsNs, obsCounts, obsUrban, predCoords, 
+                          predNs, predUrban, clusterIndices, prior, 
+                          mesh=mesh, int.strategy=int.strategy, strategy=strategy, 
+                          genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, kmRes=kmRes, 
+                          counties=counties, verbose=verbose, genRegionLevel=FALSE, 
+                          keepPixelPreds=FALSE, genEALevel=FALSE, 
+                          eaIndices=eaIndices, urbanEffect=urbanEffect, link=1, 
+                          predictionType=predictionType, nSamplePixel=nSamplePixel, 
+                          clusterEffect=clusterEffect, significance=significance, 
+                          onlyInexact=TRUE, allPixels=FALSE, newMesh, doValidation=TRUE)
+  cpo = fullFit$mod$cpo$cpo
+  dic = fullFit$mod$dic$dic
+  waic = fullFit$mod$waic$waic
+  
+  outList = list()
+  for(i in 1:length(counties)) {
+    thisCounty = counties[i]
+    print(paste0("Leaving out county ", i, "/47 (", thisCounty, ")"))
+    
+    # remove county i from observations
+    obsI = obsCountyIs == i
+    thisObsCoords = obsCoords[obsI,]
+    thisObsNs = obdsNs[obsI]
+    thisObsCounts = obsCounts[obsI]
+    thisObsUrban = obsUrban[obsI]
+    
+    # remove all counties but county i for predictions
+    predI = predCountyIs != i
+    thisPredCoords = predCoords[predI,]
+    thisPredNs = obdsNs[predI]
+    thisPredCounts = predCounts[predI]
+    thisPredUrban = predUrban[predI]
+    
+    # get LOO predictions for county i
+    thisFit = fitSPDEModel3(thisObsCoords, thisObsNs, thisObsCounts, thisObsUrban, thisPredCoords, 
+                            thisPredNs, thisPredUrban, clusterIndices, prior, 
+                            mesh=mesh, int.strategy=int.strategy, strategy=strategy, 
+                            genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, kmRes=kmRes, 
+                            counties=counties, verbose=verbose, genRegionLevel=FALSE, 
+                            keepPixelPreds=FALSE, genEALevel=FALSE, 
+                            eaIndices=eaIndices, urbanEffect=urbanEffect, link=1, 
+                            predictionType=predictionType, nSamplePixel=nSamplePixel, 
+                            clusterEffect=clusterEffect, significance=significance, 
+                            onlyInexact=TRUE, allPixels=FALSE, newMesh, doValidation=FALSE, 
+                            previousResult=fullFit$mod)
+    outList = c(outList, countyPreds=thisFit$countyPreds)
+  }
+  
+  list(cpo=cpo, dic=dic, waic=waic, countyPredsList=outList, counties=counties)
+}
+
+
+
+
+
