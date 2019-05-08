@@ -47,15 +47,15 @@ mercer_u1m2 = function(logit.est, var.est, graph.path, plotPriorPost=FALSE){
   # variances we need to use the argument scale and fix the overall precision to 1.
   result = inla(formula, family="gaussian", data=data, 
                 control.family=list(hyper=list(prec=list(initial=0, fixed=TRUE))), 
-                control.predictor=list(compute=TRUE, link=1, quantiles=c(0.025, 0.1, 0.5, 0.9, 0.975)),
-                scale = scale)
+                control.predictor=list(compute=TRUE, link=1),
+                scale = scale, quantiles=c(0.1, 0.5, 0.9))
   
   if(plotPriorPost) {
     maxX = max(result$marginals.hyperpar[[1]][,1]) * 1.1
     xs = seq(0, maxX, l=500)[-1]
     ys = inla.pc.dprec(xs, 1, 0.01)
     maxY = max(max(ys), max(result$marginals.hyperpar[[1]][,2]))
-    plot(xs, ys, type="l", col="blue", xlab="BYM2 Precision", ylab="Density", xlim=c(0, maxX), 
+    plot(xs, ys, type="l", col="blue", xlab="Mercer (BYM2) Precision", ylab="Density", xlim=c(0, maxX), 
          ylim=c(0, maxY), main="BYM2 Precision Prior vs Posterior")
     lines(result$marginals.hyperpar[[1]], col="red")
     legend("topright", c("Prior", "Posterior"), col=c("blue", "red"), lty=1)

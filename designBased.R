@@ -6,7 +6,7 @@
 
 # same as runBYM, except fits the BYM2 reparameterized model (iid component in the BYM2 is that the county level)
 runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluster=TRUE, maxDataSets=NULL, 
-                   aggregateByPopulation=FALSE, margVar=0.15^2, gamma=-1) {
+                   aggregateByPopulation=FALSE, margVar=0.15^2, gamma=-1, plotPriorPost=FALSE) {
   
   # load and relevant data
   if(!test)
@@ -127,6 +127,18 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
                   data=dat, 
                   control.compute = list(config = TRUE), 
                   quantiles=c(0.1, 0.5, 0.9))
+    
+    if(plotPriorPost) {
+      # maxX = max(result$marginals.hyperpar[[1]][,1]) * 1.1
+      maxX = inla.qmarginal(0.8, result$marginals.hyperpar[[1]])
+      xs = exp(seq(-5, log(maxX), l=1500))
+      ys = inla.pc.dprec(xs, 1, 0.01)
+      maxY = max(max(ys), max(result$marginals.hyperpar[[1]][,2]))
+      plot(xs, ys, type="l", col="blue", xlab="BYM2 Precision", ylab="Density", xlim=c(0, maxX), 
+           ylim=c(0, maxY), main="BYM2 Precision Prior vs Posterior")
+      lines(result$marginals.hyperpar[[1]], col="red")
+      legend("topright", c("Prior", "Posterior"), col=c("blue", "red"), lty=1)
+    }
     
     ## include parameter estimates in the table
     # fixed effects

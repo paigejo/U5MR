@@ -52,7 +52,7 @@ generateExampleResults = function(dat=ed, resultNameRoot="Ed") {
   
   ##### run Mercer et al. model
   source("mercer.R")
-  tmpResults = mercer_u1m(directEstResults$logit.est, directEstResults$var.est, 
+  tmpResults = mercer_u1m2(directEstResults$logit.est, directEstResults$var.est, 
                           graph.path = "Kenyaadm1.graph")
   
   res = data.frame(admin1=directEstResults$admin1,
