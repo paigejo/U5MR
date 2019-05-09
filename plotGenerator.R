@@ -1336,11 +1336,48 @@ makeGreenBlueSequentialColors = function(n) {
   sequential_hcl(n, h1=128, h2=250, c1=117, cmax=74, c2=107, l1=71, l2=55, p1=2, p2=2)
 }
 
-makeRedBlueDivergingColors = function(n) {
+makeRedBlueDivergingColors = function(n, valRange=NULL, center=NULL, rev=FALSE) {
   # library("colorspace")
   # pal <-choose_palette()
-  diverging_hcl(n, h1=10, h2=-115, c1=90, l1=40, l2=100, p1=0.9)
-  # diverging_hcl(n, h1=10, h2=-115, c1=90, l1=40, l2=100, p1=0.9, p2=0.6)
+  if(is.null(valRange)  || is.null(center)) {
+    diverging_hcl(n, h1=10, h2=-115, c1=90, l1=40, l2=100, p1=0.9, rev=rev)
+    # diverging_hcl(n, h1=10, h2=-115, c1=90, l1=40, l2=100, p1=0.9, p2=0.6)
+  }
+  else {
+    # in this case we want white to be at the center of valRange
+    propUp = (valRange[2] - center) / diff(valRange)
+    propDown = 1 - propUp
+    totalColors = ceiling(2 * max(propUp, propDown) * n)
+    tempColors = makeRedBlueDivergingColors(totalColors, rev=rev)
+    totalMissingColors = totalColors - n
+    
+    if(propUp >= propDown)
+      tempColors[-(1:totalMissingColors)]
+    else
+      tempColors[1:n]
+  }
+}
+
+makeRedGrayBlueDivergingColors = function(n, valRange=NULL, center=NULL, rev=FALSE) {
+  # library("colorspace")
+  # pal <-choose_palette()
+  if(is.null(valRange)  || is.null(center)) {
+    diverging_hcl(n, h1=10, h2=-115, c1=90, l1=40, l2=90, p1=0.9, rev=rev)
+    # diverging_hcl(n, h1=10, h2=-115, c1=90, l1=40, l2=100, p1=0.9, p2=0.6)
+  }
+  else {
+    # in this case we want white to be at the center of valRange
+    propUp = (valRange[2] - center) / diff(valRange)
+    propDown = 1 - propUp
+    totalColors = ceiling(2 * max(propUp, propDown) * n)
+    tempColors = makeRedGrayBlueDivergingColors(totalColors, rev=rev)
+    totalMissingColors = totalColors - n
+    
+    if(propUp >= propDown)
+      tempColors[-(1:totalMissingColors)]
+    else
+      tempColors[1:n]
+  }
 }
 
 makeBlueSequentialColors = function(n) {

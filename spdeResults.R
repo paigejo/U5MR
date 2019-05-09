@@ -1398,6 +1398,14 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
        pixelDraws=pixelPreds$pixelPredMatInexact)
 }
 
+resultsSPDEValidate = function(clustDat=ed, nPostSamples=1000, verbose=FALSE, 
+                               includeClustEffect=FALSE, keepPixelPreds=TRUE, 
+                               urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
+                               predictionType=c("mean", "median"), 
+                               significance=.8, directPreds, direct) {
+  
+}
+
 # compute true proportion of women that completed secondary education in each county in the order of the 
 # input counties variable from the full dataset eaDat
 getTruthByCounty = function(eaDat, counties=as.character(unique(ed$admin1))) {
