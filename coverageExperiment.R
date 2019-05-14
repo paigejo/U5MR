@@ -8,10 +8,10 @@ sigma = 1 # GP marginal sd
 phi = 1 / 10 # correlation scale
 tau = 1 / 10 # nugget sd
 kappa = 1 # matern smoothness
-ss = seq(0, 3, l=m + 1)[-1] - 3 / (2*m) # s*, the prediction locations (33 is a last within the data domain)
+ss = seq(0, 2, l=m + 1)[-1] - 2 / (2*m) # s*, the prediction locations (50 is a last within the data domain)
 ns = 100 # number of times the sample s
-nu = 100 # number of times to sample u | s, s*
-ny = 200 # number of times the sample y | u(s)
+nu = 200 # number of times to sample u | s, s*
+ny = 100 # number of times the sample y | u(s)
 
 # precompute covariance matrix of the prediction locations
 SigmaP = stationary.cov(matrix(ss, ncol=1), Covariance="Matern", theta=phi, smoothness=kappa)
@@ -114,7 +114,7 @@ cov95y = apply(cov95, c(1, 2, 4), mean)
 
 # save results
 save(n, m, sigma, phi, tau, kappa, ss, ns, nu, ny, sSamples, uSamples, uHats, ySamples, 
-     cov50, cov60, cov70, cov80, cov90, cov95, 
+     cov50, cov60, cov70, cov80, cov90, cov95, nnd, 
      file="coverageSimulation.RData")
 
 

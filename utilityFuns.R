@@ -564,3 +564,117 @@ getExpectedChildrenPerEa = function(distributionFile="empiricalDistributions.RDa
   list(childrenPerClusterUrban=childrenUrban, childrenPerClusterRural=childrenRural)
 }
 
+# based on fields::discretize.image. Generates grid breaks from irregularly spaced data for producing an image
+get2dCuts = function (x, m = 64, n = 64, grid = NULL, expand = c(1 + 1e-08, 1 + 1e-08), 
+                    boundary.grid = FALSE, na.rm = TRUE) {
+  if (length(expand) == 1) {
+    expand <- rep(expand, 2)
+  }
+  if (is.null(grid)) {
+    xr <- range(x[, 1], na.rm = na.rm)
+    deltemp <- (xr[2] - xr[1]) * (expand[1] - 1) * 0.5
+    gridX <- seq(xr[1] - deltemp, xr[2] + deltemp, , m)
+    yr <- range(x[, 2], na.rm = na.rm)
+    deltemp <- (yr[2] - yr[1]) * (expand[2] - 1) * 0.5
+    gridY <- seq(yr[1] - deltemp, yr[2] + deltemp, , n)
+    grid <- list(x = gridX, y = gridY)
+    if (boundary.grid) {
+      grid$x <- fields.convert.grid(grid$x)
+      grid$y <- fields.convert.grid(grid$y)
+    }
+  }
+  if (!boundary.grid) {
+    xcut <- fields.convert.grid(grid$x)
+    ycut <- fields.convert.grid(grid$y)
+  }
+  else {
+    xcut <- grid$x
+    ycut <- grid$y
+  }
+  list(x=grid$x, y=grid$y, xbreaks=xcut, ybreaks=ycut)
+}
+
+# faster version of fields::as.image. Converts irregularly spaced data into an image. 
+# This implementation uses data.table
+# Z: a vector of values FUN will be operated on
+# x: a two column matrix of, for example, spatial coordinates. 2D bins will be constructed based on this, 
+#    and FUN will be operated on the Z values within each of these bins
+# weights: the weight of each observation, Z. This is currently not influencing FUN(Z) in any way, 
+#          but the weights are summed within each bin, sort the result is the number of observations in each bin
+my.as.image = function (Z, ind = NULL, grid = NULL, x = NULL, weights = rep(1, length(Z)), 
+                        na.rm = FALSE, nx = 64, ny = 64, boundary.grid = FALSE, 
+                        nrow = NULL, ncol = NULL, FUN = NULL, getUniqueN=getUniqueN) {
+  Z <- c(Z)
+  if (!is.null(ind)) {
+    x <- ind
+  }
+  if (!is.null(nrow) & !is.null(ncol)) {
+    nx <- nrow
+    ny <- ncol
+  }
+  if (any(is.na(weights)) | any(is.na(c(x)))) {
+    stop("missing values in weights or x")
+  }
+  # construct the grid of bins in which to evaluate FUN
+  gridInfo <- get2dCuts(x, m = nx, n = ny, grid = grid, boundary.grid = boundary.grid)
+  xbreaks = gridInfo$xbreaks
+  ybreaks = gridInfo$ybreaks
+  xcenters = gridInfo$x
+  ycenters = gridInfo$y
+  
+  # group data by the breaks
+  # xBinI = cut(x[,1], xbreaks, labels=FALSE)
+  xBinI = findInterval(x[,1], xbreaks, left.open = FALSE, rightmost.closed = TRUE)
+  # yBinI = cut(x[,2], ybreaks, labels=FALSE)
+  yBinI = findInterval(x[,2], ybreaks, left.open = FALSE, rightmost.closed = TRUE)
+  xvalues = xcenters[xBinI]
+  yvalues = ycenters[yBinI]
+  
+  # construct the data table
+  thisTable = data.table(x=xvalues, y=yvalues, z=Z, xBinI=xBinI, yBinI=yBinI, weights=weights)
+  if(!getUniqueN)
+    out = thisTable[,.(aggZ=FUN(z), weightSum=sum(weights)), by=.(xBinI, yBinI)]
+  else
+    out = thisTable[,.(aggZ=uniqueN(z), weightSum=sum(weights)), by=.(xBinI, yBinI)]
+  zMat = matrix(nrow=length(xcenters), ncol=length(ycenters))
+  zMat[cbind(out$xBinI, out$yBinI)] = out$aggZ
+  weightMat = matrix(nrow=length(xcenters), ncol=length(ycenters))
+  weightMat[cbind(out$xBinI, out$yBinI)] = out$weightSum
+  # return results
+  list(x = xcenters, y = ycenters, z = zMat, weights = weightMat)
+}
+
+my.quilt.plot = function (x, y, z, nx = 64, ny = 64, grid = NULL, add.legend = TRUE, 
+                          add = FALSE, nlevel = 64, col = tim.colors(nlevel), nrow = NULL, 
+                          ncol = NULL, FUN = NULL, plot = TRUE, na.rm = FALSE, getUniqueN=FALSE, ...) 
+{
+  if(is.null(FUN) && !getUniqueN)
+    FUN = mean
+  if (!is.null(nrow) | !is.null(nrow)) {
+    nx <- nrow
+    ny <- ncol
+  }
+  x <- as.matrix(x)
+  if (ncol(x) == 2) {
+    z <- y
+  }
+  if (ncol(x) == 1) {
+    x <- cbind(x, y)
+  }
+  if (ncol(x) == 3) {
+    z <- x[, 3]
+    x <- x[, 1:2]
+  }
+  out.p <- my.as.image(z, x = x, nx = nx, ny = ny, grid = grid, 
+                    FUN = FUN, na.rm = na.rm, getUniqueN=getUniqueN)
+  if (plot) {
+    if (add.legend) {
+      image.plot(out.p, nlevel = nlevel, col = col, add = add, 
+                 ...)
+    }
+    else {
+      image(out.p, col = col, add = add, ...)
+    }
+  }
+  invisible(out.p)
+}

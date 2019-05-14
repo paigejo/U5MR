@@ -1,6 +1,69 @@
 # this script plots results from the coverage experiment
 library(fields)
 library(RColorBrewer)
+library(plotly)
+source('~/git/U5MR/plotGenerator.R')
+
+filled.contour2 <-
+  function (x = seq(0, 1, length.out = nrow(z)),
+            y = seq(0, 1, length.out = ncol(z)), z, xlim = range(x, finite = TRUE), 
+            ylim = range(y, finite = TRUE), zlim = range(z, finite = TRUE), 
+            levels = pretty(zlim, nlevels), nlevels = 20, color.palette = cm.colors, 
+            col = color.palette(length(levels) - 1), plot.title, plot.axes, 
+            key.title, key.axes, asp = NA, xaxs = "i", yaxs = "i", las = 1, 
+            axes = TRUE, frame.plot = axes,mar, ...) 
+  {
+    # modification by Ian Taylor of the filled.contour function
+    # to remove the key and facilitate overplotting with contour()
+    if (missing(z)) {
+      if (!missing(x)) {
+        if (is.list(x)) {
+          z <- x$z
+          y <- x$y
+          x <- x$x
+        }
+        else {
+          z <- x
+          x <- seq.int(0, 1, length.out = nrow(z))
+        }
+      }
+      else stop("no 'z' matrix specified")
+    }
+    else if (is.list(x)) {
+      y <- x$y
+      x <- x$x
+    }
+    if (any(diff(x) <= 0) || any(diff(y) <= 0)) 
+      stop("increasing 'x' and 'y' values expected")
+    mar.orig <- (par.orig <- par(c("mar", "las", "mfrow")))$mar
+    on.exit(par(par.orig))
+    w <- (3 + mar.orig[2]) * par("csi") * 2.54
+    par(las = las)
+    mar <- mar.orig
+    plot.new()
+    par(mar=mar)
+    plot.window(xlim, ylim, "", xaxs = xaxs, yaxs = yaxs, asp = asp)
+    if (!is.matrix(z) || nrow(z) <= 1 || ncol(z) <= 1) 
+      stop("no proper 'z' matrix specified")
+    if (!is.double(z)) 
+      storage.mode(z) <- "double"
+    filled.contour(as.double(x), as.double(y), z, levels=as.double(levels), 
+                            col = col)
+    if (missing(plot.axes)) {
+      if (axes) {
+        title(main = "", xlab = "", ylab = "")
+        Axis(x, side = 1)
+        Axis(y, side = 2)
+      }
+    }
+    else plot.axes
+    if (frame.plot) 
+      box()
+    if (missing(plot.title)) 
+      title(...)
+    else plot.title
+    invisible()
+  }
 
 # first load the experiment results
 out = load("coverageSimulation.RData")
@@ -105,14 +168,14 @@ breaks = qnorm(seq(1e-06, 1-1e-06, l=50))
 # cov50 = array(dim=c(ns, nu, ny, m))
 # uHats = array(dim=c(ns, m, nu, ny))
 uSamplesPerm = aperm(uSamples, c(1, 3, 2))[,,-(1:n)]
-out = stats.bin(uSamplesPerm[,,1:33], cov50y[,,1:33], breaks=breaks)
+out = stats.bin(uSamplesPerm[,,1:50], cov50y[,,1:50], breaks=breaks)
 x = out$centers
 y50 = out$stats[2,]
-y60 = stats.bin(uSamplesPerm[,,1:33], cov60y[,,1:33], breaks=breaks)$stats[2,]
-y70 = stats.bin(uSamplesPerm[,,1:33], cov70y[,,1:33], breaks=breaks)$stats[2,]
-y80 = stats.bin(uSamplesPerm[,,1:33], cov80y[,,1:33], breaks=breaks)$stats[2,]
-y90 = stats.bin(uSamplesPerm[,,1:33], cov90y[,,1:33], breaks=breaks)$stats[2,]
-y95 = stats.bin(uSamplesPerm[,,1:33], cov95y[,,1:33], breaks=breaks)$stats[2,]
+y60 = stats.bin(uSamplesPerm[,,1:50], cov60y[,,1:50], breaks=breaks)$stats[2,]
+y70 = stats.bin(uSamplesPerm[,,1:50], cov70y[,,1:50], breaks=breaks)$stats[2,]
+y80 = stats.bin(uSamplesPerm[,,1:50], cov80y[,,1:50], breaks=breaks)$stats[2,]
+y90 = stats.bin(uSamplesPerm[,,1:50], cov90y[,,1:50], breaks=breaks)$stats[2,]
+y95 = stats.bin(uSamplesPerm[,,1:50], cov95y[,,1:50], breaks=breaks)$stats[2,]
 pdf("figures/coverageExperiment/cov50uDataDomain.pdf", width=5, height=5)
 plot(x, y50, type="l", main="50% Coverage", xlab="u(s)", ylab="Coverage Probability", ylim=c(0, 1), 
      col="blue")
@@ -158,14 +221,14 @@ breaks = qnorm(seq(1e-06, 1-1e-06, l=50))
 # cov50 = array(dim=c(ns, nu, ny, m))
 # uHats = array(dim=c(ns, m, nu, ny))
 uSamplesPerm = aperm(uSamples, c(1, 3, 2))[,,-(1:n)]
-out = stats.bin(uSamplesPerm[,,-(1:33)], cov50y[,,-(1:33)], breaks=breaks)
+out = stats.bin(uSamplesPerm[,,-(1:50)], cov50y[,,-(1:50)], breaks=breaks)
 x = out$centers
 y50 = out$stats[2,]
-y60 = stats.bin(uSamplesPerm[,,-(1:33)], cov60y[,,-(1:33)], breaks=breaks)$stats[2,]
-y70 = stats.bin(uSamplesPerm[,,-(1:33)], cov70y[,,-(1:33)], breaks=breaks)$stats[2,]
-y80 = stats.bin(uSamplesPerm[,,-(1:33)], cov80y[,,-(1:33)], breaks=breaks)$stats[2,]
-y90 = stats.bin(uSamplesPerm[,,-(1:33)], cov90y[,,-(1:33)], breaks=breaks)$stats[2,]
-y95 = stats.bin(uSamplesPerm[,,-(1:33)], cov95y[,,-(1:33)], breaks=breaks)$stats[2,]
+y60 = stats.bin(uSamplesPerm[,,-(1:50)], cov60y[,,-(1:50)], breaks=breaks)$stats[2,]
+y70 = stats.bin(uSamplesPerm[,,-(1:50)], cov70y[,,-(1:50)], breaks=breaks)$stats[2,]
+y80 = stats.bin(uSamplesPerm[,,-(1:50)], cov80y[,,-(1:50)], breaks=breaks)$stats[2,]
+y90 = stats.bin(uSamplesPerm[,,-(1:50)], cov90y[,,-(1:50)], breaks=breaks)$stats[2,]
+y95 = stats.bin(uSamplesPerm[,,-(1:50)], cov95y[,,-(1:50)], breaks=breaks)$stats[2,]
 pdf("figures/coverageExperiment/cov50uExtrapolate.pdf", width=5, height=5)
 plot(x, y50, type="l", main="50% Coverage", xlab="u(s)", ylab="Coverage Probability", ylim=c(0, 1), 
      col="blue")
@@ -262,7 +325,7 @@ breaks = qnorm(seq(1e-06, 1-1e-06, l=50))
 # uHats = array(dim=c(ns, m, nu, ny))
 uHatsY = apply(uHats, 1:3, mean)
 uHatsPerm = aperm(uHatsY, c(1, 3, 2))
-domainIndices=1:33
+domainIndices=1:50
 out = stats.bin(uHatsPerm[,,-domainIndices], cov50y[,,-domainIndices], breaks=breaks)
 x = out$centers
 y50 = out$stats[2,]
@@ -408,54 +471,211 @@ uSamplesPerm = aperm(uSamples, c(1, 3, 2))
 
 averagingFun = function(x) {
   if(length(x) < 10) {
-    return(NA)
+    return(NA_real_)
   } else {
     mean(x)
   }
 }
 
-par(mfrow=c(1,1))
-cols=makeRedGrayBlueDivergingColors(64, c(0,1), .5, rev=FALSE)
+# use my.quilt.plot to average coverage values within each bin with at least ten observations
+cols=makeRedBlueDivergingColors(64, c(0,1), .5, rev=FALSE)
+test = my.quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov50y), ny=75, nx=150, FUN=averagingFun)
+grid = test$grid
+x = test$x
+y = test$y
+z = test$z
+allPoints = expand.grid("u(s)"=x, Distance=y)
+dataFrame = data.frame("u"=allPoints$`u(s)`, "NND"=allPoints$Distance, 
+                       "Coverage"=c(z))
+
+# now plot the results with contours
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(0, 1, by=.1))
 png("figures/coverageExperiment/cov50uDist.png", width=500, height=500)
-quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov50y), ny=30, nx=150, col=cols, 
-           ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab="u(s)", main="Coverage Probability (50% Significance)", 
-           FUN=averagingFun, zlim=c(0,1))
+ggplot() + geom_raster(data = dataFrame, aes(x = u, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Coverage Probability (50% CI)") + xlab("u(s)") + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = u, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(0, 1, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$u), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
 dev.off()
 
-cols=makeRedGrayBlueDivergingColors(64, c(0,1), .6, rev=FALSE)
+# use my.quilt.plot to average coverage values within each bin with at least ten observations
+cols=makeRedBlueDivergingColors(64, c(0,1), .6, rev=FALSE)
+test = my.quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov60y), ny=75, nx=150, FUN=averagingFun, grid=grid)
+x = test$x
+y = test$y
+z = test$z
+allPoints = expand.grid("u(s)"=x, Distance=y)
+dataFrame = data.frame("u"=allPoints$`u(s)`, "NND"=allPoints$Distance, 
+                       "Coverage"=c(z))
+
+# now plot the results with contours
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(0, 1, by=.1))
 png("figures/coverageExperiment/cov60uDist.png", width=500, height=500)
-quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov60y), ny=30, nx=150, col=cols, 
-           ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab="u(s)", main="Coverage Probability (60% Significance)", 
-           FUN=averagingFun, zlim=c(0,1))
+ggplot() + geom_raster(data = dataFrame, aes(x = u, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Coverage Probability (60% CI)") + xlab("u(s)") + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = u, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(0, 1, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$u), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
 dev.off()
 
-cols=makeRedGrayBlueDivergingColors(64, c(0,1), .7, rev=FALSE)
+# use my.quilt.plot to average coverage values within each bin with at least ten observations
+cols=makeRedBlueDivergingColors(64, c(0,1), .7, rev=FALSE)
+test = my.quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov70y), ny=75, nx=150, FUN=averagingFun, grid=grid)
+x = test$x
+y = test$y
+z = test$z
+allPoints = expand.grid("u(s)"=x, Distance=y)
+dataFrame = data.frame("u"=allPoints$`u(s)`, "NND"=allPoints$Distance, 
+                       "Coverage"=c(z))
+
+# now plot the results with contours
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(0, 1, by=.1))
 png("figures/coverageExperiment/cov70uDist.png", width=500, height=500)
-quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov70y), ny=30, nx=150, col=cols, 
-           ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab="u(s)", main="Coverage Probability (70% Significance)", 
-           FUN=averagingFun, zlim=c(0,1))
+ggplot() + geom_raster(data = dataFrame, aes(x = u, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Coverage Probability (70% CI)") + xlab("u(s)") + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = u, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(0, 1, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$u), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
 dev.off()
 
-cols=makeRedGrayBlueDivergingColors(64, c(0,1), .8, rev=FALSE)
+# use my.quilt.plot to average coverage values within each bin with at least ten observations
+cols=makeRedBlueDivergingColors(64, c(0,1), .8, rev=FALSE)
+test = my.quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov80y), ny=75, nx=150, FUN=averagingFun, grid=grid)
+x = test$x
+y = test$y
+z = test$z
+allPoints = expand.grid("u(s)"=x, Distance=y)
+dataFrame = data.frame("u"=allPoints$`u(s)`, "NND"=allPoints$Distance, 
+                       "Coverage"=c(z))
+
+# now plot the results with contours
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(0, 1, by=.1))
 png("figures/coverageExperiment/cov80uDist.png", width=500, height=500)
-quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov80y), ny=30, nx=150, col=cols, 
-           ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab="u(s)", main="Coverage Probability (80% Significance)", 
-           FUN=averagingFun, zlim=c(0,1))
+ggplot() + geom_raster(data = dataFrame, aes(x = u, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Coverage Probability (80% CI)") + xlab("u(s)") + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = u, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(0, 1, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$u), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
 dev.off()
 
-cols=makeRedGrayBlueDivergingColors(64, c(0,1), .9, rev=FALSE)
+# use my.quilt.plot to average coverage values within each bin with at least ten observations
+cols=makeRedBlueDivergingColors(64, c(0,1), .9, rev=FALSE)
+test = my.quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov90y), ny=75, nx=150, FUN=averagingFun, grid=grid)
+x = test$x
+y = test$y
+z = test$z
+allPoints = expand.grid("u(s)"=x, Distance=y)
+dataFrame = data.frame("u"=allPoints$`u(s)`, "NND"=allPoints$Distance, 
+                       "Coverage"=c(z))
+
+# now plot the results with contours
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(0, 1, by=.1))
 png("figures/coverageExperiment/cov90uDist.png", width=500, height=500)
-quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov90y), ny=30, nx=150, col=cols, 
-           ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab="u(s)", main="Coverage Probability (90% Significance)", 
-           FUN=averagingFun, zlim=c(0,1))
+ggplot() + geom_raster(data = dataFrame, aes(x = u, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Coverage Probability (90% CI)") + xlab("u(s)") + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = u, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(0, 1, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$u), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
 dev.off()
 
-cols=makeRedGrayBlueDivergingColors(64, c(0,1), .95, rev=FALSE)
+# use my.quilt.plot to average coverage values within each bin with at least ten observations
+cols=makeRedBlueDivergingColors(64, c(0,1), .95, rev=FALSE)
+test = my.quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov95y), ny=75, nx=150, FUN=averagingFun, grid=grid)
+x = test$x
+y = test$y
+z = test$z
+allPoints = expand.grid("u(s)"=x, Distance=y)
+dataFrame = data.frame("u"=allPoints$`u(s)`, "NND"=allPoints$Distance, 
+                       "Coverage"=c(z))
+
+# now plot the results with contours
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(0, 1, by=.1))
 png("figures/coverageExperiment/cov95uDist.png", width=500, height=500)
-quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov95y), ny=30, nx=150, col=cols, 
-           ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab="u(s)", main="Coverage Probability (95% Significance)", 
-           FUN=averagingFun, zlim=c(0,1))
+ggplot() + geom_raster(data = dataFrame, aes(x = u, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Coverage Probability (95% CI)") + xlab("u(s)") + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = u, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(0, 1, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$u), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
 dev.off()
+
+# par(mfrow=c(1,1))
+# cols=makeRedGrayBlueDivergingColors(64, c(0,1), .5, rev=FALSE)
+# png("figures/coverageExperiment/cov50uDist.png", width=500, height=500)
+# my.quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov50y), ny=30, nx=150, col=cols, 
+#            ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab="u(s)", main="Coverage Probability (50% Significance)", 
+#            FUN=averagingFun, grid=grid, zlim=c(0,1))
+# dev.off()
+# 
+# cols=makeRedGrayBlueDivergingColors(64, c(0,1), .6, rev=FALSE)
+# png("figures/coverageExperiment/cov60uDist.png", width=500, height=500)
+# my.quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov60y), ny=30, nx=150, col=cols, 
+#            ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab="u(s)", main="Coverage Probability (60% Significance)", 
+#            FUN=averagingFun, grid=grid, zlim=c(0,1))
+# dev.off()
+# 
+# cols=makeRedGrayBlueDivergingColors(64, c(0,1), .7, rev=FALSE)
+# png("figures/coverageExperiment/cov70uDist.png", width=500, height=500)
+# my.quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov70y), ny=30, nx=150, col=cols, 
+#            ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab="u(s)", main="Coverage Probability (70% Significance)", 
+#            FUN=averagingFun, grid=grid, zlim=c(0,1))
+# dev.off()
+# 
+# cols=makeRedGrayBlueDivergingColors(64, c(0,1), .8, rev=FALSE)
+# png("figures/coverageExperiment/cov80uDist.png", width=500, height=500)
+# my.quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov80y), ny=30, nx=150, col=cols, 
+#            ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab="u(s)", main="Coverage Probability (80% Significance)", 
+#            FUN=averagingFun, grid=grid, zlim=c(0,1))
+# dev.off()
+# 
+# cols=makeRedGrayBlueDivergingColors(64, c(0,1), .9, rev=FALSE)
+# png("figures/coverageExperiment/cov90uDist.png", width=500, height=500)
+# my.quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov90y), ny=30, nx=150, col=cols, 
+#            ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab="u(s)", main="Coverage Probability (90% Significance)", 
+#            FUN=averagingFun, grid=grid, zlim=c(0,1))
+# dev.off()
+# 
+# cols=makeRedGrayBlueDivergingColors(64, c(0,1), .95, rev=FALSE)
+# png("figures/coverageExperiment/cov95uDist.png", width=500, height=500)
+# my.quilt.plot(c(uSamplesPerm[,,-(1:n)]), c(nndPerm) / phi, c(cov95y), ny=30, nx=150, col=cols, 
+#            ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab="u(s)", main="Coverage Probability (95% Significance)", 
+#            FUN=averagingFun, grid=grid, zlim=c(0,1))
+# dev.off()
 
 ## now make the 2d barplot of coverage versus uHat and nearest neighbor distance
 # nnd = matrix(nrow=ns, ncol=m)
@@ -467,52 +687,242 @@ nndPerm = aperm(nndPerm, c(1, 3, 4, 2))
 uHatsPerm = aperm(uHats, c(1, 3, 4, 2))
 
 # set.seed(123)
-downSampleYI = sample(1:ny, 30, replace = FALSE) # maximum allowable so far: 30. minimum not allowable so far: 50
+# Sys.setenv("R_MAX_VSIZE"=8e9) # for avoiding the following error:
+# Error: vector memory exhausted (limit reached?)
+# 
+# Enter a frame number, or 0 to exit   
+# 
+# 1: my.quilt.plot(uHatsPermDownSample, nndPermDownSample/phi, c(cov50[, , downSampleYI, ]), ny = 75, nx = 150, FUN = ave
+#               2: as.image(z, x = x, nx = nx, ny = ny, grid = grid, FUN = FUN, na.rm = na.rm)
+#               3: cbind(grid$x[temp$index[[1]]], grid$y[temp$index[[2]]])
+#               4: cbind(grid$x[temp$index[[1]]], grid$y[temp$index[[2]]])
+downSampleYI = sample(1:ny, 5, replace = FALSE) # maximum allowable so far: 50, but it takes ~5-10 minutes
+# downSampleYI = 1:20
 uHatsPermDownSample = c(uHatsPerm[,,downSampleYI,])
 nndPermDownSample = c(nndPerm[,,downSampleYI,])
 
-par(mfrow=c(1,1))
-cols=makeRedGrayBlueDivergingColors(64, c(0,1), .5, rev=FALSE)
+# make sure there are at least 385 unique samples of u in each bin
+uIs = cov50
+count = 1
+for(i in 1:dim(uIs)[1]) {
+  for(j in 1:dim(uIs)[2]) {
+    uIs[i,j,,] = count
+    count = count + 1
+  }
+}
+# .5/sqrt(385) * qnorm(.975)
+# [1] 0.04994451
+
+out <- my.quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(uIs[,,downSampleYI,]), ny=75, nx=150, 
+                            getUniqueN = TRUE)
+enoughUSamples = out$z >= 385
+grid = list(x=out$x, y=out$y)
+
+# use quilt.plot to average coverage values within each bin with
+cols=makeRedBlueDivergingColors(64, c(0,1), .5, rev=FALSE)
+# test = quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov50[,,downSampleYI,]), ny=75, nx=150, FUN=averagingFun, zlim=c(0,1))
+test = my.quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov50[,,downSampleYI,]), ny=75, nx=150, grid=grid)
+x = test$x
+y = test$y
+z = test$z
+z[!enoughUSamples] = NA
+# NOTE: could average overall samples by calling quilt.plot multiple times and averaging with respect to test$weights
+allPoints = expand.grid(uHat=x, Distance=y)
+dataFrame = data.frame("uHat"=allPoints$uHat, "NND"=allPoints$Distance, "Coverage"=c(z))
+
+# now plot the results with contours
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(0.05, .95, by=.1))
 png("figures/coverageExperiment/cov50uHatDist.png", width=500, height=500)
-quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov50[,,downSampleYI,]), ny=30, nx=150, col=cols, 
-           ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab=TeX("$\\hat{u}(s)$"), main="Coverage Probability (50% Significance)", 
-           FUN=averagingFun, zlim=c(0,1))
+ggplot() + geom_raster(data = dataFrame, aes(x = uHat, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Coverage Probability (50% CI)") + xlab(TeX("$\\hat{u}(s)$")) + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = uHat, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(0.05, .95, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$uHat), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
 dev.off()
 
-cols=makeRedGrayBlueDivergingColors(64, c(0,1), .6, rev=FALSE)
+# use quilt.plot to average coverage values within each bin with at least ten observations
+cols=makeRedBlueDivergingColors(64, c(0,1), .6, rev=FALSE)
+test = my.quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov60[,,downSampleYI,]), ny=75, nx=150, grid=grid)
+x = test$x
+y = test$y
+z = test$z
+z[!enoughUSamples] = NA
+# NOTE: could average overall samples by calling my.quilt.plot multiple times and averaging with respect to test$weights
+allPoints = expand.grid(uHat=x, Distance=y)
+dataFrame = data.frame("uHat"=allPoints$uHat, "NND"=allPoints$Distance, "Coverage"=c(z))
+
+# now plot the results with contours
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(0.05, .95, by=.1))
 png("figures/coverageExperiment/cov60uHatDist.png", width=500, height=500)
-quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov60[,,downSampleYI,]), ny=30, nx=150, col=cols, 
-           ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab=TeX("$\\hat{u}(s)$"), main="Coverage Probability (60% Significance)", 
-           FUN=averagingFun, zlim=c(0,1))
+ggplot() + geom_raster(data = dataFrame, aes(x = uHat, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Coverage Probability (60% CI)") + xlab(TeX("$\\hat{u}(s)$")) + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = uHat, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(0.05, .95, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$uHat), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
 dev.off()
 
-cols=makeRedGrayBlueDivergingColors(64, c(0,1), .7, rev=FALSE)
+# use my.quilt.plot to average coverage values within each bin with at least ten observations
+cols=makeRedBlueDivergingColors(64, c(0,1), .7, rev=FALSE)
+test = my.quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov70[,,downSampleYI,]), ny=75, nx=150, grid=grid)
+x = test$x
+y = test$y
+z = test$z
+z[!enoughUSamples] = NA
+# NOTE: could average overall samples by calling my.quilt.plot multiple times and averaging with respect to test$weights
+allPoints = expand.grid(uHat=x, Distance=y)
+dataFrame = data.frame("uHat"=allPoints$uHat, "NND"=allPoints$Distance, "Coverage"=c(z))
+
+# now plot the results with contours
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(0.05, .95, by=.1))
 png("figures/coverageExperiment/cov70uHatDist.png", width=500, height=500)
-quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov70[,,downSampleYI,]), ny=30, nx=150, col=cols, 
-           ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab=TeX("$\\hat{u}(s)$"), main="Coverage Probability (70% Significance)", 
-           FUN=averagingFun, zlim=c(0,1))
+ggplot() + geom_raster(data = dataFrame, aes(x = uHat, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Coverage Probability (70% CI)") + xlab(TeX("$\\hat{u}(s)$")) + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = uHat, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(0.05, .95, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$uHat), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
 dev.off()
 
-cols=makeRedGrayBlueDivergingColors(64, c(0,1), .8, rev=FALSE)
+# use my.quilt.plot to average coverage values within each bin with at least ten observations
+cols=makeRedBlueDivergingColors(64, c(0,1), .8, rev=FALSE)
+test = my.quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov80[,,downSampleYI,]), ny=75, nx=150, grid=grid)
+x = test$x
+y = test$y
+z = test$z
+z[!enoughUSamples] = NA
+# NOTE: could average overall samples by calling my.quilt.plot multiple times and averaging with respect to test$weights
+allPoints = expand.grid(uHat=x, Distance=y)
+dataFrame = data.frame("uHat"=allPoints$uHat, "NND"=allPoints$Distance, "Coverage"=c(z))
+
+# now plot the results with contours
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(0.05, .95, by=.1))
 png("figures/coverageExperiment/cov80uHatDist.png", width=500, height=500)
-quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov80[,,downSampleYI,]), ny=30, nx=150, col=cols, 
-           ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab=TeX("$\\hat{u}(s)$"), main="Coverage Probability (80% Significance)", 
-           FUN=averagingFun, zlim=c(0,1))
+ggplot() + geom_raster(data = dataFrame, aes(x = uHat, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Coverage Probability (80% CI)") + xlab(TeX("$\\hat{u}(s)$")) + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = uHat, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(0.05, .95, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$uHat), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
 dev.off()
 
-cols=makeRedGrayBlueDivergingColors(64, c(0,1), .9, rev=FALSE)
+# use my.quilt.plot to average coverage values within each bin with at least ten observations
+cols=makeRedBlueDivergingColors(64, c(0,1), .9, rev=FALSE)
+test = my.quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov90[,,downSampleYI,]), ny=75, nx=150, grid=grid)
+x = test$x
+y = test$y
+z = test$z
+z[!enoughUSamples] = NA
+# NOTE: could average overall samples by calling my.quilt.plot multiple times and averaging with respect to test$weights
+allPoints = expand.grid(uHat=x, Distance=y)
+dataFrame = data.frame("uHat"=allPoints$uHat, "NND"=allPoints$Distance, "Coverage"=c(z))
+
+# now plot the results with contours
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(0.05, .95, by=.1))
 png("figures/coverageExperiment/cov90uHatDist.png", width=500, height=500)
-quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov90[,,downSampleYI,]), ny=30, nx=150, col=cols, 
-           ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab=TeX("$\\hat{u}(s)$"), main="Coverage Probability (90% Significance)", 
-           FUN=averagingFun, zlim=c(0,1))
+ggplot() + geom_raster(data = dataFrame, aes(x = uHat, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Coverage Probability (90% CI)") + xlab(TeX("$\\hat{u}(s)$")) + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = uHat, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(0.05, .95, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$uHat), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
 dev.off()
 
-cols=makeRedGrayBlueDivergingColors(64, c(0,1), .95, rev=FALSE)
+# use my.quilt.plot to average coverage values within each bin with at least ten observations
+cols=makeRedBlueDivergingColors(64, c(0,1), .95, rev=FALSE)
+test = my.quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov95[,,downSampleYI,]), ny=75, nx=150, grid=grid)
+x = test$x
+y = test$y
+z = test$z
+z[!enoughUSamples] = NA
+# NOTE: could average overall samples by calling my.quilt.plot multiple times and averaging with respect to test$weights
+allPoints = expand.grid(uHat=x, Distance=y)
+dataFrame = data.frame("uHat"=allPoints$uHat, "NND"=allPoints$Distance, "Coverage"=c(z))
+
+# now plot the results with contours
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(0, 1, by=.1))
 png("figures/coverageExperiment/cov95uHatDist.png", width=500, height=500)
-quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov95[,,downSampleYI,]), ny=30, nx=150, col=cols, 
-           ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab=TeX("$\\hat{u}(s)$"), main="Coverage Probability (95% Significance)", 
-           FUN=averagingFun, zlim=c(0,1))
+ggplot() + geom_raster(data = dataFrame, aes(x = uHat, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Coverage Probability (95% CI)") + xlab(TeX("$\\hat{u}(s)$")) + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = uHat, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(0, 1, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$uHat), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
 dev.off()
+
+# par(mfrow=c(1,1))
+# cols=makeRedGrayBlueDivergingColors(64, c(0,1), .5, rev=FALSE)
+# png("figures/coverageExperiment/cov50uHatDist.png", width=500, height=500)
+# my.quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov50[,,downSampleYI,]), ny=30, nx=150, col=cols, 
+#            ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab=TeX("$\\hat{u}(s)$"), main="Coverage Probability (50% Significance)", 
+#            FUN=averagingFun, grid=grid)
+# dev.off()
+
+# cols=makeRedGrayBlueDivergingColors(64, c(0,1), .6, rev=FALSE)
+# png("figures/coverageExperiment/cov60uHatDist.png", width=500, height=500)
+# my.quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov60[,,downSampleYI,]), ny=30, nx=150, col=cols, 
+#            ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab=TeX("$\\hat{u}(s)$"), main="Coverage Probability (60% Significance)", 
+#            FUN=averagingFun, grid=grid)
+# dev.off()
+# 
+# cols=makeRedGrayBlueDivergingColors(64, c(0,1), .7, rev=FALSE)
+# png("figures/coverageExperiment/cov70uHatDist.png", width=500, height=500)
+# my.quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov70[,,downSampleYI,]), ny=30, nx=150, col=cols, 
+#            ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab=TeX("$\\hat{u}(s)$"), main="Coverage Probability (70% Significance)", 
+#            FUN=averagingFun, grid=grid)
+# dev.off()
+# 
+# cols=makeRedGrayBlueDivergingColors(64, c(0,1), .8, rev=FALSE)
+# png("figures/coverageExperiment/cov80uHatDist.png", width=500, height=500)
+# my.quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov80[,,downSampleYI,]), ny=30, nx=150, col=cols, 
+#            ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab=TeX("$\\hat{u}(s)$"), main="Coverage Probability (80% Significance)", 
+#            FUN=averagingFun, grid=grid)
+# dev.off()
+# 
+# cols=makeRedGrayBlueDivergingColors(64, c(0,1), .9, rev=FALSE)
+# png("figures/coverageExperiment/cov90uHatDist.png", width=500, height=500)
+# my.quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov90[,,downSampleYI,]), ny=30, nx=150, col=cols, 
+#            ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab=TeX("$\\hat{u}(s)$"), main="Coverage Probability (90% Significance)", 
+#            FUN=averagingFun, grid=grid)
+# dev.off()
+# 
+# cols=makeRedGrayBlueDivergingColors(64, c(0,1), .95, rev=FALSE)
+# png("figures/coverageExperiment/cov95uHatDist.png", width=500, height=500)
+# my.quilt.plot(uHatsPermDownSample, nndPermDownSample / phi, c(cov95[,,downSampleYI,]), ny=30, nx=150, col=cols, 
+#            ylab="(Nearest Neighbor Distance)/(Correlation Range)", xlab=TeX("$\\hat{u}(s)$"), main="Coverage Probability (95% Significance)", 
+#            FUN=averagingFun, grid=grid)
+# dev.off()
 
 
 

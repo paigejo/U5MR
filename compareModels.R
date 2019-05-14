@@ -65,10 +65,10 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   maxDataSets = ifelse(is.null(maxDataSets), length(clustDat$clustDat), maxDataSets)
   
   # allModels = c("naive", "direct", "mercer", "bym", "bymMod", "bymNoUrb", "bymNoUrbMod", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
-  # allNames = c("Naive", "Direct ", "Mercer et al.", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
+  # allNames = c("Naive", "Direct ", "Smoothed Direct", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
   # allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer et al. Binom.", "BYM Binom. (no urb/clust)", "BYM Binom. (no urb)", "BYM Binom. (no clust)", "BYM Binom.", "SPDE Binom. (no urb)", "SPDE Binom.")
   # BYM models are in order of complexity: no urban/cluster, no urban, no cluster, full
-  allNames = c("Naive", "Direct", "Mercer et al.", "BYM2 Ia", "BYM2 IIa", "BYM2 IIa'", "BYM2 IIIa", "BYM2 IVa", "BYM2 IVa'", 
+  allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 Ia", "BYM2 IIa", "BYM2 IIa'", "BYM2 IIIa", "BYM2 IVa", "BYM2 IVa'", 
                "BYM2 Ib", "BYM2 IIb", "BYM2 IIb'", "BYM2 IIIb", "BYM2 IVb", "BYM2 IVb'", 
                "SPDE I", "SPDE II", "SPDE III", "SPDE IV")
   allNamesBinomial = paste0(allNames, " Bin.")
@@ -117,7 +117,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         naive = naiveoverSamp
       }
     }
-    if("Mercer et al." %in% models) {
+    if("Smoothed Direct" %in% models) {
       if(!test)
         load(paste0("resultsMercerBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
                     "HHoldVar0urbanOverSamplefrac0.RData"))
@@ -373,7 +373,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     # relabel direct, naive, and mercer county names
     counties=sort(unique(poppc$admin1))
     for(i in 1:maxDataSets) {
-      if("Mercer et al." %in% models)
+      if("Smoothed Direct" %in% models)
         mercer[[i]]$admin1 = counties
       if("Direct" %in% models)
         directEst[[i]]$admin1 = counties
@@ -562,7 +562,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         directEsti = getSubLevelResults(directEst[[i]])
       if("Naive" %in% models)
         naivei = getSubLevelResults(naive[[i]])
-      if("Mercer et al." %in% models)
+      if("Smoothed Direct" %in% models)
         merceri = getSubLevelResults(mercer[[i]])
       if(resultType != "county") {
         # if("SPDE I" %in% models)
@@ -699,7 +699,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       }
       if("Naive" %in% models)
         allres = merge(allres, naivei, by=resultType)
-      if("Mercer et al." %in% models)
+      if("Smoothed Direct" %in% models)
         allres = merge(allres, merceri, by=resultType)
       # if("SPDE I" %in% models)
       #   allres = merge(allres, spdeNoUrbClusti, by=resultType)
@@ -733,7 +733,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         scoresNaive <- rbind(scoresNaive,
                              cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresnaive))
       }
-      if("Mercer et al." %in% models) {
+      if("Smoothed Direct" %in% models) {
         my.scoresmercer = getScores(thisTruth, numChildren, allres$logit.est.mercer, allres$var.est.mercer, nsim=nsim)
         scoresMercer <- rbind(scoresMercer,
                               cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresmercer))
@@ -831,7 +831,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     # in this case, we have already computed the results so just load them into the environment
     load(paste0("scores", runId, ".RData"))
     
-    allNames = c("Naive", "Direct", "Mercer et al.", "BYM2 Ia", "BYM2 IIa", "BYM2 IIa'", "BYM2 IIIa", "BYM2 IVa", "BYM2 IVa'", 
+    allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 Ia", "BYM2 IIa", "BYM2 IIa'", "BYM2 IIIa", "BYM2 IVa", "BYM2 IVa'", 
                  "BYM2 Ib", "BYM2 IIb", "BYM2 IIb'", "BYM2 IIIb", "BYM2 IVb", "BYM2 IVb'", 
                  "SPDE I", "SPDE II", "SPDE III", "SPDE IV")
     allNamesBinomial = paste0(allNames, " Bin.")
@@ -847,7 +847,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     naive = apply(scoresNaive[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
   if("Direct" %in% models)
     direct = apply(scoresDirect[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("Mercer et al." %in% models)
+  if("Smoothed Direct" %in% models)
     mercer = apply(scoresMercer[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
   if("BYM2 Ia" %in% models)
     bymNoUrbClust = apply(scoresBYMNoUrbClust[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
@@ -943,7 +943,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     tab = rbind(tab, c(naive[idx]))
   if("Direct" %in% models)
     tab = rbind(tab, c(direct[idx]))
-  if("Mercer et al." %in% models)
+  if("Smoothed Direct" %in% models)
     tab = rbind(tab, c(mercer[idx]))
   if("BYM2 Ia" %in% models)
     tab = rbind(tab, c(bymNoUrbClust[idx]))
@@ -1039,46 +1039,83 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         math.style.exponents=TRUE, 
         sanitize.text.function=function(x){x})
   
-  ## generate parameter tables
-  if("Mercer et al." %in% models) {
-    mercerPar
+  ## append parameter tables from each model
+  parTab = c()
+  parRowNames = c()
+  if("Smoothed Direct" %in% models) {
+    parTab = rbind(parTab, mercerPar)
+    parRowNames = c(parRowNames, "Smoothed Direct")
   }
-  if("BYM2 Ia" %in% models) {
-    designResNoUrbClust[[2]]
+  if("BYM2 Ia" %in% models || "BYM2 Ib" %in% models) {
+    parTab = rbind(parTab, designResNoUrbClust[[2]])
+    parRowNames = c(parRowNames, rep("BYM2 I", nrow(designResNoUrbClust[[2]])))
   }
-  if("BYM2 IIa" %in% models) {
-    designResNoUrb[[2]]
+  if("BYM2 IIa" %in% models || "BYM2 IIa'" %in% models || "BYM2 IIb" %in% models || "BYM2 IIb'" %in% models) {
+    parTab = rbind(parTab, designResNoUrb[[2]])
+    parRowNames = c(parRowNames, rep("BYM2 II", nrow(designResNoUrb[[2]])))
   }
-  if("BYM2 IIa'" %in% models) {
-    designResNoUrbMod[[2]]
+  if("BYM2 IIIa" %in% models || "BYM2 IIIb" %in% models || "BYM2 IIIa'" %in% models || "BYM2 IIIb'" %in% models) {
+    parTab = rbind(parTab, designResNoClust[[2]])
+    parRowNames = c(parRowNames, rep("BYM2 III", nrow(designResNoClust[[2]])))
   }
-  if("BYM2 IIIa" %in% models) {
-    designResNoClust[[2]]
+  if("BYM2 IVa" %in% models || "BYM2 IVb" %in% models || "BYM2 IVa'" %in% models || "BYM2 IVb'" %in% models) {
+    parTab = rbind(parTab, designRes[[2]])
+    parRowNames = c(parRowNames, rep("BYM2 IV", nrow(designRes[[2]])))
   }
-  if("BYM2 IVa" %in% models) {
-    designRes[[2]]
+  spdeParIndices = c(1:2, 4:6) # leave out variance and width
+  if("SPDE I" %in% models) {
+    thisParTab = spdeNoUrbClust$interceptSummary[,spdeParIndices]
+    thisParTab = rbind(thisParTab, spdeNoUrbClust$interceptSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoUrbClust$urbanSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoUrbClust$rangeSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoUrbClust$varSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoUrbClust$sdSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoUrbClust$nuggetVarSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoUrbClust$nuggetSDSummary[,spdeParIndices])
+    parTab = rbind(parTab, thisParTab)
+    parRowNames = c(parRowNames, rep("SPDE I", nrow(thisParTab)))
   }
-  if("BYM2 IVa'" %in% models) {
-    designResMod[[2]]
+  if("SPDE II" %in% models) {
+    parTab = rbind(parTab, spdeNoUrb)
+    thisParTab = spdeNoUrb$interceptSummary[,spdeParIndices]
+    thisParTab = rbind(thisParTab, spdeNoUrb$interceptSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoUrb$urbanSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoUrb$rangeSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoUrb$varSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoUrb$sdSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoUrb$nuggetVarSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoUrb$nuggetSDSummary[,spdeParIndices])
+    parTab = rbind(parTab, thisParTab)
+    parRowNames = c(parRowNames, rep("SPDE II", nrow(thisParTab)))
   }
-  if("BYM2 Ib" %in% models) {
-    designResNoUrbClustPopAgg[[2]]
+  if("SPDE III" %in% models) {
+    thisParTab = spdeNoClust$interceptSummary[,spdeParIndices]
+    thisParTab = rbind(thisParTab, spdeNoClust$interceptSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoClust$urbanSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoClust$rangeSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoClust$varSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoClust$sdSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoClust$nuggetVarSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spdeNoClust$nuggetSDSummary[,spdeParIndices])
+    parTab = rbind(parTab, thisParTab)
+    parRowNames = c(parRowNames, rep("SPDE III", nrow(thisParTab)))
   }
-  if("BYM2 IIb" %in% models) {
-    designResNoUrbPopAgg[[2]]
+  if("SPDE IV" %in% models) {
+    thisParTab = spde$interceptSummary[,spdeParIndices]
+    thisParTab = rbind(thisParTab, spde$interceptSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spde$urbanSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spde$rangeSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spde$varSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spde$sdSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spde$nuggetVarSummary[,spdeParIndices])
+    thisParTab = rbind(thisParTab, spde$nuggetSDSummary[,spdeParIndices])
+    parTab = rbind(parTab, thisParTab)
+    parRowNames = c(parRowNames, rep("SPDE IV", nrow(thisParTab)))
   }
-  if("BYM2 IIb'" %in% models) {
-    designResNoUrbModPopAgg[[2]]
-  }
-  if("BYM2 IIIb" %in% models) {
-    designResNoClustPopAgg[[2]]
-  }
-  if("BYM2 IVb" %in% models) {
-    designResPopAgg[[2]]
-  }
-  if("BYM2 IVb'" %in% models) {
-    designResModPopAgg[[2]]
-  }
+  
+  # add the model to the row names, print out the aggregated parameter table
+  rownames(parTab) = paste(parRowNames, rownames(parTab))
+  print(xtable(parTab, digits=2, display=c("s", rep("fg", ncol(parTab)))))
   
   runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
                 "HHoldVar0urbanOverSamplefrac0", testText, bigText, sampling, 
@@ -1115,7 +1152,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
             col="yellow", xlim=c(0,279), names=FALSE, xaxt="n")
     if("Naive" %in% models)
       boxplot(crps~region, data=scoresNaive, at=seq(0, 276, by=6), col="orange", xlim=c(0,230), add=TRUE)
-    if("Mercer et al." %in% models)
+    if("Smoothed Direct" %in% models)
       boxplot(crps~region, data=scoresMercer, at=seq(1, 277, by=6), col="green", xlim=c(0,230), add=TRUE, xaxt="n")
     if("BYM" %in% models)
       boxplot(crps~region, data=scoresBYM, at=seq(2, 278, by=6), col="lightblue", xlim=c(0,230), add=TRUE, xaxt="n")
@@ -1217,7 +1254,7 @@ runCompareModels = function(test=FALSE, tausq=.1^2, resultType=c("county", "pixe
   
   ## Now pick which models to include in the results
   allModels = c("naive", "direct", "mercer", "bym", "bymNoUrb", "bymNoClust", "bymNoUrbClust", "spde", "spdeNoUrb")
-  allNames = c("Naive", "Direct estimates", "Mercer et al.", "Model-based BYM", "Model-based BYM (no urban effect)", "Model-based BYM (no cluster effect)", "Model-based BYM (no urban or cluster effect)", "SPDE", "SPDE (no urban effect)")
+  allNames = c("Naive", "Direct estimates", "Smoothed Direct", "Model-based BYM", "Model-based BYM (no urban effect)", "Model-based BYM (no cluster effect)", "Model-based BYM (no urban or cluster effect)", "SPDE", "SPDE (no urban effect)")
   models = allModels[modelsI]
   
   # load data

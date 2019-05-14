@@ -435,11 +435,11 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   Q10 = rowMeans(sampCountySRSDat10)
   Q50 = rowMeans(sampCountySRSDat50)
   Q90 = rowMeans(sampCountySRSDat90)
-  resSRSdatPar = data.frame(list(Q10 = Q10,
+  resSRSdatPar = data.frame(list(Est = mm,
+                                 SD = ss, 
+                                 Q10 = Q10,
                                  Q50 = Q50,
-                                 Q90 = Q90,
-                                 mean = mm,
-                                 stddev = ss))
+                                 Q90 = Q90))
   
   ## overSampDat
   Q10 = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDat)[3])
@@ -497,11 +497,11 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   Q10 = rowMeans(sampCountyOverSampDat10)
   Q50 = rowMeans(sampCountyOverSampDat50)
   Q90 = rowMeans(sampCountyOverSampDat90)
-  resOverSampDatPar = data.frame(list(Q10 = Q10,
+  resOverSampDatPar = data.frame(list(Est = mm,
+                                      SD = ss, 
+                                      Q10 = Q10,
                                       Q50 = Q50,
-                                      Q90 = Q90,
-                                      mean = mm,
-                                      stddev = ss))
+                                      Q90 = Q90))
   
   # Full result
   designRes = list(SRSdat = resSRSdat,
@@ -602,11 +602,13 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   sampCountyDatPar = numeric(5 + includeUrban + includeCluster)
   sampCountyDatSD = numeric(5 + includeUrban + includeCluster)
   sampCountyDat10 = numeric(5 + includeUrban + includeCluster)
+  sampCountyDat50 = numeric(5 + includeUrban + includeCluster)
   sampCountyDat90 = numeric(5 + includeUrban + includeCluster)
   
   names(sampCountyDatPar) = parNames
   names(sampCountyDatSD) = parNames
   names(sampCountyDat10) = parNames
+  names(sampCountyDat50) = parNames
   names(sampCountyDat90) = parNames
   
   # Extract data
@@ -640,12 +642,14 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   sampCountyDatPar[1:(1 + includeUrban)] = result$summary.fixed[,1]
   sampCountyDatSD[1:(1 + includeUrban)] = result$summary.fixed[,2]
   sampCountyDat10[1:(1 + includeUrban)] = result$summary.fixed[,3]
+  sampCountyDat50[1:(1 + includeUrban)] = result$summary.fixed[,4]
   sampCountyDat90[1:(1 + includeUrban)] = result$summary.fixed[,5]
   
   # BYM2 hyperparameter phi
   sampCountyDatPar[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,1]
   sampCountyDatSD[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,2]
   sampCountyDat10[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,3]
+  sampCountyDat50[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,4]
   sampCountyDat90[(2 + includeCluster + includeUrban)] = result$summary.hyperpar[2,5]
   
   ## transformed hyperparameters
@@ -660,6 +664,7 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   sampCountyDatPar[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = rowMeans(transformedOut[1:3,])
   sampCountyDatSD[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = apply(transformedOut[1:3,], 1, sd)
   sampCountyDat10[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = apply(transformedOut[1:3,], 1, quantile, probs=.1)
+  sampCountyDat50[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = apply(transformedOut[1:3,], 1, quantile, probs=.5)
   sampCountyDat90[(3 + includeUrban + includeCluster):(5 + includeUrban + includeCluster)] = apply(transformedOut[1:3,], 1, quantile, probs=.9)
   
   # calculate summary statistics for cluster variance if necessary
@@ -667,6 +672,7 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
     sampCountyDatPar[2 + includeUrban] = mean(transformedOut[4,])
     sampCountyDatSD[2 + includeUrban] = sd(transformedOut[4,])
     sampCountyDat10[2 + includeUrban] = quantile(transformedOut[4,], probs=.1)
+    sampCountyDat50[2 + includeUrban] = quantile(transformedOut[4,], probs=.5)
     sampCountyDat90[2 + includeUrban] = quantile(transformedOut[4,], probs=.9)
   }
   
@@ -765,16 +771,19 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   if(includeUrban) {
     sampCountyDatPar[2] = -sampCountyDatPar[2]
     sampCountyDat10[2] = -sampCountyDat10[2]
+    sampCountyDat50[2] = -sampCountyDat50[2]
     sampCountyDat90[2] = -sampCountyDat90[2]
   }
   mm = sampCountyDatPar
   ss = sampCountyDatSD
   Q10 = sampCountyDat10
+  Q50 = sampCountyDat50
   Q90 = sampCountyDat90
-  resDatPar = data.frame(list(Q10 = Q10,
-                               Q90 = Q90,
-                               mean = mm,
-                               stddev = ss))
+  resDatPar = data.frame(list(mean = mm,
+                              stddev = ss, 
+                              Q10 = Q10,
+                              Q50 = Q50,
+                              Q90 = Q90))
   
   # Full result
   designRes = list(predictions = resDat,
