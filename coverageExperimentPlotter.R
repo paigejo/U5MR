@@ -696,8 +696,8 @@ uHatsPerm = aperm(uHats, c(1, 3, 4, 2))
 #               2: as.image(z, x = x, nx = nx, ny = ny, grid = grid, FUN = FUN, na.rm = na.rm)
 #               3: cbind(grid$x[temp$index[[1]]], grid$y[temp$index[[2]]])
 #               4: cbind(grid$x[temp$index[[1]]], grid$y[temp$index[[2]]])
-downSampleYI = sample(1:ny, 5, replace = FALSE) # maximum allowable so far: 50, but it takes ~5-10 minutes
-# downSampleYI = 1:20
+downSampleYI = sample(1:ny, 50, replace = FALSE) # maximum allowable so far: 50, but it takes ~5-10 minutes
+downSampleYI = 1:100
 uHatsPermDownSample = c(uHatsPerm[,,downSampleYI,])
 nndPermDownSample = c(nndPerm[,,downSampleYI,])
 
@@ -924,13 +924,184 @@ dev.off()
 #            FUN=averagingFun, grid=grid)
 # dev.off()
 
+# get theoretical coverage (averaging over y)
+# getCoverageFixedU = function(u0=0, us, s, sigma=1, tau=.1, kappa=1, alpha=.05) {
+#   rho = stationary.cov(matrix(c(0, s), ncol=1), Covariance="Matern", theta=1, smoothness=kappa)[1,2]
+#   center = (sigma^2 + tau^2)/(rho * sigma^2) * (us - u0) / tau
+#   sd = ((1 + tau^2 / sigma^2) / rho)  *  (sigma / tau)  *  sqrt(1 - (rho^2 * sigma^2) / (sigma^2 + tau^2))
+#   z = qnorm(1-alpha/2)
+#   pnorm(center + z * sd) - pnorm(center - z * sd)
+# }
+# 
+# # integrate getCoverage over initial value of u(0)
+# getCoverageRandomUConditional = function(us, s, sigma=1, tau=.1, kappa=1, alpha=.05) {
+#   # get conditional distribution of u(0) given u(s)
+#   rho = stationary.cov(matrix(c(0, s), ncol=1), Covariance="Matern", theta=1, smoothness=kappa)[1,2]
+#   center = rho * us
+#   sd = sqrt(sigma^2 - rho^2 * sigma^2)
+#   
+#   integrand = function(u0) {
+#     getCoverageFixedU(u0, us=us, s=s, sigma=sigma, tau=tau, kappa=kappa, alpha=alpha) * dnorm(center, sd=sd)
+#   }
+#   out = integrate(integrand, center - 5*sd, center + 5*sd)
+#   out$value
+# }
+# 
+# getCoverageRandomUMarginal = function(us, s, sigma=1, tau=.1, kappa=1, alpha=.05) {
+#   # get marginal distribution of u(0)
+#   center = 0
+#   sd = sigma
+#   
+#   integrand = function(u0) {
+#     getCoverageFixedU(u0, us=us, s=s, sigma=sigma, tau=tau, kappa=kappa, alpha=alpha) * dnorm(center, sd=sd)
+#   }
+#   out = integrate(integrand, center - 5*sd, center + 5*sd)
+#   out$value
+# }
+# 
+# 
+# getCoverageU = function(us, s, sigma=1, tau=.1, kappa=1, alpha=.05) {
+#   covMat = stationary.cov(matrix(c(0, s), ncol=1), Covariance="Matern", theta=1, smoothness=kappa)
+#   rho = covMat[1,2:ncol(covMat)]
+#   # center = (sigma^2 + tau^2)/(rho * sigma^2) * us / sqrt(tau^2 + sigma^2)
+#   # sd = ((1 + tau^2 / sigma^2) / rho)  *  (sigma / sqrt(tau^2 + sigma^2))  *  sqrt(1 - (rho^2 * sigma^2) / (sigma^2 + tau^2))
+#   center = sqrt(sigma^2 + tau^2)/(rho * sigma^2) * us
+#   sd = sqrt(sigma^2 + tau^2) / (rho * sigma^2) * sigma * sqrt(1 - rho^2 * sigma^2 / (sigma^2 + tau^2))
+#   z = qnorm(1-alpha/2)
+#   pnorm(center + z * sd) - pnorm(center - z * sd)
+# }
+
+# get coverage over the distribution of y(0) | u(s)
+getCoverageU = function(us, s, sigma=1, tau=.1, kappa=1, alpha=.05) {
+  covMat = stationary.cov(matrix(c(0, s), ncol=1), Covariance="Matern", theta=1, smoothness=kappa)
+  rho = covMat[1,2:ncol(covMat)]
+  
+  center = sqrt((1 - rho^2) * sigma^2 + tau^2) / (rho * sigma^2)  *  us
+  sd = sqrt(sigma^2 + tau^2) / (rho * sigma)
+  z = qnorm(1-alpha/2)
+  pnorm(center + z * sd) - pnorm(center - z * sd)
+}
+
+uGrid = seq(-4, 4, l=150)
+NNDGrid= seq(0, 10, l=100)
+theoreticalCoverages95 = outer(uGrid, NNDGrid, FUN=getCoverageU)
+theoreticalCoverages9 = outer(uGrid, NNDGrid, FUN=getCoverageU, alpha=.1)
+theoreticalCoverages8 = outer(uGrid, NNDGrid, FUN=getCoverageU, alpha=.2)
+theoreticalCoverages7 = outer(uGrid, NNDGrid, FUN=getCoverageU, alpha=.3)
+theoreticalCoverages6 = outer(uGrid, NNDGrid, FUN=getCoverageU, alpha=.4)
+theoreticalCoverages5 = outer(uGrid, NNDGrid, FUN=getCoverageU, alpha=.5)
+allPoints = expand.grid(u=uGrid, Distance=NNDGrid)
+dataFrame = data.frame("u"=allPoints$u, "NND"=allPoints$Distance, "Coverage"=c(theoreticalCoverages95))
+
+# now plot the results with contours
+cols=makeRedBlueDivergingColors(64, c(0,1), .95, rev=FALSE)
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(.1, .9, by=.1))
+png("figures/coverageExperiment/cov95uDistTheoretical1point.png", width=500, height=500)
+ggplot() + geom_raster(data = dataFrame, aes(x = u, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Theoretical Coverage Probability (95% CI)") + xlab("u(s)") + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = u, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(.1, .9, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$u), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
+dev.off()
+
+allPoints = expand.grid(u=uGrid, Distance=NNDGrid)
+dataFrame = data.frame("u"=allPoints$u, "NND"=allPoints$Distance, "Coverage"=c(theoreticalCoverages9))
+cols=makeRedBlueDivergingColors(64, c(0,1), .9, rev=FALSE)
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(.1, .9, by=.1))
+png("figures/coverageExperiment/cov90uDistTheoretical1point.png", width=500, height=500)
+ggplot() + geom_raster(data = dataFrame, aes(x = u, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Theoretical Coverage Probability (90% CI)") + xlab("u(s)") + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = u, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(.1, .9, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$u), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
+dev.off()
+
+allPoints = expand.grid(u=uGrid, Distance=NNDGrid)
+dataFrame = data.frame("u"=allPoints$u, "NND"=allPoints$Distance, "Coverage"=c(theoreticalCoverages8))
+cols=makeRedBlueDivergingColors(64, c(0,1), .8, rev=FALSE)
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(.1, .9, by=.1))
+png("figures/coverageExperiment/cov80uDistTheoretical1point.png", width=500, height=500)
+ggplot() + geom_raster(data = dataFrame, aes(x = u, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Theoretical Coverage Probability (80% CI)") + xlab("u(s)") + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = u, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(.1, .9, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$u), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
+dev.off()
+
+allPoints = expand.grid(u=uGrid, Distance=NNDGrid)
+dataFrame = data.frame("u"=allPoints$u, "NND"=allPoints$Distance, "Coverage"=c(theoreticalCoverages7))
+cols=makeRedBlueDivergingColors(64, c(0,1), .7, rev=FALSE)
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(.1, .9, by=.1))
+png("figures/coverageExperiment/cov70uDistTheoretical1point.png", width=500, height=500)
+ggplot() + geom_raster(data = dataFrame, aes(x = u, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Theoretical Coverage Probability (70% CI)") + xlab("u(s)") + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = u, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(.1, .9, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$u), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
+dev.off()
+
+allPoints = expand.grid(u=uGrid, Distance=NNDGrid)
+dataFrame = data.frame("u"=allPoints$u, "NND"=allPoints$Distance, "Coverage"=c(theoreticalCoverages6))
+cols=makeRedBlueDivergingColors(64, c(0,1), .6, rev=FALSE)
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(.1, .9, by=.1))
+png("figures/coverageExperiment/cov60uDistTheoretical1point.png", width=500, height=500)
+ggplot() + geom_raster(data = dataFrame, aes(x = u, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Theoretical Coverage Probability (60% CI)") + xlab("u(s)") + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = u, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(.1, .9, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$u), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
+dev.off()
+
+allPoints = expand.grid(u=uGrid, Distance=NNDGrid)
+dataFrame = data.frame("u"=allPoints$u, "NND"=allPoints$Distance, "Coverage"=c(theoreticalCoverages5))
+cols=makeRedBlueDivergingColors(64, c(0,1), .5, rev=FALSE)
+myPalette <- colorRampPalette(cols)
+sc <- scale_fill_gradientn(colours = myPalette(64), limits=c(0, 1), breaks=seq(.1, .9, by=.1))
+png("figures/coverageExperiment/cov50uDistTheoretical1point.png", width=500, height=500)
+ggplot() + geom_raster(data = dataFrame, aes(x = u, y = NND, fill = Coverage), interpolate=FALSE) + 
+  sc + ggtitle("Theoretical Coverage Probability (50% CI)") + xlab("u(s)") + ylab("(Nearest Neighbor Distance)/(Correlation Range)") + 
+  stat_contour(data = dataFrame, aes(x = u, y = NND, z=Coverage), colour="black", size=.25, show.legend=TRUE, breaks=seq(.1, .9, by=.1)) + 
+  scale_x_continuous(limits = range(dataFrame$u), expand=c(0,0)) + 
+  scale_y_continuous(limits = range(dataFrame$NND), expand=c(0,0)) + 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_colourbar(barheight = unit( 3 , "in" ),
+                                ticks.colour = "black",
+                                ticks.linewidth = 1))
+dev.off()
 
 
 
 
 
-
-
-
-
-
+# out = runCompareModels2(maxDataSets = 2, saveResults=FALSE)

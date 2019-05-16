@@ -34,14 +34,14 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   # Define formula
   if(includeUrbanRural) {
     if(includeCluster) {
-      formula = y ~ rural +
+      formula = y ~ urban +
         f(idx, model="bym2",
           graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
           hyper=list(prec=list(param=c(1, 0.01), prior="pc.prec"), phi=list(param=c(0.5, 0.5), prior="pc"))) +
         f(idxEps, model = "iid",
           hyper = list(prec = list(prior = "pc.prec", param = c(3,0.01))))
     } else {
-      formula = y ~ rural + 
+      formula = y ~ urban + 
         f(idx, model="bym2",
           graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
           hyper=list(prec=list(param=c(1, 0.01), prior="pc.prec"), phi=list(param=c(0.5, 0.5), prior="pc")))
@@ -110,14 +110,14 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
     # INLA data
     dat = list(y = currData$died,
                Ntrials = currData$numChildren,
-               rural = 1-currData$urban,
+               urban = currData$urban,
                idx = as.numeric(currData$admin1),
                idxEps = 1:length(currData$died))
     
     # Add unobserved data to make sampling easier
     dat$y = c(rep(NA, 47*2), dat$y)
     dat$Ntrials = c(rep(1, 47*2), dat$Ntrials)
-    dat$rural = c(rep(c(0,1), each = 47), dat$rural)
+    dat$urban = c(rep(c(1,0), each = 47), dat$urban)
     dat$idx = c(rep(1:47, 2), dat$idx)
     dat$idxEps = c(rep(NA, 47*2), dat$idxEps)
     
@@ -256,7 +256,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
     # INLA data
     dat = list(y = currData$died,
                Ntrials = currData$numChildren,
-               rural = 1-currData$urban,
+               urban = currData$urban,
                idx = as.numeric(currData$admin1),
                idx2 = as.numeric(currData$admin1),
                idxEps = 1:length(currData$died))
@@ -264,7 +264,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
     # Add unobserved data to make sampling easier
     dat$y = c(rep(NA, 47*2), dat$y)
     dat$Ntrials = c(rep(1, 47*2), dat$Ntrials)
-    dat$rural = c(rep(c(0,1), each = 47), dat$rural)
+    dat$urban = c(rep(c(1,0), each = 47), dat$urban)
     dat$idx = c(rep(1:47, 2), dat$idx)
     dat$idx2 = c(rep(1:47, 2), dat$idx2)
     dat$idxEps = c(rep(NA, 47*2), dat$idxEps)
@@ -424,12 +424,12 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   
   ## now collect the parameters
   # make rural parameter the urban parameter
-  if(includeUrbanRural) {
-    sampCountySRSDatPar[2,] = -sampCountySRSDatPar[2,]
-    sampCountySRSDat10[2,] = -sampCountySRSDat10[2,]
-    sampCountySRSDat50[2,] = -sampCountySRSDat50[2,]
-    sampCountySRSDat90[2,] = -sampCountySRSDat90[2,]
-  }
+  # if(includeUrbanRural) {
+  #   sampCountySRSDatPar[2,] = -sampCountySRSDatPar[2,]
+  #   sampCountySRSDat10[2,] = -sampCountySRSDat10[2,]
+  #   sampCountySRSDat50[2,] = -sampCountySRSDat50[2,]
+  #   sampCountySRSDat90[2,] = -sampCountySRSDat90[2,]
+  # }
   mm = rowMeans(sampCountySRSDatPar)
   ss = rowMeans(sampCountySRSDatSD)
   Q10 = rowMeans(sampCountySRSDat10)
@@ -486,12 +486,12 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   
   ## now collect the parameters
   # make rural parameter the urban parameter
-  if(includeUrbanRural) {
-    sampCountyOverSampDatPar[2,] = -sampCountyOverSampDatPar[2,]
-    sampCountyOverSampDat10[2,] = -sampCountyOverSampDat10[2,]
-    sampCountyOverSampDat50[2,] = -sampCountyOverSampDat50[2,]
-    sampCountyOverSampDat90[2,] = -sampCountyOverSampDat90[2,]
-  }
+  # if(includeUrbanRural) {
+  #   sampCountyOverSampDatPar[2,] = -sampCountyOverSampDatPar[2,]
+  #   sampCountyOverSampDat10[2,] = -sampCountyOverSampDat10[2,]
+  #   sampCountyOverSampDat50[2,] = -sampCountyOverSampDat50[2,]
+  #   sampCountyOverSampDat90[2,] = -sampCountyOverSampDat90[2,]
+  # }
   mm = rowMeans(sampCountyOverSampDatPar)
   ss = rowMeans(sampCountyOverSampDatSD)
   Q10 = rowMeans(sampCountyOverSampDat10)
@@ -531,7 +531,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
          designRes = designRes)
   }
   
-  invisible(NULL)
+  invisible(designRes)
 }
 
 # same as runBYM2, except fits a single data set (the ed global data frame)
@@ -809,6 +809,7 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   
   designRes = list(predictions = resDatMod,
                    parameters = resDatPar)
+  designRes
 }
 
 runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluster=TRUE) {
