@@ -4,8 +4,8 @@
 # lower: lower CI limit
 # upper: upper CI limit
 library(PearsonDS)
-library(gsl)
-library(moments)
+# library(gsl)
+# library(moments)
 logit <- function(x) {
   log(x/(1-x))
 }
