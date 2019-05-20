@@ -1095,6 +1095,9 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE, doValidation=FALSE, 
                          previousResult=NULL) {
   
+  if(!is.null(predCountyI) && !onlyInexact)
+    stop("If generating predictions for a fixed county (i.e. predCountyI is not NULL) then onlyInexact currently must be set to TRUE")
+  
   # match the prediction type
   predictionType = match.arg(predictionType)
   
@@ -1307,12 +1310,19 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     
     getCountyIntegrationMatrix = function(integrateByPixel=TRUE) {
       counties = as.character(counties)
+      
       if(integrateByPixel) {
-        mat = t(sapply(counties, function(countyName) {popGrid$admin1 == countyName}))
+        if(is.null(predCountyI))
+          mat = t(sapply(counties, function(countyName) {popGrid$admin1 == countyName}))
+        else
+          mat = matrix(popGrid$admin1 == counties[predCountyI], nrow=1)
         mat = sweep(mat, 2, popGrid$popOrig, "*")
       }
       else {
-        mat = t(sapply(counties, function(countyName) {eaDat$admin1 == countyName}))
+        if(is.null(predCountyI))
+          mat = t(sapply(counties, function(countyName) {eaDat$admin1 == countyName}))
+        else
+          mat = matrix(eaDat$admin1 == counties[predCountyI], nrow=1)
         mat = sweep(mat, 2, eaDat$numChildren, "*")
       }
       sweep(mat, 1, 1/rowSums(mat), "*")

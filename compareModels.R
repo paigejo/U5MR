@@ -1044,7 +1044,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   parRowNames = c()
   if("Smoothed Direct" %in% models) {
     parTab = rbind(parTab, mercerPar)
-    parRowNames = c(parRowNames, "Smoothed Direct")
+    parRowNames = c(parRowNames, rep("Smoothed Direct", nrow(mercerPar)))
   }
   if("BYM2 Ia" %in% models || "BYM2 Ib" %in% models) {
     parTab = rbind(parTab, designResNoUrbClust[[2]])

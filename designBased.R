@@ -535,7 +535,8 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
 }
 
 # same as runBYM2, except fits a single data set (the ed global data frame)
-runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveResults=TRUE, fileNameRoot="Ed") {
+runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveResults=TRUE, fileNameRoot="Ed", 
+                      previousResult=NULL) {
   includeUrban = includeUrbanRural
   
   # Get true ratios of urban/rural
@@ -548,14 +549,14 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   # Define formula
   if(includeUrbanRural) {
     if(includeCluster) {
-      formula = y ~ rural +
+      formula = y ~ urban +
         f(idx, model="bym2",
           graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
           hyper=list(prec=list(param=c(1, 0.01), prior="pc.prec"), phi=list(param=c(0.5, 0.5), prior="pc"))) +
         f(idxEps, model = "iid",
           hyper = list(prec = list(prior = "pc.prec", param = c(3,0.01))))
     } else {
-      formula = y ~ rural + 
+      formula = y ~ urban + 
         f(idx, model="bym2",
           graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
           hyper=list(prec=list(param=c(1, 0.01), prior="pc.prec"), phi=list(param=c(0.5, 0.5), prior="pc")))
@@ -617,16 +618,24 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   # INLA data
   dat = list(y = dat$y,
              Ntrials = dat$n,
-             rural = 1-dat$urban,
+             urban = dat$urban,
              idx = as.numeric(dat$admin1),
              idxEps = 1:length(dat$y))
   
   # Add unobserved data to make sampling easier
   dat$y = c(rep(NA, 47*2), dat$y)
   dat$Ntrials = c(rep(1, 47*2), dat$Ntrials)
-  dat$rural = c(rep(c(0,1), each = 47), dat$rural)
+  dat$urban = c(rep(c(1,0), each = 47), dat$urban)
   dat$idx = c(rep(1:47, 2), dat$idx)
   dat$idxEps = c(rep(NA, 47*2), dat$idxEps)
+  
+  # initialize the fitting process based on a previous optimum if necessary
+  if(is.null(previousResult)) {
+    modeControl = inla.set.control.mode.default()
+  }
+  else {
+    modeControl = control.mode(result=previousResult, restart=TRUE)
+  }
   
   # Run model
   print("fitting BYM model...")
@@ -635,7 +644,8 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
                 Ntrials = Ntrials,
                 data=dat, 
                 control.compute = list(config = TRUE), 
-                quantiles=c(0.1, 0.5, 0.9))
+                quantiles=c(0.1, 0.5, 0.9), 
+                control.mode=modeControl)
   
   ## include parameter estimates in the table
   # fixed effects
@@ -768,12 +778,12 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   
   ## now collect the parameters
   # make rural parameter the urban parameter
-  if(includeUrban) {
-    sampCountyDatPar[2] = -sampCountyDatPar[2]
-    sampCountyDat10[2] = -sampCountyDat10[2]
-    sampCountyDat50[2] = -sampCountyDat50[2]
-    sampCountyDat90[2] = -sampCountyDat90[2]
-  }
+  # if(includeUrban) {
+  #   sampCountyDatPar[2] = -sampCountyDatPar[2]
+  #   sampCountyDat10[2] = -sampCountyDat10[2]
+  #   sampCountyDat50[2] = -sampCountyDat50[2]
+  #   sampCountyDat90[2] = -sampCountyDat90[2]
+  # }
   mm = sampCountyDatPar
   ss = sampCountyDatSD
   Q10 = sampCountyDat10

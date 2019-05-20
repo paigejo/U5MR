@@ -26,7 +26,7 @@ mercer_u1m = function(logit.est, var.est, graph.path){
 }
 
 # modified version of the Mercer et al. model using the BYM2 model with joint PC prior
-mercer_u1m2 = function(logit.est, var.est, graph.path, plotPriorPost=FALSE){
+mercer_u1m2 = function(logit.est, var.est, graph.path, plotPriorPost=FALSE, previousResult=NULL){
   
   # our weighted estimates represent the outcome 
   # assumed to be normally distributed with the true mean and
@@ -40,6 +40,14 @@ mercer_u1m2 = function(logit.est, var.est, graph.path, plotPriorPost=FALSE){
                   hyper=list(prec=list(param=c(1, 0.01), prior="pc.prec"), 
                              phi=list(param=c(0.5, 0.5), prior="pc")))
   
+  if(is.null(previousResult)) {
+    modeControl = inla.set.control.mode.default()
+  }
+  else {
+    # initialize the fitting process based on a previous optimum
+    modeControl = control.mode(result=previousResult, restart=TRUE)
+  }
+  
   ## generate dataset
   data = list(y=y, scale=1/var.est, idx=1:length(y))
   
@@ -48,7 +56,8 @@ mercer_u1m2 = function(logit.est, var.est, graph.path, plotPriorPost=FALSE){
   result = inla(formula, family="gaussian", data=data, 
                 control.family=list(hyper=list(prec=list(initial=0, fixed=TRUE))), 
                 control.predictor=list(compute=TRUE, link=1),
-                scale = scale, quantiles=c(0.1, 0.5, 0.9))
+                scale = scale, quantiles=c(0.1, 0.5, 0.9), 
+                control.mode=modeControl)
   
   if(plotPriorPost) {
     maxX = max(result$marginals.hyperpar[[1]][,1]) * 1.1
