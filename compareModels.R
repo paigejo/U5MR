@@ -1039,167 +1039,172 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         math.style.exponents=TRUE, 
         sanitize.text.function=function(x){x})
   
-  ## append parameter tables from each model
-  parTab = c()
-  parRowNames = c()
-  if("Smoothed Direct" %in% models) {
-    parTab = rbind(parTab, mercerPar)
-    parRowNames = c(parRowNames, rep("Smoothed Direct", nrow(mercerPar)))
-  }
-  if("BYM2 Ia" %in% models || "BYM2 Ib" %in% models) {
-    parTab = rbind(parTab, designResNoUrbClust[[2]])
-    parRowNames = c(parRowNames, rep("BYM2 I", nrow(designResNoUrbClust[[2]])))
-  }
-  if("BYM2 IIa" %in% models || "BYM2 IIa'" %in% models || "BYM2 IIb" %in% models || "BYM2 IIb'" %in% models) {
-    parTab = rbind(parTab, designResNoUrb[[2]])
-    parRowNames = c(parRowNames, rep("BYM2 II", nrow(designResNoUrb[[2]])))
-  }
-  if("BYM2 IIIa" %in% models || "BYM2 IIIb" %in% models || "BYM2 IIIa'" %in% models || "BYM2 IIIb'" %in% models) {
-    parTab = rbind(parTab, designResNoClust[[2]])
-    parRowNames = c(parRowNames, rep("BYM2 III", nrow(designResNoClust[[2]])))
-  }
-  if("BYM2 IVa" %in% models || "BYM2 IVb" %in% models || "BYM2 IVa'" %in% models || "BYM2 IVb'" %in% models) {
-    parTab = rbind(parTab, designRes[[2]])
-    parRowNames = c(parRowNames, rep("BYM2 IV", nrow(designRes[[2]])))
-  }
-  spdeParIndices = c(1:2, 4:6) # leave out variance and width
-  if("SPDE I" %in% models) {
-    thisParTab = matrix(spdeNoUrbClust$interceptSummary[spdeParIndices], nrow=1)
-    theseRowNames = "Intercept"
-    if(!is.null(spdeNoUrbClust$urbanSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, Urban=spdeNoUrbClust$urbanSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Urban")
-    }
-    if(!is.null(spdeNoUrbClust$rangeSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoUrbClust$rangeSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Range")
-    }
-    if(!is.null(spdeNoUrbClust$varSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoUrbClust$varSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Spatial Var")
-    }
-    if(!is.null(spdeNoUrbClust$sdSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoUrbClust$sdSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Spatial SD")
-    }
-    if(!is.null(spdeNoUrbClust$nuggetVarSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoUrbClust$nuggetVarSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Cluster Var")
-    }
-    if(!is.null(spdeNoUrbClust$nuggetSDSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoUrbClust$nuggetSDSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Cluster SD")
-    }
-    colnames(thisParTab) = names(parTab)
-    rownames(thisParTab) = theseRowNames
-    parTab = rbind(parTab, thisParTab)
-    parRowNames = c(parRowNames, rep("SPDE I", nrow(thisParTab)))
-  }
-  if("SPDE II" %in% models) {
-    thisParTab = matrix(spdeNoUrb$interceptSummary[spdeParIndices], nrow=1)
-    theseRowNames = "Intercept"
-    if(!is.null(spdeNoUrb$urbanSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, Urban=spdeNoUrb$urbanSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Urban")
-    }
-    if(!is.null(spdeNoUrb$rangeSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoUrb$rangeSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Range")
-    }
-    if(!is.null(spdeNoUrb$varSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoUrb$varSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Spatial Var")
-    }
-    if(!is.null(spdeNoUrb$sdSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoUrb$sdSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Spatial SD")
-    }
-    if(!is.null(spdeNoUrb$nuggetVarSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoUrb$nuggetVarSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Cluster Var")
-    }
-    if(!is.null(spdeNoUrb$nuggetSDSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoUrb$nuggetSDSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Cluster SD")
-    }
-    colnames(thisParTab) = names(parTab)
-    rownames(thisParTab) = theseRowNames
-    parTab = rbind(parTab, thisParTab)
-    parRowNames = c(parRowNames, rep("SPDE II", nrow(thisParTab)))
-  }
-  if("SPDE III" %in% models) {
-    thisParTab = matrix(spdeNoClust$interceptSummary[spdeParIndices], nrow=1)
-    theseRowNames = "Intercept"
-    if(!is.null(spdeNoClust$urbanSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, Urban=spdeNoClust$urbanSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Urban")
-    }
-    if(!is.null(spdeNoClust$rangeSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoClust$rangeSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Range")
-    }
-    if(!is.null(spdeNoClust$varSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoClust$varSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Spatial Var")
-    }
-    if(!is.null(spdeNoClust$sdSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoClust$sdSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Spatial SD")
-    }
-    if(!is.null(spdeNoClust$nuggetVarSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoClust$nuggetVarSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Cluster Var")
-    }
-    if(!is.null(spdeNoClust$nuggetSDSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spdeNoClust$nuggetSDSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Cluster SD")
-    }
-    colnames(thisParTab) = names(parTab)
-    rownames(thisParTab) = theseRowNames
-    parTab = rbind(parTab, thisParTab)
-    parRowNames = c(parRowNames, rep("SPDE III", nrow(thisParTab)))
-  }
-  if("SPDE IV" %in% models) {
-    thisParTab = matrix(spde$interceptSummary[spdeParIndices], nrow=1)
-    theseRowNames = "Intercept"
-    if(!is.null(spde$urbanSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, Urban=spde$urbanSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Urban")
-    }
-    if(!is.null(spde$rangeSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spde$rangeSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Range")
-    }
-    if(!is.null(spde$varSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spde$varSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Spatial Var")
-    }
-    if(!is.null(spde$sdSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spde$sdSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Spatial SD")
-    }
-    if(!is.null(spde$nuggetVarSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spde$nuggetVarSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Cluster Var")
-    }
-    if(!is.null(spde$nuggetSDSummary[spdeParIndices])) {
-      thisParTab = rbind(thisParTab, spde$nuggetSDSummary[spdeParIndices])
-      theseRowNames = c(theseRowNames, "Cluster SD")
-    }
-    colnames(thisParTab) = names(parTab)
-    rownames(thisParTab) = theseRowNames
-    parTab = rbind(parTab, thisParTab)
-    parRowNames = c(parRowNames, rep("SPDE IV", nrow(thisParTab)))
-  }
+  ## append parameter tables from each smoothing model if necessary
+  anySmoothingModels = as.numeric("Naive" %in% models) + as.numeric("Direct" %in% models)
+  anySmoothingModels = length(models) > anySmoothingModels
   
-  # add the model to the row names, remove the numbers at the end of the duplicated row names, print out the aggregated parameter table
-  rownames(parTab) = paste(parRowNames, rownames(parTab))
-  for(i in 1:nrow(parTab)) {
-    lastCharacter = substr(rownames(parTab)[i], nchar(rownames(parTab)[i]), nchar(rownames(parTab)[i]))
-    if(grepl("\\d", lastCharacter))
-      rownames(parTab)[i] = substr(rownames(parTab)[i], 1, nchar(rownames(parTab)[i])-1)
+  if(anySmoothingModels) {
+    parTab = c()
+    parRowNames = c()
+    if("Smoothed Direct" %in% models) {
+      parTab = rbind(parTab, mercerPar)
+      parRowNames = c(parRowNames, rep("Smoothed Direct", nrow(mercerPar)))
+    }
+    if("BYM2 Ia" %in% models || "BYM2 Ib" %in% models) {
+      parTab = rbind(parTab, designResNoUrbClust[[2]])
+      parRowNames = c(parRowNames, rep("BYM2 I", nrow(designResNoUrbClust[[2]])))
+    }
+    if("BYM2 IIa" %in% models || "BYM2 IIa'" %in% models || "BYM2 IIb" %in% models || "BYM2 IIb'" %in% models) {
+      parTab = rbind(parTab, designResNoUrb[[2]])
+      parRowNames = c(parRowNames, rep("BYM2 II", nrow(designResNoUrb[[2]])))
+    }
+    if("BYM2 IIIa" %in% models || "BYM2 IIIb" %in% models || "BYM2 IIIa'" %in% models || "BYM2 IIIb'" %in% models) {
+      parTab = rbind(parTab, designResNoClust[[2]])
+      parRowNames = c(parRowNames, rep("BYM2 III", nrow(designResNoClust[[2]])))
+    }
+    if("BYM2 IVa" %in% models || "BYM2 IVb" %in% models || "BYM2 IVa'" %in% models || "BYM2 IVb'" %in% models) {
+      parTab = rbind(parTab, designRes[[2]])
+      parRowNames = c(parRowNames, rep("BYM2 IV", nrow(designRes[[2]])))
+    }
+    spdeParIndices = c(1:2, 4:6) # leave out variance and width
+    if("SPDE I" %in% models) {
+      thisParTab = matrix(spdeNoUrbClust$interceptSummary[spdeParIndices], nrow=1)
+      theseRowNames = "Intercept"
+      if(!is.null(spdeNoUrbClust$urbanSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, Urban=spdeNoUrbClust$urbanSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Urban")
+      }
+      if(!is.null(spdeNoUrbClust$rangeSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrbClust$rangeSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Range")
+      }
+      if(!is.null(spdeNoUrbClust$varSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrbClust$varSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Spatial Var")
+      }
+      if(!is.null(spdeNoUrbClust$sdSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrbClust$sdSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Spatial SD")
+      }
+      if(!is.null(spdeNoUrbClust$nuggetVarSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrbClust$nuggetVarSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Cluster Var")
+      }
+      if(!is.null(spdeNoUrbClust$nuggetSDSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrbClust$nuggetSDSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Cluster SD")
+      }
+      colnames(thisParTab) = names(parTab)
+      rownames(thisParTab) = theseRowNames
+      parTab = rbind(parTab, thisParTab)
+      parRowNames = c(parRowNames, rep("SPDE I", nrow(thisParTab)))
+    }
+    if("SPDE II" %in% models) {
+      thisParTab = matrix(spdeNoUrb$interceptSummary[spdeParIndices], nrow=1)
+      theseRowNames = "Intercept"
+      if(!is.null(spdeNoUrb$urbanSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, Urban=spdeNoUrb$urbanSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Urban")
+      }
+      if(!is.null(spdeNoUrb$rangeSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrb$rangeSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Range")
+      }
+      if(!is.null(spdeNoUrb$varSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrb$varSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Spatial Var")
+      }
+      if(!is.null(spdeNoUrb$sdSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrb$sdSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Spatial SD")
+      }
+      if(!is.null(spdeNoUrb$nuggetVarSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrb$nuggetVarSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Cluster Var")
+      }
+      if(!is.null(spdeNoUrb$nuggetSDSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrb$nuggetSDSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Cluster SD")
+      }
+      colnames(thisParTab) = names(parTab)
+      rownames(thisParTab) = theseRowNames
+      parTab = rbind(parTab, thisParTab)
+      parRowNames = c(parRowNames, rep("SPDE II", nrow(thisParTab)))
+    }
+    if("SPDE III" %in% models) {
+      thisParTab = matrix(spdeNoClust$interceptSummary[spdeParIndices], nrow=1)
+      theseRowNames = "Intercept"
+      if(!is.null(spdeNoClust$urbanSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, Urban=spdeNoClust$urbanSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Urban")
+      }
+      if(!is.null(spdeNoClust$rangeSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoClust$rangeSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Range")
+      }
+      if(!is.null(spdeNoClust$varSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoClust$varSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Spatial Var")
+      }
+      if(!is.null(spdeNoClust$sdSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoClust$sdSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Spatial SD")
+      }
+      if(!is.null(spdeNoClust$nuggetVarSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoClust$nuggetVarSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Cluster Var")
+      }
+      if(!is.null(spdeNoClust$nuggetSDSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoClust$nuggetSDSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Cluster SD")
+      }
+      colnames(thisParTab) = names(parTab)
+      rownames(thisParTab) = theseRowNames
+      parTab = rbind(parTab, thisParTab)
+      parRowNames = c(parRowNames, rep("SPDE III", nrow(thisParTab)))
+    }
+    if("SPDE IV" %in% models) {
+      thisParTab = matrix(spde$interceptSummary[spdeParIndices], nrow=1)
+      theseRowNames = "Intercept"
+      if(!is.null(spde$urbanSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, Urban=spde$urbanSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Urban")
+      }
+      if(!is.null(spde$rangeSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spde$rangeSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Range")
+      }
+      if(!is.null(spde$varSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spde$varSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Spatial Var")
+      }
+      if(!is.null(spde$sdSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spde$sdSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Spatial SD")
+      }
+      if(!is.null(spde$nuggetVarSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spde$nuggetVarSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Cluster Var")
+      }
+      if(!is.null(spde$nuggetSDSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spde$nuggetSDSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Cluster SD")
+      }
+      colnames(thisParTab) = names(parTab)
+      rownames(thisParTab) = theseRowNames
+      parTab = rbind(parTab, thisParTab)
+      parRowNames = c(parRowNames, rep("SPDE IV", nrow(thisParTab)))
+    }
+    
+    # add the model to the row names, remove the numbers at the end of the duplicated row names, print out the aggregated parameter table
+    rownames(parTab) = paste(parRowNames, rownames(parTab))
+    for(i in 1:nrow(parTab)) {
+      lastCharacter = substr(rownames(parTab)[i], nchar(rownames(parTab)[i]), nchar(rownames(parTab)[i]))
+      if(grepl("\\d", lastCharacter))
+        rownames(parTab)[i] = substr(rownames(parTab)[i], 1, nchar(rownames(parTab)[i])-1)
+    }
+    print(xtable(parTab, digits=2, display=c("s", rep("fg", ncol(parTab)))))
   }
-  print(xtable(parTab, digits=2, display=c("s", rep("fg", ncol(parTab)))))
   
   runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
                 "HHoldVar0urbanOverSamplefrac0", testText, bigText, sampling, 
