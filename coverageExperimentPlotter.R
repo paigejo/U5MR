@@ -924,14 +924,6 @@ dev.off()
 #            FUN=averagingFun, grid=grid)
 # dev.off()
 
-# get theoretical coverage (averaging over y)
-# getCoverageFixedU = function(u0=0, us, s, sigma=1, tau=.1, kappa=1, alpha=.05) {
-#   rho = stationary.cov(matrix(c(0, s), ncol=1), Covariance="Matern", theta=1, smoothness=kappa)[1,2]
-#   center = (sigma^2 + tau^2)/(rho * sigma^2) * (us - u0) / tau
-#   sd = ((1 + tau^2 / sigma^2) / rho)  *  (sigma / tau)  *  sqrt(1 - (rho^2 * sigma^2) / (sigma^2 + tau^2))
-#   z = qnorm(1-alpha/2)
-#   pnorm(center + z * sd) - pnorm(center - z * sd)
-# }
 # 
 # # integrate getCoverage over initial value of u(0)
 # getCoverageRandomUConditional = function(us, s, sigma=1, tau=.1, kappa=1, alpha=.05) {
@@ -1101,7 +1093,67 @@ ggplot() + geom_raster(data = dataFrame, aes(x = u, y = NND, fill = Coverage), i
 dev.off()
 
 
+# get theoretical coverage (averaging over y) for fixed value of u(0), and u(s)
+getCoverageFixedU = function(s, u0=0, us=0, sigma=1, tau=.1, kappa=1, alpha=.05) {
+  covMat = stationary.cov(matrix(c(0, s), ncol=1), Covariance="Matern", theta=1, smoothness=kappa)
+  rho = covMat[1,2]
+  center = (sigma^2 + tau^2)/(rho * sigma^2) * (us - u0) / tau
+  sd = ((1 + tau^2 / sigma^2) / rho)  *  (sigma / tau)  *  sqrt(1 - (rho^2 * sigma^2) / (sigma^2 + tau^2))
+  z = qnorm(1-alpha/2)
+  pnorm(center + z * sd) - pnorm(center - z * sd)
+}
 
+getCoverageFixedUVec = function(s, u0=0, us=0, sigma=1, tau=.1, kappa=1, alpha=.05) {
+  sapply(s, getCoverageFixedU, u0=u0, us=us, sigma=sigma, tau=tau, kappa=kappa, alpha=alpha)
+}
 
+NNDGrid= seq(0, 1, l=1000)
+theoretical0Coverages95 = getCoverageFixedUVec(NNDGrid)
+theoretical0Coverages90 = getCoverageFixedUVec(NNDGrid, alpha=.1)
+theoretical0Coverages80 = getCoverageFixedUVec(NNDGrid, alpha=.2)
+theoretical0Coverages70 = getCoverageFixedUVec(NNDGrid, alpha=.3)
+theoretical0Coverages60 = getCoverageFixedUVec(NNDGrid, alpha=.4)
+theoretical0Coverages50 = getCoverageFixedUVec(NNDGrid, alpha=.5)
 
-# out = runCompareModels2(maxDataSets = 2, saveResults=FALSE)
+pdf("figures/coverageExperiment/cov95Constant0Theoretical1point.pdf", width=5, height=5)
+plot(NNDGrid, theoretical0Coverages95, type="l", xlab="(Nearest Neighbor Distance)/(Correlation Range)", 
+     main="Coverage Probability (95% CI) for u(s)=0", col="blue", ylim=c(0,1), 
+     ylab="Coverage Probability")
+abline(h=.95, lty=2)
+dev.off()
+
+pdf("figures/coverageExperiment/cov90Constant0Theoretical1point.pdf", width=5, height=5)
+plot(NNDGrid, theoretical0Coverages90, type="l", xlab="(Nearest Neighbor Distance)/(Correlation Range)", 
+     main="Coverage Probability (90% CI) for u(s)=0", col="blue", ylim=c(0,1), 
+     ylab="Coverage Probability")
+abline(h=.90, lty=2)
+dev.off()
+
+pdf("figures/coverageExperiment/cov80Constant0Theoretical1point.pdf", width=5, height=5)
+plot(NNDGrid, theoretical0Coverages80, type="l", xlab="(Nearest Neighbor Distance)/(Correlation Range)", 
+     main="Coverage Probability (80% CI) for u(s)=0", col="blue", ylim=c(0,1), 
+     ylab="Coverage Probability")
+abline(h=.80, lty=2)
+dev.off()
+
+pdf("figures/coverageExperiment/cov70Constant0Theoretical1point.pdf", width=5, height=5)
+plot(NNDGrid, theoretical0Coverages70, type="l", xlab="(Nearest Neighbor Distance)/(Correlation Range)", 
+     main="Coverage Probability (70% CI) for u(s)=0", col="blue", ylim=c(0,1), 
+     ylab="Coverage Probability")
+abline(h=.70, lty=2)
+dev.off()
+
+pdf("figures/coverageExperiment/cov60Constant0Theoretical1point.pdf", width=5, height=5)
+plot(NNDGrid, theoretical0Coverages60, type="l", xlab="(Nearest Neighbor Distance)/(Correlation Range)", 
+     main="Coverage Probability (60% CI) for u(s)=0", col="blue", ylim=c(0,1), 
+     ylab="Coverage Probability")
+abline(h=.60, lty=2)
+dev.off()
+
+pdf("figures/coverageExperiment/cov50Constant0Theoretical1point.pdf", width=5, height=5)
+plot(NNDGrid, theoretical0Coverages50, type="l", xlab="(Nearest Neighbor Distance)/(Correlation Range)", 
+     main="Coverage Probability (50% CI) for u(s)=0", col="blue", ylim=c(0,1), 
+     ylab="Coverage Probability")
+abline(h=.50, lty=2)
+dev.off()
+

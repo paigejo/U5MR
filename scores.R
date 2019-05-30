@@ -226,33 +226,115 @@ getScoresSPDE = function(truth, numChildren, logitEst, est=NULL, var=NULL, probM
 # https://www.researchgate.net/profile/Havard_Rue/publication/226713867_Posterior_and_Cross-validatory_Predictive_Checks_A_Comparison_of_MCMC_and_INLA/links/551faa8c0cf29dcabb088bc6.pdf
 # original definition of cpo in Geisser's discussion in:
 # https://www.jstor.org/stable/pdf/2982063.pdf?refreqid=excelsior%3Aff026889bf010b97c9d0c7ae7bed6935
-getValidationScores = function(logitDirectEsts, logitDirectVars, logitEst, logitVar, probMat, weights, usePearson=TRUE) {
-  weights = weights / sum(weights)
-  logitEsts = rowMeans(logit(probMat))
-  logitVars = apply(logit(probMat), 1, var)
+# NOTE: for cluster level validation scores set the direct estimate values to be the truth and the direct estimate variance to 0
+getValidationScores = function(logitDirectEsts, logitDirectVars, logitEsts=NULL, logitVars=NULL, ests=NULL, 
+                               directEsts=NULL, probMat=NULL, weights=rep(1, length(logitDirectEsts)), 
+                               logitWeights=rep(1, length(logitDirectEsts)), usePearson=TRUE, nsim=10) {
   
-  # first calculate mean squared error
-  MSE = sum((expit(logitDirectEsts) - expit(logitEst))^2 * weights)
+  # weight each county prediction proportional to the inverse direct estimate variance
+  weights = weights / sum(weights)
+  logitWeights = logitWeights / sum(logitWeights)
+  
+  # calculate logit scale predictive distribution if necessary
+  if(is.null(logitEsts))
+    logitEsts = rowMeans(logit(probMat))
+  if(is.null(logitVars))
+    logitVars = apply(logit(probMat), 1, var)
+  if(is.null(directEsts))
+    directEsts = logitNormMean(cbind(logitDirectEsts, logitDirectVars))
+  
+  # first calculate mean squared error on probability and logit scales, decomposed into variance and bias squared
+  if(is.null(ests))
+    out = mse(directEsts, logitEsts, logit=FALSE, logitVars, nsim=nsim, weights=weights, decompose=TRUE)
+  else
+    out = mse(directEsts, ests, logit=TRUE, decompose=TRUE)
+  outLogit = mse(logitDirectEsts, logitEsts, logit=TRUE, logitVars, nsim=nsim, weights=logitWeights, decompose=TRUE)
+  MSE = out$MSE
+  Var = out$var
+  Biassq = out$biassq
+  MSELogit = outLogit$MSE
+  VarLogit = outLogit$var
+  BiassqLogit = outLogit$biassq
   
   # the other scoring rules require us to know the full predictive distribution. Either 
   # use a gaussian or pearson approximation
-  if(!usePearson) {
+  if(usePearson && !is.null(probMat)) {
     # for the Pearson distribution to the probabilities
     skewnessVals = apply(probMat, 1, skewness)
     kurtosisVals = apply(probMat, 1, kurtosis)
     
     # using Pearson type IV approximation
-    momentMat = cbind(logitEst, logitVars, skewnessVals, kurtosisVals)
+    momentMat = cbind(logitEsts, logitVars, skewnessVals, kurtosisVals)
     # pearsonParMat = apply(momentMat, 1, pearsonFitM)
     pearsonParMat = mapply(pearsonFitM, momentMat[,1], momentMat[,2], momentMat[,3], momentMat[,4])
     pearsonParMat = split(t(pearsonParMat), 1:ncol(pearsonParMat))
     
-    # calculate CPO
+    # calculate CPO, log score as defined by LPML in http://webpages.math.luc.edu/~ebalderama/myfiles/modelchecking101_pres.pdf
+    cpos = mapply(dpearson, x=logitDirectEsts, params=pearsonParMat)
+    cpo = mean(cpos)
+    logScore = mean(log(cpos))
+    
+    # calculate CRPS
+    crps = crpsPearsonDirect(logitDirectEsts, logitDirectVars, pearsonParMat)
+    crps = out[1]
+    
+    # calculate PIT
+    pits = mapply(ppearson, q=logitDirectEsts, params=pearsonParMat)
+  }
+  else {
+    # calculate CRPS using Gaussian approximation
+    cpos = dnorm(logitDirectEsts, logitEsts, logitVars)
+    cpo = mean(cpos)
+    logScore = mean(log(cpos))
+    
+    # calculate CRPS, log score as defined by LPML in http://webpages.math.luc.edu/~ebalderama/myfiles/modelchecking101_pres.pdf
+    out = crpsNormalDirect(logitDirectEsts, logitDirectVars, logitEsts, logitVars)
+    crps = out
+    
+    # calculate PIT
+    pits = mapply(pnorm, q=logitDirectEsts, logitEsts, logitVars)
+  }
+  
+  # return the results
+  results = matrix(c(MSE, Var, Biassq, MSELogit, VarLogit, BiassqLogit, cpo, crps, logScore), nrow=1, byrow = TRUE)
+  colnames(results) = c("MSE", "Var", "Bias^2", "Logit MSE", "Logit Var", "Logit Bias^2", "CPO", "CRPS", "logScore")
+  list(scores=as.data.frame(results), pit=pits, weights=weights, logitWeights=logitWeights)
+}
+
+# based off of calculations in:
+# http://www.stat.columbia.edu/~gelman/research/published/waic_understand3.pdf
+# http://www.r-inla.org/faq#TOC-How-are-the-Devicance-Information-Criteria-DIC-and-The-Watanabe-Akaike-information-criterion-WAIC-computed-
+getDICWAIC = function(logitDirectEsts, logitDirectVars, logitEsts=NULL, logitVars=NULL, 
+                      probMat=NULL, weights, usePearson=TRUE, nsim=10) {
+  
+  # weight each county prediction proportional to the inverse direct estimate variance
+  weights = weights / sum(weights)
+  
+  # calculate logit scale predictive distribution if necessary
+  if(is.null(logitEsts))
+    logitEsts = rowMeans(logit(probMat))
+  if(is.null(logitVars))
+    logitVars = apply(logit(probMat), 1, var)
+  
+  # the other scoring rules require us to know the full predictive distribution. Either 
+  # use a gaussian or pearson approximation
+  if(usePearson && !is.null(probMat)) {
+    # for the Pearson distribution to the probabilities
+    skewnessVals = apply(probMat, 1, skewness)
+    kurtosisVals = apply(probMat, 1, kurtosis)
+    
+    # using Pearson type IV approximation
+    momentMat = cbind(logitEsts, logitVars, skewnessVals, kurtosisVals)
+    # pearsonParMat = apply(momentMat, 1, pearsonFitM)
+    pearsonParMat = mapply(pearsonFitM, momentMat[,1], momentMat[,2], momentMat[,3], momentMat[,4])
+    pearsonParMat = split(t(pearsonParMat), 1:ncol(pearsonParMat))
+    
+    # calculate DIC = -2log p(y | \hat{theta})
     cpos = mapply(dpearson, x=logitDirectEsts, params=pearsonParMat)
     cpo = sum(cpos * weights)
     
     # calculate CRPS, log score as defined by LPML in http://webpages.math.luc.edu/~ebalderama/myfiles/modelchecking101_pres.pdf
-    out = crpsPearsonDirect(logitDirectEsts, logitDirectVars, pearsonPartMat)
+    out = crpsPearsonDirect(logitDirectEsts, logitDirectVars, pearsonParMat)
     crps = out[1]
     logScore = out[2]
     
@@ -274,12 +356,12 @@ getValidationScores = function(logitDirectEsts, logitDirectVars, logitEst, logit
   }
   
   # return the results
-  results = matrix(c(mse, cpo, crps, logScore), nrow=1, byrow = TRUE)
+  results = matrix(c(MSE, cpo, crps, logScore), nrow=1, byrow = TRUE)
   colnames(results) = c("MSE", "CPO", "CRPS", "logScore")
   list(scores=as.data.frame(results), pit=pits, weights=weights)
 }
 
-mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1, weights=NULL){
+mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1, weights=NULL, decompose=FALSE){
   if(!is.null(weights))
     weights = weights / sum(weights)
   
@@ -296,19 +378,41 @@ mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1, weights=NU
     } else {
       quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(my.est)), ncol=nsim, byrow=TRUE)
       logitP = matrix(qnorm(quantiles, my.est, sd=sqrt(my.var)), ncol=nsim)
-      my.est = expit(logitP)
-      res = sweep(my.est, 1, truth, "-")^2 * n^2
+      my.est = rowMeans(expit(logitP))
+      res = (my.est - truth)^2 * n^2
     }
-    
   }
   else {
     res <- (truth - my.est)^2
   }
   
-  if(!is.null(weights))
-    sum(res * weights)
-  else
-    mean(res)
+  if(decompose) {
+    thisBias = my.est - truth
+    thisVar = (my.est - mean(my.est))^2
+  }
+  
+  if(!is.null(weights)) {
+    MSE = sum(res * weights)
+    if(decompose) {
+      biassq=sum(thisBias * weights)^2
+      thisVar = sum(thisVar * weights)
+      out = list(MSE=MSE, biassq=biassq, var=thisVar)
+    }
+    else
+      out = MSE
+  }
+  else {
+    MSE = mean(res)
+    if(decompose) {
+      biassq=mean(thisBias)^2
+      thisVar = mean(thisVar)
+      out = list(MSE=MSE, biassq=biassq, var=thisVar)
+    }
+    else
+      out = MSE
+  }
+  
+  out
 }
 
 # logit: if TRUE use the raw estimates, otherwise assume estimates are on the logit scale
@@ -541,12 +645,12 @@ crpsNormal <- function(truth, my.est, my.var=NULL, logit=TRUE, nsim=10, n=25, bV
   res
 }
 
-crpsNormalDirect <- function(directLogitEsts, directLogitVars, logitEsts, logitVars, weights=(1 / directLogitVars) / sum(1 / directLogitVars)) {
+crpsNormalDirect <- function(directLogitEsts, directLogitVars, logitEsts, logitVars) {
   
   integrand = function(p, i) {
     directSD = sqrt(directLogitVars[i])
     directMu <- directLogitEsts[i]
-    estSD = sqrt(logitEst[i])
+    estSD = sqrt(logitVars[i])
     estMu = logitEsts[i]
     
     diff = pnorm(logit(p), directMu, directSD) - pnorm(logit(p), estMu, estSD)
@@ -555,31 +659,32 @@ crpsNormalDirect <- function(directLogitEsts, directLogitVars, logitEsts, logitV
   getOneCRPS = function(i) {
     minVal = min(directLogitEsts[i] - 5 * sqrt(directLogitVars[i]), logitEsts[i] - 5 * sqrt(logitVars[i]))
     maxVal = max(directLogitEsts[i] + 5 * sqrt(directLogitVars[i]), logitEsts[i] + 5 * sqrt(logitVars[i]))
-    integrate(integrand, minVal, maxVal, i=i)$value
+    integrate(integrand, expit(minVal), expit(maxVal), i=i)$value
   }
   
   res = sapply(1:length(directLogitEsts), getOneCRPS)
-  c(crps=sum(res * weights), logScore=-sum(log(res) * weights))
+  mean(res)
 }
 
-crpsPearsonDirect <- function(directLogitEsts, directLogitVars, pearsonParameters, weights=(1 / directLogitVars) / sum(1 / directLogitVars)) {
+crpsPearsonDirect <- function(directLogitEsts, directLogitVars, pearsonParameters) {
   
   integrand = function(p, i) {
     directSD = sqrt(directLogitVars[i])
     directMu <- directLogitEsts[i]
-    thesePearsonParameters = pearsonParameters[i]
+    theseParameters = unlist(pearsonParameters[i])
     
-    diff = pnorm(logit(p), directMu, directSD) - ppearson(logit(p), params=thesePearsonParameters)
+    diff = pnorm(logit(p), directMu, directSD) - ppearson(logit(p), params=theseParameters)
     diff^2
   }
   getOneCRPS = function(i) {
-    minVal = min(directLogitEsts[i] - 5 * sqrt(directLogitVars[i]), qpearson(pnorm(-5), params=pearsonParameters[i]))
-    maxVal = max(directLogitEsts[i] + 5 * sqrt(directLogitVars[i]), qpearson(pnorm(5), params=pearsonParameters[i]))
+    theseParameters = unlist(pearsonParameters[i])
+    minVal = expit(min(directLogitEsts[i] - 5 * sqrt(directLogitVars[i]), qpearson(pnorm(-5), params=theseParameters)))
+    maxVal = expit(max(directLogitEsts[i] + 5 * sqrt(directLogitVars[i]), qpearson(pnorm(5), params=theseParameters)))
     integrate(integrand, minVal, maxVal, i=i)$value
   }
   
   res = sapply(1:length(directLogitEsts), getOneCRPS)
-  c(crps=sum(res * weights), logScore=-sum(log(res) * weights))
+  mean(res)
 }
 
 # for a set of independent fixed binomials, determine the CRPS.
@@ -842,8 +947,12 @@ logitNormMean = function(muSigmaMat, parClust=NULL, ...) {
   else {
     mu = muSigmaMat[1]
     sigma = muSigmaMat[2]
-    fExp <- function(x) exp(plogis(x, log.p=TRUE) + dnorm(x, mean = mu, sd = sigma, log=TRUE))
-    integrate(fExp, mu-10*sigma, mu+10*sigma, abs.tol = 0, ...)$value
+    if(sigma == 0)
+      expit(mu)
+    else {
+      fExp <- function(x) exp(plogis(x, log.p=TRUE) + dnorm(x, mean = mu, sd = sigma, log=TRUE))
+      integrate(fExp, mu-10*sigma, mu+10*sigma, abs.tol = 0, ...)$value
+    }
   }
 }
 
@@ -852,9 +961,9 @@ logitNormMean = function(muSigmaMat, parClust=NULL, ...) {
 logitNormMoments = function(muSigmaMat, parClust=NULL, ...) {
   if(length(muSigmaMat) > 2) {
     if(is.null(parClust))
-      apply(muSigmaMat, 1, logitNormMoments, ...)
+      t(apply(muSigmaMat, 1, logitNormMoments, ...))
     else
-      parApply(parClust, muSigmaMat, 1, logitNormMoments, ...)
+      t(parApply(parClust, muSigmaMat, 1, logitNormMoments, ...))
   }
   else {
     mu = muSigmaMat[1]
@@ -862,8 +971,8 @@ logitNormMoments = function(muSigmaMat, parClust=NULL, ...) {
     fExp <- function(x) exp(plogis(x, log.p=TRUE) + dnorm(x, mean = mu, sd = sigma, log=TRUE))
     expectation = integrate(fExp, mu-10*sigma, mu+10*sigma, abs.tol = 0, ...)$value
     
-    fVar = function(x) (plogis(x) - .exp)^2 * dnorm(x, mean = mu, sd = sigma)
-    variance = integrate(fVar, mu-10*sigma, mu+10*sigma, abs.tol = abs.tol, ...)$value
+    fVar = function(x) (plogis(x) - expectation)^2 * dnorm(x, mean = mu, sd = sigma)
+    variance = integrate(fVar, mu-10*sigma, mu+10*sigma, abs.tol = 0, ...)$value
     c(mean = expectation, var = variance)
   }
 }

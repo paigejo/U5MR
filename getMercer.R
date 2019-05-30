@@ -145,6 +145,73 @@ getMercer = function(tausq=.1^2, test=FALSE, margVar=0.15^2, gamma=-1) {
   invisible(NULL)
 }
 
+# leave one county of data out at a time in order to validate the mercer model versus county level direct estimates
+validateMercer = function(dat=ed, directLogitEsts, directLogitVars, directVars, 
+                          counties=sort(unique(poppc$County))) {
+  
+  # fit the full model once, calculating certain validation scores
+  print("Fitting full model")
+  modelFit = mercer_u1m2(directLogitEsts, directLogitVars, 
+                    graph.path = "Kenyaadm1.graph", doValidation = TRUE)
+  cpo = modelFit$cpo$cpo
+  dic = modelFit$dic$dic
+  waic = modelFit$waic$waic
+  
+  # now do leave one county out across validation
+  for(i in 1:length(counties)) {
+    if(i %% 10 == 1)
+      print(paste0("Fitting model with data from county ", i, "/", length(counties), " left out"))
+    thisCountyName = counties[i]
+    
+    # fit model, get all predictions for each areal level and each posterior sample
+    fit = mercer_u1m2(directLogitEsts, directLogitVars, 
+                      graph.path = "Kenyaadm1.graph", 
+                      previousResult=modelFit, predCountyI=i)
+    
+    # get predictive distribution for the left out county
+    res = data.frame(admin1=counties,
+                     est.mercer=expit(fit$summary.linear.predictor$mean),
+                     lower.mercer=fit$summary.linear.predictor$"0.1quant",
+                     upper.mercer=fit$summary.linear.predictor$"0.9quant",
+                     logit.est.mercer=fit$summary.linear.predictor$mean, 
+                     var.est.mercer=(fit$summary.linear.predictor$sd)^2)
+    
+    thisCountyPreds = res[i,]
+    
+    if(i == 1) {
+      countyPreds = thisCountyPreds
+    } else {
+      countyPreds = rbind(countyPreds, thisCountyPreds)
+    }
+  }
+  
+  # calculate weights further predictions based on inverse direct estimate variances, calculate validation scores
+  weights = 1 / directVars
+  weights = weights / sum(weights)
+  logitWeights = 1 / directLogitVars
+  logitWeights = logitWeights / sum(logitWeights)
+  theseScores = getValidationScores(directLogitEsts, directLogitVars, 
+                                    countyPreds$logit.est.mercer, countyPreds$var.est.mercer, 
+                                    weights=weights, logitWeights=logitWeights, usePearson=TRUE)
+  
+  # now calculate scoring rules on the cluster level
+  countyI = match(dat$admin1, counties)
+  theseScoresCluster = getValidationScores(dat$y / dat$n, rep(0, nrow(dat)), directEsts = dat$y / dat$n, 
+                                           countyPreds$logit.est.mercer[countyI], countyPreds$var.est.mercer[countyI], 
+                                           usePearson=TRUE)
+  
+  # compile scores c("MSE", "CPO", "CRPS", "logScore")
+  scores = theseScores$scores
+  pit = theseScores$pit
+  scores = data.frame(MSE=scores$MSE, Biassq=scores$`Bias^2`, Var=scores$Var, CPO=scores$CPO, CRPS=scores$CRPS, logScore=scores$logScore)
+  
+  scoresCluster = theseScoresCluster$scores
+  pitCluster = theseScoresCluster$pit
+  scoresCluster = data.frame(DIC=dic, WAIC=waic, MSE=scoresCluster$MSE, Biassq=scoresCluster$`Bias^2`, Var=scoresCluster$Var, CPO=mean(cpo, na.rm=TRUE), CRPS=scoresCluster$CRPS, logScore=scoresCluster$logScore)
+  
+  list(scores=scores, pit=pit, pitCluster=pitCluster, scoresCluster=scoresCluster)
+}
+
 ##### the below code appeared to be a copy of the above code, so I commented it out:
 # # load a different 1 of these depending on whether a cluster effect should be included 
 # # in the simulation of the data or not (tausq is the cluster effect variance)

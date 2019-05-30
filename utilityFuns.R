@@ -678,3 +678,25 @@ my.quilt.plot = function (x, y, z, nx = 64, ny = 64, grid = NULL, add.legend = T
   }
   invisible(out.p)
 }
+
+##### MVN log likelihood for zero mean multivariate normal
+## inputs:
+# dat: observations.  If multiple realizations, dat is a matrix with each column being a 
+#      different set of observations for one realization
+# SimgaU: upper triangular Cholesky decomp of covariance matrix
+logLikGP = function(dat, SigmaU) {
+  if(!is.matrix(dat))
+    dat = matrix(dat, nrow=length(dat))
+  n = nrow(dat)
+  
+  #calcualte GP log likelihood (log likelihood of S0j)
+  # (-1/2) t(y) %*% Sigma0^-1 y - (1/2) log det Sigma0 - (n/2) log(2pi)
+  # define z = U^-1 %*% y, and x = L^-1 %*% U^-1 %*% y
+  # then:
+  z = backsolve(SigmaU, dat, transpose=TRUE)
+  x = backsolve(SigmaU, z) #make sure x is a column
+  # get full loglik.  First sum() only used for multiple realizations
+  log.likGP = sum(-(1/2) * colSums(dat * x) - sum(log(diag(SigmaU))) - (n/2)*log(2*pi))
+  
+  return(log.likGP)
+}

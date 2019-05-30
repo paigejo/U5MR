@@ -26,8 +26,12 @@ mercer_u1m = function(logit.est, var.est, graph.path){
 }
 
 # modified version of the Mercer et al. model using the BYM2 model with joint PC prior
-mercer_u1m2 = function(logit.est, var.est, graph.path, plotPriorPost=FALSE, previousResult=NULL){
-  
+mercer_u1m2 = function(logit.est, var.est, graph.path, plotPriorPost=FALSE, previousResult=NULL, 
+                       doValidation=FALSE, predCountyI=NULL) {
+  # remove observation at the given county if necessary for cross-validation
+  if(!is.null(predCountyI))
+    logit.est[predCountyI] = NA
+    
   # our weighted estimates represent the outcome 
   # assumed to be normally distributed with the true mean and
   # fixed variance equal to var.est
@@ -40,12 +44,19 @@ mercer_u1m2 = function(logit.est, var.est, graph.path, plotPriorPost=FALSE, prev
                   hyper=list(prec=list(param=c(1, 0.01), prior="pc.prec"), 
                              phi=list(param=c(0.5, 0.5), prior="pc")))
   
-  if(is.null(previousResult)) {
-    modeControl = inla.set.control.mode.default()
+  if(doValidation) {
+    control.inla = list(strategy="laplace", int.strategy="grid", diff.logdens=4, npoints=21) 
   }
   else {
+    control.inla = inla.set.control.inla.default()
+  }
+  modeControl = inla.set.control.mode.default()
+  if(!is.null(previousResult)) {
     # initialize the fitting process based on a previous optimum
-    modeControl = control.mode(result=previousResult, restart=TRUE)
+    # modeControl$result = previousResult
+    modeControl$theta = previousResult$mode$theta
+    modeControl$x = previousResult$mode$x
+    modeControl$restart = TRUE
   }
   
   ## generate dataset
@@ -57,7 +68,9 @@ mercer_u1m2 = function(logit.est, var.est, graph.path, plotPriorPost=FALSE, prev
                 control.family=list(hyper=list(prec=list(initial=0, fixed=TRUE))), 
                 control.predictor=list(compute=TRUE, link=1),
                 scale = scale, quantiles=c(0.1, 0.5, 0.9), 
-                control.mode=modeControl)
+                control.mode=modeControl, 
+                control.compute=list(cpo=doValidation, dic=doValidation, waic=doValidation), 
+                control.inla=control.inla)
   
   if(plotPriorPost) {
     maxX = max(result$marginals.hyperpar[[1]][,1]) * 1.1

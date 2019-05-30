@@ -535,8 +535,17 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
 }
 
 # same as runBYM2, except fits a single data set (the ed global data frame)
+# doPredsAtPostMean: if TRUE, fix all model hyperparameters at the posterior mean 
+# getPosteriorDensity: EXPERIMENTAL: evaluate the posterior density of direct estimates using multivariate normal approximation
 runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveResults=TRUE, fileNameRoot="Ed", 
-                      previousResult=NULL) {
+                      previousResult=NULL, doValidation=FALSE, predCountyI=NULL, counties=sort(unique(poppc$County)), 
+                      doPredsAtPostMean=FALSE, directLogitEsts=NULL, fixedParameters=FALSE, 
+                      getPosteriorDensity=FALSE) {
+  
+  # remove data from the given county for validation if necessary
+  if(!is.null(predCountyI))
+    dat$y[dat$admin1==counties[predCountyI]] = NA
+  
   includeUrban = includeUrbanRural
   
   # Get true ratios of urban/rural
@@ -629,12 +638,31 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   dat$idx = c(rep(1:47, 2), dat$idx)
   dat$idxEps = c(rep(NA, 47*2), dat$idxEps)
   
-  # initialize the fitting process based on a previous optimum if necessary
-  if(is.null(previousResult)) {
-    modeControl = inla.set.control.mode.default()
+  # set posterior approximation for calculating validation quantities
+  
+  if(!doPredsAtPostMean) {
+    # based on http://www.r-inla.org/faq#TOC-How-can-I-compute-cross-validation-or-predictive-measures-of-fit-
+    # when calculating log posterior density, we use fewer integration points to get better estimates of the 
+    # covariance matrices at each integration point
+    if(!getPosteriorDensity)
+      control.inla = list(strategy="laplace", int.strategy="grid", diff.logdens=4, npoints=21)
+    else
+      control.inla = list(strategy="laplace", int.strategy="grid", diff.logdens=4, npoints=9)
   }
   else {
-    modeControl = control.mode(result=previousResult, restart=TRUE)
+    # we need to generate predictions in this case based on a fixed set of hyperparameters
+    control.inla = list(strategy="laplace", int.strategy="eb") 
+  }
+  
+  # initialize the fitting process based on a previous optimum if necessary
+  modeControl = inla.set.control.mode.default()
+  if(!is.null(previousResult)) {
+    # initialize the fitting process based on a previous optimum
+    # modeControl$result = previousResult
+    modeControl$theta = previousResult$mode$theta
+    modeControl$x = previousResult$mode$x
+    modeControl$restart = !fixedParameters
+    modeControl$fixed = fixedParameters
   }
   
   # Run model
@@ -643,7 +671,7 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
                 family="binomial",
                 Ntrials = Ntrials,
                 data=dat, 
-                control.compute = list(config = TRUE), 
+                control.compute=list(config=TRUE, cpo=doValidation, dic=doValidation, waic=doValidation), 
                 quantiles=c(0.1, 0.5, 0.9), 
                 control.mode=modeControl)
   
@@ -696,17 +724,20 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
     sampUrban = matrix(NA, nrow = 47, ncol = Nsim)
     sampRuralMod = matrix(NA, nrow = 47, ncol = Nsim)
     sampUrbanMod = matrix(NA, nrow = 47, ncol = Nsim)
-    
+    clustersPerUrban = easpc$EAUrb
+    clustersPerRural = easpc$EARur
     for(j in 1:Nsim){
       sampRural[, j] = samp[[j]]$latent[47 + (1:47)]
       sampUrban[, j] = samp[[j]]$latent[1:47]
       if(includeCluster) {
         # if cluster effect is included, must debias predictions in each modeled strata
         clusterSigma = sqrt(1/samp[[j]]$hyperpar[3])
-        muSigmaMatRural = cbind(sampRural[, j], clusterSigma)
-        muSigmaMatUrban = cbind(sampUrban[, j], clusterSigma)
-        sampRuralMod[, j] = logitNormMean(muSigmaMat = muSigmaMatRural)
-        sampUrbanMod[, j] = logitNormMean(muSigmaMat = muSigmaMatUrban)
+        # muSigmaMatRural = cbind(sampRural[, j], clusterSigma)
+        # muSigmaMatUrban = cbind(sampUrban[, j], clusterSigma)
+        # sampRuralMod[, j] = logitNormMean(muSigmaMat = muSigmaMatRural)
+        # sampUrbanMod[, j] = logitNormMean(muSigmaMat = muSigmaMatUrban)
+        sampRuralMod[, j] = sapply(1:length(clustersPerRural), function(i) {mean(expit(sampRural[i, j] + rnorm(clustersPerRural[i], sd=clusterSigma)))})
+        sampUrbanMod[, j] = sapply(1:length(clustersPerUrban), function(i) {mean(expit(sampUrban[i, j] + rnorm(clustersPerUrban[i], sd=clusterSigma)))})
       }
     }
     sampCountyDat = logit(expit(sampUrban)*urbRatio + expit(sampRural)*(1-urbRatio))
@@ -715,13 +746,15 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
     samp = inla.posterior.sample(n = Nsim, result = result)
     sampCounty = matrix(NA, nrow = 47, ncol = Nsim)
     sampCountyMod = matrix(NA, nrow = 47, ncol = Nsim)
+    clustersPerCounty = rowSums(cbind(easpc$EAUrb, easpc$EARur))
     for(j in 1:Nsim){
       sampCounty[, j] = samp[[j]]$latent[1:47]
       if(includeCluster) {
         # if cluster effect is included, must debias predictions in each modeled strata
         clusterSigma = sqrt(1/samp[[j]]$hyperpar[3])
-        muSigmaMat = cbind(sampCounty[, j], clusterSigma)
-        sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMat)
+        # muSigmaMat = cbind(sampCounty[, j], clusterSigma)
+        # sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMat
+        sampCountyMod[, j] = sapply(1:length(clustersPerCounty), function(i) {mean(expit(sampCounty[i, j] + rnorm(clustersPerCounty[i], sd=clusterSigma)))})
       }
     }
     sampCountyDat = sampCounty
@@ -760,6 +793,9 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
                  mean = mm,
                  stddev = ss)
   
+  if(!is.null(predCountyI))
+    resDat = data.frame(resDat)[predCountyI,]
+  
   if(includeCluster) {
     tmp = processSamples(sampCountyDatMod)
     Q10 = tmp$logit$CI[,1]
@@ -772,6 +808,9 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
                       Q90 = Q90,
                       mean = mm,
                       stddev = ss)
+    
+    if(!is.null(predCountyI))
+      resDatMod = data.frame(resDatMod)[predCountyI,]
   } else {
     resDatMod = NULL
   }
@@ -801,25 +840,75 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   # save(file = 'kenyaSpatialDesignResultNew.RData', designRes = designRes)
   # save(file = paste0('kenyaSpatialDesignResultNewTausq0UrbRur', 
   #                      includeUrbanRural, '.RData'), designRes = designRes)
+  validationText = ""
+  if(doValidation)
+    validationText = "ValidationFull"
+  else if(!is.null(predCountyI))
+    validationText = paste0("Validation", predCountyI) # really we are setting saveResults to FALSE in this case
   if(saveResults) {
-    save(file = paste0('bym2', fileNameRoot, 'UrbRur',includeUrbanRural, 'Cluster', includeCluster, '.RData'), 
+    save(file = paste0('bym2', fileNameRoot, validationText, 'UrbRur',includeUrbanRural, 'Cluster', includeCluster, '.RData'), 
          designRes = designRes)
   }
   
   # include the debiased results if cluster effect is included
   if(includeCluster) {
+    temp = designRes
     designRes = list(predictions = resDatMod,
                      parameters = resDatPar)
     
     if(saveResults) {
-      save(file = paste0('bym2', fileNameRoot, 'UrbRur',includeUrbanRural, 'Cluster', includeCluster, 'debiased.RData'), 
+      save(file = paste0('bym2', fileNameRoot, validationText, 'UrbRur',includeUrbanRural, 'Cluster', includeCluster, 'debiased.RData'), 
            designRes = designRes)
     }
+    
+    designResMod = designRes
+    designRes = temp
   }
   
-  designRes = list(predictions = resDatMod,
-                   parameters = resDatPar)
-  designRes
+  # in order to compute DIC or WAIC it is necessary to generate predictive distribution at the 
+  # posterior mean for each county. We do it here on a logit scale:
+  if(getPosteriorDensity) {
+    if(is.null(directLogitEsts))
+        stop("Must supply directLogitEsts if getPosteriorDensity == TRUE")
+    
+    # approximate the posterior county samples using a multivariate gaussian on the logit scale
+    theseCountySamples = sampCountyDat
+    mu = resDat$mean
+    theseCountyResiduals = sweep(theseCountySamples, 1, mu, "-")
+    Sigma = (1 / (Nsim - 1)) * theseCountyResiduals %*% t(theseCountyResiduals)
+    if(includeCluster) {
+      theseCountySamplesMod = sampCountyDatMod
+      muMod = resDatMod$mean
+      theseCountyResidualsMod = sweep(theseCountySamplesMod, 1, muMod, "-")
+      SigmaMod = (1 / (Nsim - 1)) * theseCountyResidualsMod %*% t(theseCountyResidualsMod)
+    }
+    
+    # calculate posterior density of the direct estimates
+    logLik = logLikGP(directLogitEsts - mu, chol(Sigma))
+    if(includeCluster)
+      logLikMod = logLikGP(directLogitEsts - muMod, chol(SigmaMod))
+    else
+      logLikMod = NULL
+  }
+  
+  # compute cluster predictive standard deviation for each strata (square root of the the strata variance plus the cluster variance)
+  if(includeCluster) {
+    clustPredSD = sqrt(designRes$predictions$stddev^2 + designRes$parameters$stddev[2 + includeUrban]^2)
+    designRes$predictions$clustPredSD = clustPredSD
+    designResMod$predictions$clustPredSD = clustPredSD
+  }
+  
+  # compile results
+  if(!doValidation)
+    out = designRes
+  else if(!getPosteriorDensity)
+    out = list(designRes=designRes, mod=result)
+  else
+    out = list(designRes=designRes, mod=result, directLogLik=logLik, directLogLikMod=logLikMod)
+  if(includeCluster)
+    out$designResMod = designResMod
+  
+  out
 }
 
 runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluster=TRUE) {
@@ -1160,3 +1249,107 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
   invisible(NULL)
 }
 
+
+# leave one county of data out at a time in order to validate the mercer model versus county level direct estimates
+validateBYM2Dat = function(directLogitEsts, directLogitVars, directVars, dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, 
+                           saveResults=TRUE, fileNameRoot="Ed", counties=sort(unique(poppc$County))) {
+  
+  # fit the full model once, calculating certain validation scores
+  print("Fitting full model integrating over hyperparameter uncertainty")
+  modelFitFull = runBYM2Dat(dat=ed, includeUrbanRural=includeUrbanRural, includeCluster=includeCluster, saveResults=saveResults, fileNameRoot=fileNameRoot, 
+                            doValidation=TRUE, doPredsAtPostMean=FALSE, getPosteriorDensity=FALSE, directLogitEsts=directLogitEsts)
+  cpo = modelFitFull$mod$cpo$cpo
+  dic = modelFitFull$mod$dic$dic
+  waic = modelFitFull$mod$waic$waic
+  
+  # now do leave one county out across validation
+  for(i in 1:length(counties)) {
+    if(i %% 10 == 1)
+      print(paste0("Fitting model with data from county ", i, "/", length(counties), " left out"))
+    thisCountyName = counties[i]
+    
+    # fit model, get all predictions for each areal level and each posterior sample
+    fit = runBYM2Dat(dat=dat, includeUrbanRural=includeUrbanRural, includeCluster=includeCluster, 
+                     fileNameRoot=fileNameRoot, saveResults=FALSE, 
+                     previousResult=modelFitFull$mod, doValidation=FALSE, predCountyI=i)
+    
+    # get predictive distribution for the left out county
+    res = fit$predictions
+    if(includeCluster)
+      resMod = fit$designResMod$predictions
+    
+    thisCountyPreds = res
+    if(includeCluster)
+      thisCountyPredsMod = resMod
+    
+    if(i == 1) {
+      countyPreds = thisCountyPreds
+      if(includeCluster)
+        countyPredsMod = thisCountyPredsMod
+    } else {
+      countyPreds = rbind(countyPreds, thisCountyPreds)
+      if(includeCluster)
+        countyPredsMod = rbind(countyPredsMod, thisCountyPredsMod)
+    }
+  }
+  
+  # calculate weights further predictions based on inverse direct estimate variances, calculate validation scores
+  weights = 1 / directVars
+  weights = weights / sum(weights)
+  logitWeights = 1 / directLogitVars
+  logitWeights = logitWeights / sum(logitWeights)
+  theseScores = getValidationScores(directLogitEsts, directLogitVars, 
+                                    countyPreds$mean, countyPreds$stddev^2, 
+                                    weights=weights, logitWeights=logitWeights, usePearson=TRUE)
+  if(includeCluster)
+    theseScoresMod = getValidationScores(directLogitEsts, directLogitVars, 
+                                         countyPredsMod$mean, countyPredsMod$stddev^2, 
+                                         weights=weights, logitWeights=logitWeights, usePearson=TRUE)
+  else
+    theseScoresMod = NULL
+  
+  # now calculate scoring rules on the cluster level
+  countyI = match(dat$admin1, counties)
+  theseScoresCluster = getValidationScores(dat$y / dat$n, rep(0, nrow(dat)), 
+                                           countyPreds$mean[countyI], countyPreds$stddev[countyI]^2, 
+                                           usePearson=TRUE)
+  if(includeCluster)
+    theseScoresModCluster = getValidationScores(dat$y / dat$n, rep(0, nrow(dat)), 
+                                                countyPredsMod$mean[countyI], countyPredsMod$stddev[countyI]^2, usePearson=TRUE)
+  
+  else
+    theseScoresModCluster = NULL
+  
+  # compile scores c("MSE", "CPO", "CRPS", "logScore")
+  scores = theseScores$scores
+  pit = theseScores$pit
+  scores = data.frame(MSE=scores$MSE, Biassq=scores$`Bias^2`, Var=scores$Var, CPO=scores$CPO, CRPS=scores$CRPS, logScore=scores$logScore)
+  bym2Results = list(scores=scores, pit=pit)
+  
+  scoresCluster = theseScoresCluster$scores
+  pitCluster = theseScoresCluster$pit
+  scoresCluster = data.frame(DIC=dic, WAIC=waic, MSE=scoresCluster$MSE, Biassq=scoresCluster$`Bias^2`, Var=scoresCluster$Var, CPO=mean(cpo, na.rm=TRUE), CRPS=scoresCluster$CRPS, logScore=scoresCluster$logScore)
+  bym2ResultsCluster = list(scores=scoresCluster, pit=pitCluster)
+  
+  if(includeCluster) {
+    scoresMod = theseScoresMod$scores
+    pitMod = theseScoresMod$pit
+    scoresMod = data.frame(MSE=scoresMod$MSE, Biassq=scoresMod$`Bias^2`, Var=scoresMod$Var, CPO=scoresMod$CPO, CRPS=scoresMod$CRPS, logScore=scoresMod$logScore)
+    bym2ResultsMod = list(scores=scoresMod, pit=pitMod)
+    
+    scoresModCluster = theseScoresModCluster$scores
+    pitModCluster = theseScoresModCluster$pit
+    scoresModCluster = data.frame(DIC=dic, WAIC=waic, MSE=scoresModCluster$MSE, Biassq=scoresModCluster$`Bias^2`, Var=scoresModCluster$Var, CPO=mean(cpo, na.rm=TRUE), CRPS=scoresModCluster$CRPS, logScore=scoresModCluster$logScore)
+    bym2ResultsModCluster = list(scores=scoresModCluster, pit=pitModCluster)
+  }
+  else {
+    bym2ResultsMod = NULL
+    bym2ResultsModCluster = NULL
+  }
+  
+  # save (if necessary) and return results
+  if(saveResults)
+    save(modelFitFull, bym2Results, bym2ResultsMod, bym2ResultsCluster, bym2ResultsModCluster, file = paste0('bym2', fileNameRoot, 'ValidationAllUrbRur', includeUrbanRural, 'Cluster', includeCluster, '.RData'))
+  
+  list(bym2Results=bym2Results, bym2ResultsMod=bym2ResultsMod, bym2ResultsCluster=bym2ResultsCluster, bym2ResultsModCluster=bym2ResultsModCluster)
+}

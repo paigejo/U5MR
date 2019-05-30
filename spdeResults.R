@@ -1407,13 +1407,13 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
 }
 
 # Based on resultsSPDEHelper, but use for analyzing a single data set given a set of direct estimates
-validateSPDEDat = function(directLogitEsts, directLogitVars, directEsts, directVars, 
+validateSPDEDat = function(directLogitEsts, directLogitVars, directVars, 
                            clustDat=ed, nPostSamples=1000, verbose=FALSE, 
                            includeClustEffect=FALSE, int.strategy="eb", 
                            genRegionLevel=TRUE, keepPixelPreds=TRUE, 
                            urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
                            predictionType=c("mean", "median"), parClust=cl, 
-                           significance=.8) {
+                           significance=.8, saveResults=TRUE, fileNameRoot="Ed") {
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
   
@@ -1443,22 +1443,31 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directEsts, directV
   obsUrban = clustDat$urban
   
   # first fit the full model (we will use this to initialize the model during the validation fits for each left out county)
+  print("Fitting full model")
   out = fitSPDEModel3(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
                       predUrban, clusterIndices=1:nrow(clustDat), genCountyLevel=FALSE, popGrid=popGrid, nPostSamples=nPostSamples, 
                       verbose = verbose, clusterEffect=includeClustEffect, 
                       int.strategy=int.strategy, genRegionLevel=FALSE, counties=sort(unique(kenyaEAs$admin1)), 
-                      keepPixelPreds=keepPixelPreds, genEALevel=FALSE, regions=sort(unique(kenyaEAs$region)), 
+                      keepPixelPreds=keepPixelPreds, genEALevel=TRUE, regions=sort(unique(kenyaEAs$region)), 
                       urbanEffect=urbanEffect, eaIndices=1:nrow(clustDat), 
                       eaDat=eaDat, nSamplePixel=nSamplePixel, 
                       significance=significance, onlyInexact=TRUE, allPixels=TRUE, 
                       newMesh=TRUE, doValidation=TRUE)
-  cpo = fullFit$mod$cpo$cpo
-  dic = fullFit$mod$dic$dic
-  waic = fullFit$mod$waic$waic
+  cpo = out$mod$cpo$cpo
+  dic = out$mod$dic$dic
+  waic = out$mod$waic$waic
   modelFit = out$mod
   
+  fileName = paste0("resultsSPDE", fileNameRoot, "ValidationFull", "_includeClustEffect", includeClustEffect, 
+                               "_urbanEffect", urbanEffect, ".RData")
+  if(saveResults)
+    save(out, file=fileName)
+  
   counties = sort(unique(poppc$County))
+  allClusterI = c()
   for(i in 1:length(counties)) {
+    if(i %% 10 == 1)
+      print(paste0("Fitting model with data from county ", i, "/", length(counties), " left out"))
     thisCountyName = counties[i]
     
     # fit model, get all predictions for each areal level and each posterior sample
@@ -1466,40 +1475,73 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directEsts, directV
                         predUrban, clusterIndices=1:nrow(clustDat), genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
                         verbose = verbose, clusterEffect=includeClustEffect, 
                         int.strategy=int.strategy, genRegionLevel=FALSE, counties=sort(unique(kenyaEAs$admin1)), 
-                        keepPixelPreds=keepPixelPreds, genEALevel=FALSE, regions=sort(unique(kenyaEAs$region)), 
+                        keepPixelPreds=keepPixelPreds, genEALevel=TRUE, regions=sort(unique(kenyaEAs$region)), 
                         urbanEffect=urbanEffect, eaIndices=1:nrow(clustDat), 
                         eaDat=eaDat, nSamplePixel=nSamplePixel, 
                         significance=significance, onlyInexact=TRUE, allPixels=TRUE, 
                         newMesh=TRUE, previousResult=modelFit, predCountyI=i)
     
     thisCountyPreds = fit$countyPreds$countyPredMatInexact
+    thisClusterPreds = fit$eaPreds$eaPredMat
+    thisClusterI = match(counties[i], clustDat$admin1)
+    allClusterI = c(allClusterI, thisClusterI)
     
     if(i == 1) {
       countyPreds = thisCountyPreds
+      clusterPreds = thisClusterPreds[thisClusterI,]
     } else {
       countyPreds = rbind(countyPreds, thisCountyPreds)
+      clusterPreds = rbind(clusterPreds, thisClusterPreds[thisClusterI,])
     }
   }
   
+  # resort cluster predictions to correspond to the ordering of clustDat
+  sortI = sort(allClusterI, index.return=TRUE)$ix
+  clusterPreds = clusterPreds[sortI,]
+  
   # summary statistics for county level predictions
-  probMat = countyPreds$countyPredMatInexact
+  probMat = countyPreds
   preds = rowMeans(probMat)
   vars = apply(probMat, 1, var)
   logitPreds = rowMeans(logit(probMat))
   logitVars = apply(logit(probMat), 1, var)
   
+  # summary statistics for cluster level predictions
+  probMatCluster = clusterPreds
+  predsCluster = rowMeans(probMatCluster)
+  varsCluster = apply(probMatCluster, 1, var)
+  logitPredsCluster = rowMeans(logit(probMatCluster))
+  logitVarsCluster = apply(logit(probMatCluster), 1, var)
+  
   # calculate validation scoring rules
   weights = 1 / directVars
   weights = weights / sum(weights)
-  theseScores = getValidationScores(directLogitEsts, directLogitVars, logitPreds, logitVars, probMat, weights, usePearson=TRUE)
+  logitWeights = 1 / directLogitVars
+  logitWeights = logitWeights / sum(logitWeights)
+  theseScores = getValidationScores(directLogitEsts, directLogitVars, logitPreds, logitVars, 
+                                    probMat=probMat, weights=weights, logitWeights=logitWeights, usePearson=TRUE)
+  theseScoresCluster = getValidationScores(dat$y / dat$n, rep(0, nrow(dat)), logitPredsCluster, logitVarsCluster, 
+                                           probMat=probMatCluster, usePearson=TRUE)
   
   # compile scores c("MSE", "CPO", "CRPS", "logScore")
   scores = theseScores$scores
   pit = theseScores$pit
-  scores = data.frame(DIC=dic, WAIC=scores$waic, MSE=scores$MSE, CPO=scores$CPO, CRPS=scores$CRPS, "Log Score"=scores$logScore)
+  scores = data.frame(MSE=scores$MSE, Biassq=scores$`Bias^2`, Var=scores$Var, CPO=scores$CPO, CRPS=scores$CRPS, logScore=scores$logScore)
   
-  # return results
-  list(scores=scores, pit=pit)
+  scoresCluster = theseScoresCluster$scores
+  pitCluster = theseScoresCluster$pit
+  scoresCluster = data.frame(DIC=dic, WAIC=waic, MSE=scoresCluster$MSE, Biassq=scoresCluster$`Bias^2`, Var=scoresCluster$Var, 
+                             CPO=mean(cpo, na.rm=TRUE), CRPS=scoresCluster$CRPS, logScore=scoresCluster$logScore)
+  
+  # save and return results
+  spdeResults = list(scores=scores, pit=pit, scoresCluster=scoresCluster, pitCluster=pitCluster)
+  fileName = paste0("resultsSPDE", fileNameRoot, "ValidationAll", "_includeClustEffect", includeClustEffect, 
+                    "_urbanEffect", urbanEffect, ".RData")
+  mod = out$mod
+  if(saveResults)
+    save(mod, spdeResults, file=fileName)
+  
+  spdeResults
 }
 
 # compute true proportion of women that completed secondary education in each county in the order of the 
