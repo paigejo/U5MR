@@ -31,6 +31,10 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
     urbRatio = urbRatio[sortI]
   }
   
+  sortI = matchMultiple(counties, easpc$County)
+  clustersPerUrban = easpc$EAUrb[sortI]
+  clustersPerRural = easpc$EARur[sortI]
+  
   # Define formula
   if(includeUrbanRural) {
     if(includeCluster) {
@@ -89,6 +93,12 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   # Go through datasets for SRSDat
   sampCountySRSDat = array(NA, dim = c(47, Nsim, maxDataSets))
   sampCountySRSDatMod = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampClusterSRSDatUrban = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampClusterSRSDatRural = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampPixelSRSDatUrban = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampPixelSRSDatRural = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampPixelSRSDatUrbanMod = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampPixelSRSDatRuralMod = array(NA, dim = c(47, Nsim, maxDataSets))
   
   # for the final parameters to store, 2 fixed effects, 2 + includeCluster estimated 
   # hyperparameters, and 2 hyperparameters we will get via transformation
@@ -206,14 +216,28 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
         if(includeCluster) {
           # if cluster effect is included, must debias predictions in each modeled strata
           clusterSigma = sqrt(1/samp[[j]]$hyperpar[3])
-          muSigmaMatRural = cbind(sampRural[, j], clusterSigma)
-          muSigmaMatUrban = cbind(sampUrban[, j], clusterSigma)
-          sampRuralMod[, j] = logitNormMean(muSigmaMat = muSigmaMatRural)
-          sampUrbanMod[, j] = logitNormMean(muSigmaMat = muSigmaMatUrban)
+          # muSigmaMatRural = cbind(sampRural[, j], clusterSigma)
+          # muSigmaMatUrban = cbind(sampUrban[, j], clusterSigma)
+          # sampRuralMod[, j] = logitNormMean(muSigmaMat = muSigmaMatRural)
+          # sampUrbanMod[, j] = logitNormMean(muSigmaMat = muSigmaMatUrban)
+          sampRuralMod[, j] = sapply(1:length(clustersPerRural), function(i) {mean(expit(sampRural[i, j] + rnorm(clustersPerRural[i], sd=clusterSigma)))})
+          sampRuralMod[clustersPerRural == 0,] = 0 # we just need to set these values to something other than NaN
+          sampUrbanMod[, j] = sapply(1:length(clustersPerUrban), function(i) {mean(expit(sampUrban[i, j] + rnorm(clustersPerUrban[i], sd=clusterSigma)))})
+          sampClusterSRSDatRural[,j,i] = sampRural[, j] + rnorm(47, sd=clusterSigma)
+          sampClusterSRSDatUrban[,j,i] = sampUrban[, j] + rnorm(47, sd=clusterSigma)
         }
       }
       sampCountySRSDat[,,i] = logit(expit(sampUrban)*urbRatio + expit(sampRural)*(1-urbRatio))
       sampCountySRSDatMod[,,i] = logit(sampUrbanMod*urbRatio + sampRuralMod*(1-urbRatio))
+      if(!includeCluster) {
+        sampClusterSRSDatRural[,,i] = sampRural
+        sampClusterSRSDatUrban[,,i] = sampUrban
+      } else {
+        sampPixelSRSDatUrbanMod[,,i] = sampUrbanMod
+        sampPixelSRSDatRuralMod[,,i] = sampRuralMod
+      }
+      sampPixelSRSDatUrban[,,i] = sampUrban
+      sampPixelSRSDatRural[,,i] = sampRural
     } else {
       samp = inla.posterior.sample(n = Nsim, result = result)
       sampCounty = matrix(NA, nrow = 47, ncol = Nsim)
@@ -223,18 +247,36 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
         if(includeCluster) {
           # if cluster effect is included, must debias predictions in each modeled strata
           clusterSigma = sqrt(1/samp[[j]]$hyperpar[3])
-          muSigmaMat = cbind(sampCounty[, j], clusterSigma)
-          sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMat)
+          # muSigmaMat = cbind(sampCounty[, j], clusterSigma)
+          # sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMat
+          sampCountyMod[, j] = sapply(1:length(clustersPerCounty), function(i) {mean(expit(sampCounty[i, j] + rnorm(clustersPerCounty[i], sd=clusterSigma)))})
+          sampClusterSRSDatRural[,j,i] = expit(sampCounty[, j] + rnorm(47, sd=clusterSigma))
+          sampClusterSRSDatUrban[,j,i] = sampClusterDatSRSRural[, j]
         }
       }
       sampCountySRSDat[,,i] = sampCounty
       sampCountySRSDatMod[,,i] = logit(sampCountyMod)
+      sampPixelSRSDatUrban[,,i] = sampCounty
+      sampPixelSRSDatRural[,,i] = sampCounty
+      if(!includeCluster) {
+        sampClusterSRSDatRural[,,i] = sampCounty
+        sampClusterSRSDatUrban[,,i] = sampCounty
+      } else {
+        sampPixelSRSDatUrbanMod[,,i] = sampCountyMod
+        sampPixelSRSDatRuralMod[,,i] = sampCountyMod
+      }
     }
   }
   
   # Go through datasets for overSampDat
   sampCountyOverSampDat = array(NA, dim = c(47, Nsim, maxDataSets))
   sampCountyOverSampDatMod = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampClusterOverSampDatUrban = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampClusterOverSampDatRural = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampPixelOverSampDatUrban = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampPixelOverSampDatRural = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampPixelOverSampDatUrbanMod = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampPixelOverSampDatRuralMod = array(NA, dim = c(47, Nsim, maxDataSets))
   
   # for the final parameters to store, 2 fixed effects, 2 + includeCluster estimated 
   # hyperparameters, and 2 hyperparameters we will get via transformation
@@ -341,14 +383,28 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
         if(includeCluster) {
           # if cluster effect is included, must debias predictions in each modeled strata
           clusterSigma = sqrt(1/samp[[j]]$hyperpar[3])
-          muSigmaMatRural = cbind(sampRural[, j], clusterSigma)
-          muSigmaMatUrban = cbind(sampUrban[, j], clusterSigma)
-          sampRuralMod[, j] = logitNormMean(muSigmaMat = muSigmaMatRural)
-          sampUrbanMod[, j] = logitNormMean(muSigmaMat = muSigmaMatUrban)
+          # muSigmaMatRural = cbind(sampRural[, j], clusterSigma)
+          # muSigmaMatUrban = cbind(sampUrban[, j], clusterSigma)
+          # sampRuralMod[, j] = logitNormMean(muSigmaMat = muSigmaMatRural)
+          # sampUrbanMod[, j] = logitNormMean(muSigmaMat = muSigmaMatUrban)
+          sampRuralMod[, j] = sapply(1:length(clustersPerRural), function(i) {mean(expit(sampRural[i, j] + rnorm(clustersPerRural[i], sd=clusterSigma)))})
+          sampRuralMod[clustersPerRural == 0,] = 0 # we just need to set these values to something other than NaN
+          sampUrbanMod[, j] = sapply(1:length(clustersPerUrban), function(i) {mean(expit(sampUrban[i, j] + rnorm(clustersPerUrban[i], sd=clusterSigma)))})
+          sampClusterOverSampDatRural[,j,i] = sampRural[, j] + rnorm(47, sd=clusterSigma)
+          sampClusterOverSampDatUrban[,j,i] = sampUrban[, j] + rnorm(47, sd=clusterSigma)
         }
       }
       sampCountyOverSampDat[,,i] = logit(expit(sampUrban)*urbRatio + expit(sampRural)*(1-urbRatio))
       sampCountyOverSampDatMod[,,i] = logit(sampUrbanMod*urbRatio + sampRuralMod*(1-urbRatio))
+      if(!includeCluster) {
+        sampClusterOverSampDatRural[,,i] = sampRural
+        sampClusterOverSampDatUrban[,,i] = sampUrban
+      } else {
+        sampPixelOverSampDatUrbanMod[,,i] = sampUrbanMod
+        sampPixelOverSampDatRuralMod[,,i] = sampRuralMod
+      }
+      sampPixelOverSampDatUrban[,,i] = sampUrban
+      sampPixelOverSampDatRural[,,i] = sampRural
     } else {
       samp = inla.posterior.sample(n = Nsim, result = result)
       sampCounty = matrix(NA, nrow = 47, ncol = Nsim)
@@ -358,12 +414,24 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
         if(includeCluster) {
           # if cluster effect is included, must debias predictions in each modeled strata
           clusterSigma = sqrt(1/samp[[j]]$hyperpar[3])
-          muSigmaMat = cbind(sampCounty[, j], clusterSigma)
-          sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMat)
+          # muSigmaMat = cbind(sampCounty[, j], clusterSigma)
+          # sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMat
+          sampCountyMod[, j] = sapply(1:length(clustersPerCounty), function(i) {mean(expit(sampCounty[i, j] + rnorm(clustersPerCounty[i], sd=clusterSigma)))})
+          sampClusterOverSampDatRural[,j,i] = sampCounty[, j] + rnorm(47, sd=clusterSigma)
+          sampClusterOverSampDatUrban[,j,i] = sampClusterDatOverSampRural[, j]
         }
       }
       sampCountyOverSampDat[,,i] = sampCounty
       sampCountyOverSampDatMod[,,i] = logit(sampCountyMod)
+      sampPixelOverSampDatUrban[,,i] = sampCounty
+      sampPixelOverSampDatRural[,,i] = sampCounty
+      if(!includeCluster) {
+        sampClusterOverSampDatRural[,,i] = sampCounty
+        sampClusterOverSampDatUrban[,,i] = sampCounty
+      } else {
+        sampPixelOverSampDatUrbanMod[,,i] = sampCountyMod
+        sampPixelOverSampDatRuralMod[,,i] = sampCountyMod
+      }
     }
   }
   
@@ -399,6 +467,83 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
                    mean = mm,
                    stddev = ss)
   
+  # calculate summary statistics for cluster and pixel predictions
+  Q10 = matrix(NA, nrow = 47, ncol = dim(sampClusterSRSDatRural)[3])
+  Q50 = matrix(NA, nrow = 47, ncol = dim(sampClusterSRSDatRural)[3])
+  Q90 = matrix(NA, nrow = 47, ncol = dim(sampClusterSRSDatRural)[3])
+  mm = matrix(NA, nrow = 47, ncol = dim(sampClusterSRSDatRural)[3])
+  ss = matrix(NA, nrow = 47, ncol = dim(sampClusterSRSDatRural)[3])
+  for(i in 1:dim(sampClusterSRSDatRural)[3]) {
+    tmp = processSamples(sampClusterSRSDatRural[,,i])
+    Q10[,i] = tmp$logit$CI[,1]
+    Q50[,i] = tmp$logit$CI[,2]
+    Q90[,i] = tmp$logit$CI[,3]
+    mm[,i] = tmp$logit$mean
+    ss[,i] = tmp$logit$stddev
+  }
+  resDatSRSClusterRural = list(Q10 = Q10,
+                               Q50 = Q50,
+                               Q90 = Q90,
+                               mean = mm,
+                               stddev = ss)
+  
+  Q10 = matrix(NA, nrow = 47, ncol = dim(sampClusterSRSDatUrban)[3])
+  Q50 = matrix(NA, nrow = 47, ncol = dim(sampClusterSRSDatUrban)[3])
+  Q90 = matrix(NA, nrow = 47, ncol = dim(sampClusterSRSDatUrban)[3])
+  mm = matrix(NA, nrow = 47, ncol = dim(sampClusterSRSDatUrban)[3])
+  ss = matrix(NA, nrow = 47, ncol = dim(sampClusterSRSDatUrban)[3])
+  for(i in 1:dim(sampClusterSRSDatUrban)[3]) {
+    tmp = processSamples(sampClusterSRSDatUrban[,,i])
+    Q10[,i] = tmp$logit$CI[,1]
+    Q50[,i] = tmp$logit$CI[,2]
+    Q90[,i] = tmp$logit$CI[,3]
+    mm[,i] = tmp$logit$mean
+    ss[,i] = tmp$logit$stddev
+  }
+  resDatSRSClusterUrban = list(Q10 = Q10,
+                               Q50 = Q50,
+                               Q90 = Q90,
+                               mean = mm,
+                               stddev = ss)
+  
+  Q10 = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatUrban)[3])
+  Q50 = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatUrban)[3])
+  Q90 = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatUrban)[3])
+  mm = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatUrban)[3])
+  ss = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatUrban)[3])
+  for(i in 1:dim(sampPixelSRSDatUrban)[3]) {
+    tmp = processSamples(sampPixelSRSDatUrban[,,i])
+    Q10[,i] = tmp$logit$CI[,1]
+    Q50[,i] = tmp$logit$CI[,2]
+    Q90[,i] = tmp$logit$CI[,3]
+    mm[,i] = tmp$logit$mean
+    ss[,i] = tmp$logit$stddev
+  }
+  resDatSRSPixelUrban = list(Q10 = Q10,
+                             Q50 = Q50,
+                             Q90 = Q90,
+                             mean = mm,
+                             stddev = ss)
+  
+  Q10 = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatRural)[3])
+  Q50 = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatRural)[3])
+  Q90 = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatRural)[3])
+  mm = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatRural)[3])
+  ss = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatRural)[3])
+  for(i in 1:dim(sampPixelSRSDatRural)[3]) {
+    tmp = processSamples(sampPixelSRSDatRural[,,i])
+    Q10[,i] = tmp$logit$CI[,1]
+    Q50[,i] = tmp$logit$CI[,2]
+    Q90[,i] = tmp$logit$CI[,3]
+    mm[,i] = tmp$logit$mean
+    ss[,i] = tmp$logit$stddev
+  }
+  resDatSRSPixelRural = list(Q10 = Q10,
+                             Q50 = Q50,
+                             Q90 = Q90,
+                             mean = mm,
+                             stddev = ss)
+  
   if(includeCluster) {
     Q10 = matrix(NA, nrow = 47, ncol = dim(sampCountySRSDatMod)[3])
     Q50 = matrix(NA, nrow = 47, ncol = dim(sampCountySRSDatMod)[3])
@@ -418,8 +563,48 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
                         Q90 = Q90,
                         mean = mm,
                         stddev = ss)
+    
+    Q10 = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatUrbanMod)[3])
+    Q50 = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatUrbanMod)[3])
+    Q90 = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatUrbanMod)[3])
+    mm = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatUrbanMod)[3])
+    ss = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatUrbanMod)[3])
+    for(i in 1:dim(sampPixelSRSDatUrbanMod)[3]) {
+      tmp = processSamples(sampPixelSRSDatUrbanMod[,,i])
+      Q10[,i] = tmp$logit$CI[,1]
+      Q50[,i] = tmp$logit$CI[,2]
+      Q90[,i] = tmp$logit$CI[,3]
+      mm[,i] = tmp$logit$mean
+      ss[,i] = tmp$logit$stddev
+    }
+    resDatSRSPixelUrbanMod = list(Q10 = Q10,
+                               Q50 = Q50,
+                               Q90 = Q90,
+                               mean = mm,
+                               stddev = ss)
+    
+    Q10 = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatRuralMod)[3])
+    Q50 = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatRuralMod)[3])
+    Q90 = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatRuralMod)[3])
+    mm = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatRuralMod)[3])
+    ss = matrix(NA, nrow = 47, ncol = dim(sampPixelSRSDatRuralMod)[3])
+    for(i in 1:dim(sampPixelSRSDatRuralMod)[3]) {
+      tmp = processSamples(sampPixelSRSDatRuralMod[,,i])
+      Q10[,i] = tmp$logit$CI[,1]
+      Q50[,i] = tmp$logit$CI[,2]
+      Q90[,i] = tmp$logit$CI[,3]
+      mm[,i] = tmp$logit$mean
+      ss[,i] = tmp$logit$stddev
+    }
+    resDatSRSPixelRuralMod = list(Q10 = Q10,
+                                  Q50 = Q50,
+                                  Q90 = Q90,
+                                  mean = mm,
+                                  stddev = ss)
   } else {
     resSRSdatMod = NULL
+    resDatSRSPixelUrbanMod = NULL
+    resDatSRSPixelRuralMod = NULL
   }
   
   ## now collect the parameters
@@ -455,11 +640,88 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
     mm[,i] = tmp$logit$mean
     ss[,i] = tmp$logit$stddev
   }
-  resOverSampDat = list(Q10 = Q10,
+  resDatOverSamp = list(Q10 = Q10,
                         Q50 = Q50,
                         Q90 = Q90,
                         mean = mm,
                         stddev = ss)
+  
+  # calculate summary statistics for cluster and pixel predictions
+  Q10 = matrix(NA, nrow = 47, ncol = dim(sampClusterOverSampDatRural)[3])
+  Q50 = matrix(NA, nrow = 47, ncol = dim(sampClusterOverSampDatRural)[3])
+  Q90 = matrix(NA, nrow = 47, ncol = dim(sampClusterOverSampDatRural)[3])
+  mm = matrix(NA, nrow = 47, ncol = dim(sampClusterOverSampDatRural)[3])
+  ss = matrix(NA, nrow = 47, ncol = dim(sampClusterOverSampDatRural)[3])
+  for(i in 1:dim(sampClusterOverSampDatRural)[3]) {
+    tmp = processSamples(sampClusterOverSampDatRural[,,i])
+    Q10[,i] = tmp$logit$CI[,1]
+    Q50[,i] = tmp$logit$CI[,2]
+    Q90[,i] = tmp$logit$CI[,3]
+    mm[,i] = tmp$logit$mean
+    ss[,i] = tmp$logit$stddev
+  }
+  resDatOverSampClusterRural = list(Q10 = Q10,
+                               Q50 = Q50,
+                               Q90 = Q90,
+                               mean = mm,
+                               stddev = ss)
+  
+  Q10 = matrix(NA, nrow = 47, ncol = dim(sampClusterOverSampDatUrban)[3])
+  Q50 = matrix(NA, nrow = 47, ncol = dim(sampClusterOverSampDatUrban)[3])
+  Q90 = matrix(NA, nrow = 47, ncol = dim(sampClusterOverSampDatUrban)[3])
+  mm = matrix(NA, nrow = 47, ncol = dim(sampClusterOverSampDatUrban)[3])
+  ss = matrix(NA, nrow = 47, ncol = dim(sampClusterOverSampDatUrban)[3])
+  for(i in 1:dim(sampClusterOverSampDatUrban)[3]) {
+    tmp = processSamples(sampClusterOverSampDatUrban[,,i])
+    Q10[,i] = tmp$logit$CI[,1]
+    Q50[,i] = tmp$logit$CI[,2]
+    Q90[,i] = tmp$logit$CI[,3]
+    mm[,i] = tmp$logit$mean
+    ss[,i] = tmp$logit$stddev
+  }
+  resDatOverSampClusterUrban = list(Q10 = Q10,
+                               Q50 = Q50,
+                               Q90 = Q90,
+                               mean = mm,
+                               stddev = ss)
+  
+  Q10 = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatUrban)[3])
+  Q50 = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatUrban)[3])
+  Q90 = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatUrban)[3])
+  mm = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatUrban)[3])
+  ss = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatUrban)[3])
+  for(i in 1:dim(sampPixelOverSampDatUrban)[3]) {
+    tmp = processSamples(sampPixelOverSampDatUrban[,,i])
+    Q10[,i] = tmp$logit$CI[,1]
+    Q50[,i] = tmp$logit$CI[,2]
+    Q90[,i] = tmp$logit$CI[,3]
+    mm[,i] = tmp$logit$mean
+    ss[,i] = tmp$logit$stddev
+  }
+  resDatOverSampPixelUrban = list(Q10 = Q10,
+                             Q50 = Q50,
+                             Q90 = Q90,
+                             mean = mm,
+                             stddev = ss)
+  
+  Q10 = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatRural)[3])
+  Q50 = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatRural)[3])
+  Q90 = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatRural)[3])
+  mm = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatRural)[3])
+  ss = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatRural)[3])
+  for(i in 1:dim(sampPixelOverSampDatRural)[3]) {
+    tmp = processSamples(sampPixelOverSampDatRural[,,i])
+    Q10[,i] = tmp$logit$CI[,1]
+    Q50[,i] = tmp$logit$CI[,2]
+    Q90[,i] = tmp$logit$CI[,3]
+    mm[,i] = tmp$logit$mean
+    ss[,i] = tmp$logit$stddev
+  }
+  resDatOverSampPixelRural = list(Q10 = Q10,
+                             Q50 = Q50,
+                             Q90 = Q90,
+                             mean = mm,
+                             stddev = ss)
   
   if(includeCluster) {
     Q10 = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDatMod)[3])
@@ -475,13 +737,53 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
       mm[,i] = tmp$logit$mean
       ss[,i] = tmp$logit$stddev
     }
-    resOverSampDatMod = list(Q10 = Q10,
+    resDatOverSampMod = list(Q10 = Q10,
                              Q50 = Q50,
                              Q90 = Q90,
                              mean = mm,
                              stddev = ss)
+    
+    Q10 = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatUrbanMod)[3])
+    Q50 = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatUrbanMod)[3])
+    Q90 = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatUrbanMod)[3])
+    mm = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatUrbanMod)[3])
+    ss = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatUrbanMod)[3])
+    for(i in 1:dim(sampPixelOverSampDatUrbanMod)[3]) {
+      tmp = processSamples(sampPixelOverSampDatUrbanMod[,,i])
+      Q10[,i] = tmp$logit$CI[,1]
+      Q50[,i] = tmp$logit$CI[,2]
+      Q90[,i] = tmp$logit$CI[,3]
+      mm[,i] = tmp$logit$mean
+      ss[,i] = tmp$logit$stddev
+    }
+    resDatOverSampPixelUrbanMod = list(Q10 = Q10,
+                                  Q50 = Q50,
+                                  Q90 = Q90,
+                                  mean = mm,
+                                  stddev = ss)
+    
+    Q10 = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatRuralMod)[3])
+    Q50 = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatRuralMod)[3])
+    Q90 = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatRuralMod)[3])
+    mm = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatRuralMod)[3])
+    ss = matrix(NA, nrow = 47, ncol = dim(sampPixelOverSampDatRuralMod)[3])
+    for(i in 1:dim(sampPixelOverSampDatRuralMod)[3]) {
+      tmp = processSamples(sampPixelOverSampDatRuralMod[,,i])
+      Q10[,i] = tmp$logit$CI[,1]
+      Q50[,i] = tmp$logit$CI[,2]
+      Q90[,i] = tmp$logit$CI[,3]
+      mm[,i] = tmp$logit$mean
+      ss[,i] = tmp$logit$stddev
+    }
+    resDatOverSampPixelRuralMod = list(Q10 = Q10,
+                                  Q50 = Q50,
+                                  Q90 = Q90,
+                                  mean = mm,
+                                  stddev = ss)
   } else {
-    resOverSampDatMod = NULL
+    resDatOverSampMod = NULL
+    resDatOverSampPixelUrbanMod = NULL
+    resDatOverSampPixelRuralMod = NULL
   }
   
   ## now collect the parameters
@@ -497,7 +799,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   Q10 = rowMeans(sampCountyOverSampDat10)
   Q50 = rowMeans(sampCountyOverSampDat50)
   Q90 = rowMeans(sampCountyOverSampDat90)
-  resOverSampDatPar = data.frame(list(Est = mm,
+  resDatOverSampPar = data.frame(list(Est = mm,
                                       SD = ss, 
                                       Q10 = Q10,
                                       Q50 = Q50,
@@ -505,8 +807,16 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   
   # Full result
   designRes = list(SRSdat = resSRSdat,
-                   overSampDat = resOverSampDat, 
-                   overSampDatPar = resOverSampDatPar, 
+                   overSampDat = resDatOverSamp, 
+                   SRSdatPixelRural = resDatSRSPixelRural,
+                   overSampDatPixelRural = resDatOverSampPixelRural, 
+                   SRSdatPixelUrban = resDatSRSPixelUrban,
+                   overSampDatPixelUrban = resDatOverSampPixelUrban, 
+                   SRSdatClusterRural = resDatSRSClusterRural,
+                   overSampDatClusterRural = resDatOverSampClusterRural, 
+                   SRSdatClusterUrban = resDatSRSClusterUrban,
+                   overSampDatClusterUrban = resDatOverSampClusterUrban, 
+                   overSampDatPar = resDatOverSampPar, 
                    SRSdatPar = resSRSdatPar)
   # save(file = 'kenyaSpatialDesignResultNew.RData', designRes = designRes)
   # save(file = paste0('kenyaSpatialDesignResultNewTausq0UrbRur', 
@@ -521,8 +831,16 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   # include the debiased results if cluster effect is included
   if(includeCluster) {
     designRes = list(SRSdat = resSRSdatMod,
-                     overSampDat = resOverSampDatMod, 
-                     overSampDatPar = resOverSampDatPar, 
+                     overSampDat = resDatOverSampMod, 
+                     SRSdatPixelRural = resDatSRSPixelRuralMod,
+                     overSampDatPixelRural = resDatOverSampPixelRuralMod, 
+                     SRSdatPixelUrban = resDatSRSPixelRuralMod,
+                     overSampDatPixelUrban = resDatOverSampPixelRuralMod, 
+                     SRSdatClusterRural = resDatSRSClusterRural,
+                     overSampDatClusterRural = resDatOverSampClusterRural, 
+                     SRSdatClusterUrban = resDatSRSClusterUrban,
+                     overSampDatClusterUrban = resDatOverSampClusterUrban, 
+                     overSampDatPar = resDatOverSampPar, 
                      SRSdatPar = resSRSdatPar)
     
     save(file = paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
@@ -606,6 +924,10 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   
   # Go through education data set
   sampCountyDat = matrix(NA, nrow=47, ncol=Nsim)
+  sampClusterDatUrban = matrix(NA, nrow=47, ncol=Nsim)
+  sampClusterDatRural = matrix(NA, nrow=47, ncol=Nsim)
+  sampPixelDatUrban = matrix(NA, nrow=47, ncol=Nsim)
+  sampPixelDatRural = matrix(NA, nrow=47, ncol=Nsim)
   
   # for the final parameters to store, 2 fixed effects, 2 + includeCluster estimated 
   # hyperparameters, and 2 hyperparameters we will get via transformation
@@ -717,6 +1039,10 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   if(includeCluster)
     sampClusterSigmaSRS = 1:Nsim
   
+  sortI = matchMultiple(counties, easpc$County)
+  clustersPerUrban = easpc$EAUrb[sortI]
+  clustersPerRural = easpc$EARur[sortI]
+  
   # Simulate from posterior
   if(includeUrbanRural) {
     samp = inla.posterior.sample(n = Nsim, result = result)
@@ -724,8 +1050,11 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
     sampUrban = matrix(NA, nrow = 47, ncol = Nsim)
     sampRuralMod = matrix(NA, nrow = 47, ncol = Nsim)
     sampUrbanMod = matrix(NA, nrow = 47, ncol = Nsim)
-    clustersPerUrban = easpc$EAUrb
-    clustersPerRural = easpc$EARur
+    sampPixelDatUrbanMod = matrix(NA, nrow = 47, ncol = Nsim)
+    sampPixelDatRuralMod = matrix(NA, nrow = 47, ncol = Nsim)
+    sampPixelDatUrban = matrix(NA, nrow = 47, ncol = Nsim)
+    sampPixelDatRural = matrix(NA, nrow = 47, ncol = Nsim)
+    
     for(j in 1:Nsim){
       sampRural[, j] = samp[[j]]$latent[47 + (1:47)]
       sampUrban[, j] = samp[[j]]$latent[1:47]
@@ -737,16 +1066,28 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
         # sampRuralMod[, j] = logitNormMean(muSigmaMat = muSigmaMatRural)
         # sampUrbanMod[, j] = logitNormMean(muSigmaMat = muSigmaMatUrban)
         sampRuralMod[, j] = sapply(1:length(clustersPerRural), function(i) {mean(expit(sampRural[i, j] + rnorm(clustersPerRural[i], sd=clusterSigma)))})
+        sampRuralMod[clustersPerRural == 0,] = 0 # we just need to set these values to something other than NaN
         sampUrbanMod[, j] = sapply(1:length(clustersPerUrban), function(i) {mean(expit(sampUrban[i, j] + rnorm(clustersPerUrban[i], sd=clusterSigma)))})
+        sampClusterDatRural[, j] = sampRural[, j] + rnorm(47, sd=clusterSigma)
+        sampClusterDatUrban[, j] = sampUrban[, j] + rnorm(47, sd=clusterSigma)
       }
     }
     sampCountyDat = logit(expit(sampUrban)*urbRatio + expit(sampRural)*(1-urbRatio))
     sampCountyDatMod = logit(sampUrbanMod*urbRatio + sampRuralMod*(1-urbRatio))
+    if(!includeCluster) {
+      sampClusterDatRural = sampRural
+      sampClusterDatUrban = sampUrban
+    } else {
+      sampPixelDatUrbanMod = sampUrbanMod
+      sampPixelDatRuralMod = sampRuralMod
+    }
+    sampPixelDatUrban = sampUrban
+    sampPixelDatRural = sampRural
   } else {
     samp = inla.posterior.sample(n = Nsim, result = result)
     sampCounty = matrix(NA, nrow = 47, ncol = Nsim)
     sampCountyMod = matrix(NA, nrow = 47, ncol = Nsim)
-    clustersPerCounty = rowSums(cbind(easpc$EAUrb, easpc$EARur))
+    clustersPerCounty = rowSums(cbind(clustersPerUrban, clustersPerRural))
     for(j in 1:Nsim){
       sampCounty[, j] = samp[[j]]$latent[1:47]
       if(includeCluster) {
@@ -755,10 +1096,21 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
         # muSigmaMat = cbind(sampCounty[, j], clusterSigma)
         # sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMat
         sampCountyMod[, j] = sapply(1:length(clustersPerCounty), function(i) {mean(expit(sampCounty[i, j] + rnorm(clustersPerCounty[i], sd=clusterSigma)))})
+        sampClusterDatRural[, j] = sampCounty[, j] + rnorm(47, sd=clusterSigma)
+        sampClusterDatUrban[, j] = sampClusterDatRural[, j]
       }
     }
     sampCountyDat = sampCounty
     sampCountyDatMod = logit(sampCountyMod)
+    sampPixelDatUrban = sampCounty
+    sampPixelDatRural = sampCounty
+    if(!includeCluster) {
+      sampClusterDatRural = sampCounty
+      sampClusterDatUrban = sampCounty
+    } else {
+      sampPixelDatUrbanMod = sampCountyMod
+      sampPixelDatRuralMod = sampCountyMod
+    }
   }
   
   processSamples = function(samp){
@@ -796,6 +1148,71 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   if(!is.null(predCountyI))
     resDat = data.frame(resDat)[predCountyI,]
   
+  # calculate summary statistics for cluster and pixel predictions
+  tmp = processSamples(sampClusterDatRural)
+  Q10 = tmp$logit$CI[,1]
+  Q50 = tmp$logit$CI[,2]
+  Q90 = tmp$logit$CI[,3]
+  mm = tmp$logit$mean
+  ss = tmp$logit$stddev
+  
+  resDatClusterRural = list(Q10 = Q10,
+                            Q50 = Q50,
+                            Q90 = Q90,
+                            mean = mm,
+                            stddev = ss)
+  
+  if(!is.null(predCountyI))
+    resDatClusterRural = data.frame(resDatClusterRural)[predCountyI,]
+  
+  tmp = processSamples(sampClusterDatUrban)
+  Q10 = tmp$logit$CI[,1]
+  Q50 = tmp$logit$CI[,2]
+  Q90 = tmp$logit$CI[,3]
+  mm = tmp$logit$mean
+  ss = tmp$logit$stddev
+  
+  resDatClusterUrban = list(Q10 = Q10,
+                            Q50 = Q50,
+                            Q90 = Q90,
+                            mean = mm,
+                            stddev = ss)
+  
+  if(!is.null(predCountyI))
+    resDatClusterUrban = data.frame(resDatClusterUrban)[predCountyI,]
+  
+  tmp = processSamples(sampPixelDatUrban)
+  Q10 = tmp$logit$CI[,1]
+  Q50 = tmp$logit$CI[,2]
+  Q90 = tmp$logit$CI[,3]
+  mm = tmp$logit$mean
+  ss = tmp$logit$stddev
+  
+  resDatPixelUrban = list(Q10 = Q10,
+                          Q50 = Q50,
+                          Q90 = Q90,
+                          mean = mm,
+                          stddev = ss)
+  
+  if(!is.null(predCountyI))
+    resDatPixelUrban = data.frame(resDatPixelUrban)[predCountyI,]
+  
+  tmp = processSamples(sampPixelDatRural)
+  Q10 = tmp$logit$CI[,1]
+  Q50 = tmp$logit$CI[,2]
+  Q90 = tmp$logit$CI[,3]
+  mm = tmp$logit$mean
+  ss = tmp$logit$stddev
+  
+  resDatPixelRural = list(Q10 = Q10,
+                          Q50 = Q50,
+                          Q90 = Q90,
+                          mean = mm,
+                          stddev = ss)
+  
+  if(!is.null(predCountyI))
+    resDatPixelRural = data.frame(resDatPixelRural)[predCountyI,]
+  
   if(includeCluster) {
     tmp = processSamples(sampCountyDatMod)
     Q10 = tmp$logit$CI[,1]
@@ -811,9 +1228,44 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
     
     if(!is.null(predCountyI))
       resDatMod = data.frame(resDatMod)[predCountyI,]
+    
+    tmp = processSamples(sampPixelDatUrbanMod)
+    Q10 = tmp$logit$CI[,1]
+    Q50 = tmp$logit$CI[,2]
+    Q90 = tmp$logit$CI[,3]
+    mm = tmp$logit$mean
+    ss = tmp$logit$stddev
+    resDatPixelUrbanMod = list(Q10 = Q10,
+                               Q50 = Q50,
+                               Q90 = Q90,
+                               mean = mm,
+                               stddev = ss)
+    
+    if(!is.null(predCountyI))
+      resDatPixelUrbanMod = data.frame(resDatPixelUrbanMod)[predCountyI,]
+    
+    tmp = processSamples(sampPixelDatRuralMod)
+    Q10 = tmp$logit$CI[,1]
+    Q50 = tmp$logit$CI[,2]
+    Q90 = tmp$logit$CI[,3]
+    mm = tmp$logit$mean
+    ss = tmp$logit$stddev
+    resDatPixelRuralMod = list(Q10 = Q10,
+                               Q50 = Q50,
+                               Q90 = Q90,
+                               mean = mm,
+                               stddev = ss)
+    
+    if(!is.null(predCountyI))
+      resDatPixelRuralMod = data.frame(resDatPixelRuralMod)[predCountyI,]
+    
   } else {
     resDatMod = NULL
+    resDatPixelUrbanMod = NULL
+    resDatPixelRuralMod = NULL
   }
+  
+  
   
   ## now collect the parameters
   # make rural parameter the urban parameter
@@ -836,7 +1288,11 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   
   # Full result
   designRes = list(predictions = resDat,
-                   parameters = resDatPar)
+                   parameters = resDatPar, 
+                   predictionsPixelUrban = resDatPixelUrban, 
+                   predictionsPixelRural = resDatPixelRural, 
+                   predictionsClusterUrban = resDatClusterUrban, 
+                   predictionsClusterRural = resDatClusterRural)
   # save(file = 'kenyaSpatialDesignResultNew.RData', designRes = designRes)
   # save(file = paste0('kenyaSpatialDesignResultNewTausq0UrbRur', 
   #                      includeUrbanRural, '.RData'), designRes = designRes)
@@ -854,7 +1310,11 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   if(includeCluster) {
     temp = designRes
     designRes = list(predictions = resDatMod,
-                     parameters = resDatPar)
+                     parameters = resDatPar, 
+                     predictionsPixelUrban = resDatPixelUrbanMod, 
+                     predictionsPixelRural = resDatPixelRuralMod, 
+                     predictionsClusterUrban = resDatClusterUrban, 
+                     predictionsClusterRural = resDatClusterRural)
     
     if(saveResults) {
       save(file = paste0('bym2', fileNameRoot, validationText, 'UrbRur',includeUrbanRural, 'Cluster', includeCluster, 'debiased.RData'), 
@@ -1196,7 +1656,7 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
     mm[,i] = tmp$logit$mean
     ss[,i] = tmp$logit$stddev
   }
-  resOverSampDat = list(Q10 = Q10,
+  resDatOverSamp = list(Q10 = Q10,
                         Q50 = Q50,
                         Q90 = Q90,
                         mean = mm,
@@ -1216,18 +1676,18 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
       mm[,i] = tmp$logit$mean
       ss[,i] = tmp$logit$stddev
     }
-    resOverSampDatMod = list(Q10 = Q10,
+    resDatOverSampMod = list(Q10 = Q10,
                              Q50 = Q50,
                              Q90 = Q90,
                              mean = mm,
                              stddev = ss)
   } else {
-    resOverSampDatMod = NULL
+    resDatOverSampMod = NULL
   }
   
   # Full result
   designRes = list(SRSdat = resSRSdat,
-                   overSampDat = resOverSampDat)
+                   overSampDat = resDatOverSamp)
   # save(file = 'kenyaSpatialDesignResultNew.RData', designRes = designRes)
   # save(file = paste0('kenyaSpatialDesignResultNewTausq0UrbRur', 
   #                      includeUrbanRural, '.RData'), designRes = designRes)
@@ -1239,7 +1699,7 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
   # include the debiased results if cluster effect is included
   if(includeCluster) {
     designRes = list(SRSdat = resSRSdatMod,
-                     overSampDat = resOverSampDatMod)
+                     overSampDat = resDatOverSampMod)
     
     save(file = paste0('kenyaSpatialDesignResultNewTausq', round(tausq, 4), 'UrbRur',
                        includeUrbanRural, 'Cluster', includeCluster, 'debiased', testText, '.RData'), 
@@ -1254,13 +1714,16 @@ runBYM = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluste
 validateBYM2Dat = function(directLogitEsts, directLogitVars, directVars, dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, 
                            saveResults=TRUE, fileNameRoot="Ed", counties=sort(unique(poppc$County))) {
   
-  # fit the full model once, calculating certain validation scores
+  # fit the full model once, calculating certain validation scores and generating in sample predictions
   print("Fitting full model integrating over hyperparameter uncertainty")
   modelFitFull = runBYM2Dat(dat=ed, includeUrbanRural=includeUrbanRural, includeCluster=includeCluster, saveResults=saveResults, fileNameRoot=fileNameRoot, 
                             doValidation=TRUE, doPredsAtPostMean=FALSE, getPosteriorDensity=FALSE, directLogitEsts=directLogitEsts)
   cpo = modelFitFull$mod$cpo$cpo
+  cpoFailure = modelFitFull$mod$cpo$failure
   dic = modelFitFull$mod$dic$dic
   waic = modelFitFull$mod$waic$waic
+  countyPredsUrbanInSample = modelFitFull$designRes$predictionsClusterUrban
+  countyPredsRuralInSample = modelFitFull$designRes$predictionsClusterRural
   
   # now do leave one county out across validation
   for(i in 1:length(counties)) {
@@ -1274,82 +1737,75 @@ validateBYM2Dat = function(directLogitEsts, directLogitVars, directVars, dat=ed,
                      previousResult=modelFitFull$mod, doValidation=FALSE, predCountyI=i)
     
     # get predictive distribution for the left out county
-    res = fit$predictions
-    if(includeCluster)
-      resMod = fit$designResMod$predictions
-    
-    thisCountyPreds = res
-    if(includeCluster)
-      thisCountyPredsMod = resMod
+    resUrban = fit$predictionsClusterUrban
+    resRural = fit$predictionsClusterRural
     
     if(i == 1) {
-      countyPreds = thisCountyPreds
-      if(includeCluster)
-        countyPredsMod = thisCountyPredsMod
+      countyPredsUrban = resUrban
+      countyPredsRural = resRural
     } else {
-      countyPreds = rbind(countyPreds, thisCountyPreds)
-      if(includeCluster)
-        countyPredsMod = rbind(countyPredsMod, thisCountyPredsMod)
+      countyPredsUrban = rbind(countyPredsUrban, resUrban)
+      countyPredsRural = rbind(countyPredsRural, resRural)
     }
   }
   
+  ## since deciding to switch validation to the cluster level, we decided to not take weight averages of the estimates
   # calculate weights further predictions based on inverse direct estimate variances, calculate validation scores
-  weights = 1 / directVars
-  weights = weights / sum(weights)
-  logitWeights = 1 / directLogitVars
-  logitWeights = logitWeights / sum(logitWeights)
-  theseScores = getValidationScores(directLogitEsts, directLogitVars, 
-                                    countyPreds$mean, countyPreds$stddev^2, 
-                                    weights=weights, logitWeights=logitWeights, usePearson=TRUE)
-  if(includeCluster)
-    theseScoresMod = getValidationScores(directLogitEsts, directLogitVars, 
-                                         countyPredsMod$mean, countyPredsMod$stddev^2, 
-                                         weights=weights, logitWeights=logitWeights, usePearson=TRUE)
-  else
-    theseScoresMod = NULL
+  # weights = 1 / directVars
+  # weights = weights / sum(weights)
   
-  # now calculate scoring rules on the cluster level
+  ## now calculate scoring rules on the cluster level
   countyI = match(dat$admin1, counties)
-  theseScoresCluster = getValidationScores(dat$y / dat$n, rep(0, nrow(dat)), 
-                                           countyPreds$mean[countyI], countyPreds$stddev[countyI]^2, 
-                                           usePearson=TRUE)
-  if(includeCluster)
-    theseScoresModCluster = getValidationScores(dat$y / dat$n, rep(0, nrow(dat)), 
-                                                countyPredsMod$mean[countyI], countyPredsMod$stddev[countyI]^2, usePearson=TRUE)
+  isUrban = dat$urban
   
-  else
-    theseScoresModCluster = NULL
+  # calculate scoring rules when leaving out individual counties
+  thisLogitMean = countyPredsRural$mean[countyI]
+  thisLogitMean[isUrban] = countyPredsUrban$mean[countyI][isUrban]
+  thisLogitVar = countyPredsRural$stddev[countyI]^2
+  thisLogitVar[isUrban] = countyPredsUrban$stddev[countyI][isUrban]^2
+  theseScores = getValidationScores(dat$y / dat$n, 
+                                    thisLogitMean, thisLogitVar, 
+                                    usePearson=FALSE, n=dat$n, 
+                                    urbanVec=dat$urban, filterType="leftOutCounty")
   
-  # compile scores c("MSE", "CPO", "CRPS", "logScore")
-  scores = theseScores$scores
-  pit = theseScores$pit
-  scores = data.frame(MSE=scores$MSE, Biassq=scores$`Bias^2`, Var=scores$Var, CPO=scores$CPO, CRPS=scores$CRPS, logScore=scores$logScore)
-  bym2Results = list(scores=scores, pit=pit)
-  
-  scoresCluster = theseScoresCluster$scores
-  pitCluster = theseScoresCluster$pit
-  scoresCluster = data.frame(DIC=dic, WAIC=waic, MSE=scoresCluster$MSE, Biassq=scoresCluster$`Bias^2`, Var=scoresCluster$Var, CPO=mean(cpo, na.rm=TRUE), CRPS=scoresCluster$CRPS, logScore=scoresCluster$logScore)
-  bym2ResultsCluster = list(scores=scoresCluster, pit=pitCluster)
-  
-  if(includeCluster) {
-    scoresMod = theseScoresMod$scores
-    pitMod = theseScoresMod$pit
-    scoresMod = data.frame(MSE=scoresMod$MSE, Biassq=scoresMod$`Bias^2`, Var=scoresMod$Var, CPO=scoresMod$CPO, CRPS=scoresMod$CRPS, logScore=scoresMod$logScore)
-    bym2ResultsMod = list(scores=scoresMod, pit=pitMod)
-    
-    scoresModCluster = theseScoresModCluster$scores
-    pitModCluster = theseScoresModCluster$pit
-    scoresModCluster = data.frame(DIC=dic, WAIC=waic, MSE=scoresModCluster$MSE, Biassq=scoresModCluster$`Bias^2`, Var=scoresModCluster$Var, CPO=mean(cpo, na.rm=TRUE), CRPS=scoresModCluster$CRPS, logScore=scoresModCluster$logScore)
-    bym2ResultsModCluster = list(scores=scoresModCluster, pit=pitModCluster)
-  }
-  else {
-    bym2ResultsMod = NULL
-    bym2ResultsModCluster = NULL
-  }
+  # calculate scoring rules when leaving out clusters
+  thisLogitMeanInSample = countyPredsRuralInSample$mean[countyI]
+  thisLogitMeanInSample[isUrban] = countyPredsUrbanInSample$mean[countyI][isUrban]
+  thisLogitVarInSample = countyPredsRuralInSample$stddev[countyI]^2
+  thisLogitVarInSample[isUrban] = countyPredsUrbanInSample$stddev[countyI][isUrban]^2
+  theseScoresInSample = getValidationScores(dat$y / dat$n, 
+                                            thisLogitMeanInSample, thisLogitVarInSample, 
+                                            usePearson=FALSE, n=dat$n, 
+                                            urbanVec=dat$urban, filterType="inSample")
+  theseScoresInSample$scores = cbind(WAIC=waic, DIC=dic, theseScoresInSample$scores)
+  theseScoresInSample$allResults = cbind(WAIC=waic, DIC=dic, theseScoresInSample$allResults)
   
   # save (if necessary) and return results
-  if(saveResults)
-    save(modelFitFull, bym2Results, bym2ResultsMod, bym2ResultsCluster, bym2ResultsModCluster, file = paste0('bym2', fileNameRoot, 'ValidationAllUrbRur', includeUrbanRural, 'Cluster', includeCluster, '.RData'))
+  bym2ResultsInSample = theseScoresInSample
+  bym2ResultsLeaveOutCounty = theseScores
+  bym2ResultsLeaveOutCluster = data.frame(CPO=mean(cpo, na.rm=TRUE))
+  cpoFailure = mean(cpoFailure[!is.na(cpoFailure)] != 0)
   
-  list(bym2Results=bym2Results, bym2ResultsMod=bym2ResultsMod, bym2ResultsCluster=bym2ResultsCluster, bym2ResultsModCluster=bym2ResultsModCluster)
+  bym2Results = list(countyPredsUrbanCluster=countyPredsUrban, countyPredsRuralCluster=countyPredsRural, 
+                     countyPredsUrbanClusterInSample=countyPredsUrbanInSample, countyPredsRuralClusterInSample=countyPredsRuralInSample, 
+                     modelFitFull=modelFitFull, 
+                     bym2ResultsInSample=bym2ResultsInSample, 
+                     bym2ResultsLeaveOutCounty=bym2ResultsLeaveOutCounty, 
+                     bym2ResultsLeaveOutCluster=bym2ResultsLeaveOutCluster, 
+                     cpoFailure=cpoFailure)
+  
+  if(saveResults)
+    save(bym2Results, 
+         file=paste0('bym2', fileNameRoot, 'ValidationAllUrbRur', includeUrbanRural, 'Cluster', includeCluster, '.RData'))
+  
+  bym2Results
 }
+
+
+
+
+
+
+
+
+

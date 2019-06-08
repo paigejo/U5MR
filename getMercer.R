@@ -154,8 +154,16 @@ validateMercer = function(dat=ed, directLogitEsts, directLogitVars, directVars,
   modelFit = mercer_u1m2(directLogitEsts, directLogitVars, 
                     graph.path = "Kenyaadm1.graph", doValidation = TRUE)
   cpo = modelFit$cpo$cpo
+  cpoFailure = modelFit$cpo$failure
   dic = modelFit$dic$dic
   waic = modelFit$waic$waic
+  
+  countyPredsInSample = data.frame(admin1=counties,
+                                   est.mercer=expit(modelFit$summary.linear.predictor$mean),
+                                   lower.mercer=modelFit$summary.linear.predictor$"0.1quant",
+                                   upper.mercer=modelFit$summary.linear.predictor$"0.9quant",
+                                   logit.est.mercer=modelFit$summary.linear.predictor$mean, 
+                                   var.est.mercer=(modelFit$summary.linear.predictor$sd)^2)
   
   # now do leave one county out across validation
   for(i in 1:length(counties)) {
@@ -185,31 +193,46 @@ validateMercer = function(dat=ed, directLogitEsts, directLogitVars, directVars,
     }
   }
   
-  # calculate weights further predictions based on inverse direct estimate variances, calculate validation scores
-  weights = 1 / directVars
-  weights = weights / sum(weights)
-  logitWeights = 1 / directLogitVars
-  logitWeights = logitWeights / sum(logitWeights)
-  theseScores = getValidationScores(directLogitEsts, directLogitVars, 
-                                    countyPreds$logit.est.mercer, countyPreds$var.est.mercer, 
-                                    weights=weights, logitWeights=logitWeights, usePearson=TRUE)
+  # don't use weights here since were calculating scoring rules for clusters rather than counties
+  # # calculate weights further predictions based on inverse direct estimate variances, calculate validation scores
+  # # don't use binomial variation here since our data is not binomial
+  # weights = 1 / directVars
+  # weights = weights / sum(weights)
   
-  # now calculate scoring rules on the cluster level
+  # calculate scoring rules for leaving out county
   countyI = match(dat$admin1, counties)
-  theseScoresCluster = getValidationScores(dat$y / dat$n, rep(0, nrow(dat)), directEsts = dat$y / dat$n, 
-                                           countyPreds$logit.est.mercer[countyI], countyPreds$var.est.mercer[countyI], 
-                                           usePearson=TRUE)
+  theseScores = getValidationScores(dat$y / dat$n, 
+                                    countyPreds$logit.est.mercer[countyI], countyPreds$var.est.mercer[countyI], 
+                                    usePearson=FALSE, n=dat$n, 
+                                    urbanVec=dat$urban, filterType="leftOutCounty")
+  
+  # calculate in sample scoring rules
+  theseScoresInSample = getValidationScores(dat$y / dat$n, 
+                                            countyPredsInSample$logit.est.mercer[countyI], countyPredsInSample$var.est.mercer[countyI], 
+                                            usePearson=FALSE, n=dat$n, 
+                                            urbanVec=dat$urban, filterType="inSample")
+  theseScoresInSample$scores = cbind(WAIC=NA, DIC=NA, theseScoresInSample$scores)
+  theseScoresInSample$allResults = cbind(WAIC=waic, DIC=dic, theseScoresInSample$allResults)
+  
+  # filter out unwanted results so that we only have MSE
+  filterI = grepl("CPO", names(theseScoresInSample$scores)) | grepl("CRPS", names(theseScoresInSample$scores)) | grepl("logScore", names(theseScoresInSample$scores))
+  theseScoresInSample$scores[filterI] = NA
+  filterI = grepl("CPO", names(theseScores$scores)) | grepl("CRPS", names(theseScores$scores)) | grepl("logScore", names(theseScores$scores))
+  theseScores$scores[filterI] = NA
+  
+  # this model is not fit to data at the cluster level, so we cannot compute CPO at the cluster level
+  theseScoresleaveOutCluster = NULL
   
   # compile scores c("MSE", "CPO", "CRPS", "logScore")
-  scores = theseScores$scores
-  pit = theseScores$pit
-  scores = data.frame(MSE=scores$MSE, Biassq=scores$`Bias^2`, Var=scores$Var, CPO=scores$CPO, CRPS=scores$CRPS, logScore=scores$logScore)
+  mercerResultsInSample = theseScoresInSample
+  mercerResultsLeaveOutCounty = theseScores
   
-  scoresCluster = theseScoresCluster$scores
-  pitCluster = theseScoresCluster$pit
-  scoresCluster = data.frame(DIC=dic, WAIC=waic, MSE=scoresCluster$MSE, Biassq=scoresCluster$`Bias^2`, Var=scoresCluster$Var, CPO=mean(cpo, na.rm=TRUE), CRPS=scoresCluster$CRPS, logScore=scoresCluster$logScore)
+  mercerResults = list(countyPreds=countyPreds, countyPredsInSample=countyPredsInSample, modelFitFull=modelFit, 
+                       mercerResultsInSample=mercerResultsInSample, 
+                       mercerResultsLeaveOutCounty=mercerResultsLeaveOutCounty, 
+                       mercerResultsLeaveOutCluster=NULL)
   
-  list(scores=scores, pit=pit, pitCluster=pitCluster, scoresCluster=scoresCluster)
+  mercerResults
 }
 
 ##### the below code appeared to be a copy of the above code, so I commented it out:

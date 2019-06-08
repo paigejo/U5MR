@@ -218,6 +218,115 @@ getScoresSPDE = function(truth, numChildren, logitEst, est=NULL, var=NULL, probM
   as.data.frame(results)
 }
 
+##### the following function computed scoring rules at the county level after leaving out county data. We decided 
+##### to only calculate scoring rules at the cluster level
+# # a few resources for scoring rules:
+# # http://webpages.math.luc.edu/~ebalderama/myfiles/modelchecking101_pres.pdf
+# # http://www.math.chalmers.se/~bodavid/GMRF2015/Lectures/Flab4.pdf
+# # http://www.stat.columbia.edu/~gelman/research/published/waic_understand3.pdf
+# # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3409851/
+# # https://www.researchgate.net/profile/Havard_Rue/publication/226713867_Posterior_and_Cross-validatory_Predictive_Checks_A_Comparison_of_MCMC_and_INLA/links/551faa8c0cf29dcabb088bc6.pdf
+# # original definition of cpo in Geisser's discussion in:
+# # https://www.jstor.org/stable/pdf/2982063.pdf?refreqid=excelsior%3Aff026889bf010b97c9d0c7ae7bed6935
+# # NOTE: for cluster level validation scores set the direct estimate values to be the truth and the direct estimate variance to 0
+# # doLogit: If it is possible to take the logit of the direct estimates, then set this to TRUE 
+# getValidationScores = function(logitDirectEsts, logitDirectVars, logitEsts=NULL, logitVars=NULL, ests=NULL, 
+#                                directEsts=NULL, probMat=NULL, weights=rep(1, length(logitDirectEsts)), 
+#                                logitWeights=rep(1, length(logitDirectEsts)), usePearson=TRUE, nsim=10, 
+#                                n=25, bVar=FALSE) {
+#   clusterValidation = all(logitDirectVars == 0)
+#   
+#   # weight each county prediction proportional to the inverse direct estimate variance
+#   weights = weights / sum(weights)
+#   logitWeights = logitWeights / sum(logitWeights)
+#   
+#   # calculate logit scale predictive distribution if necessary
+#   if(is.null(logitEsts))
+#     logitEsts = rowMeans(logit(probMat))
+#   if(is.null(logitVars))
+#     logitVars = apply(logit(probMat), 1, var)
+#   if(is.null(directEsts))
+#     directEsts = logitNormMean(cbind(logitDirectEsts, logitDirectVars))
+#   
+#   # first calculate mean squared error on probability and logit scales, decomposed into variance and bias squared
+#   if(is.null(ests))
+#     out = mse(directEsts, logitEsts, logit=FALSE, logitVars, nsim=nsim, weights=weights, decompose=TRUE)
+#   else
+#     out = mse(directEsts, ests, logit=TRUE, decompose=TRUE)
+#   MSE = out$MSE
+#   Var = out$var
+#   Biassq = out$biassq
+#   
+#   if(!clusterValidation) {
+#     outLogit = mse(logitDirectEsts, logitEsts, logit=TRUE, logitVars, nsim=nsim, weights=logitWeights, decompose=TRUE)
+#     MSELogit = outLogit$MSE
+#     VarLogit = outLogit$var
+#     BiassqLogit = outLogit$biassq
+#   }
+#   else {
+#     MSELogit = NULL
+#     VarLogit = NULL
+#     BiassqLogit = NULL
+#   }
+#   
+#   # the other scoring rules require us to know the full predictive distribution. Either 
+#   # use a gaussian or pearson approximation
+#   if(!bVar) {
+#     if(usePearson && !is.null(probMat)) {
+#       # for the Pearson distribution to the probabilities
+#       skewnessVals = apply(probMat, 1, skewness)
+#       kurtosisVals = apply(probMat, 1, kurtosis)
+#       
+#       # using Pearson type IV approximation
+#       momentMat = cbind(logitEsts, logitVars, skewnessVals, kurtosisVals)
+#       # pearsonParMat = apply(momentMat, 1, pearsonFitM)
+#       pearsonParMat = mapply(pearsonFitM, momentMat[,1], momentMat[,2], momentMat[,3], momentMat[,4])
+#       pearsonParMat = split(t(pearsonParMat), 1:ncol(pearsonParMat))
+#       
+#       # calculate CRPS
+#       
+#       # calculate CPO, log score as defined by LPML in http://webpages.math.luc.edu/~ebalderama/myfiles/modelchecking101_pres.pdf
+#       cpos = mapply(dpearson, x=logitDirectEsts, params=pearsonParMat)
+#       cpo = mean(cpos)
+#       logScore = mean(log(cpos))
+#       
+#       crps = crpsPearsonDirect(logitDirectEsts, logitDirectVars, pearsonParMat)
+#       crps = out[1]
+#       
+#       # calculate PIT
+#       pits = mapply(ppearson, q=logitDirectEsts, params=pearsonParMat)
+#     }
+#     else {
+#       # log score as defined by LPML in http://webpages.math.luc.edu/~ebalderama/myfiles/modelchecking101_pres.pdf
+#       crps = crpsNormalDirect(logitDirectEsts, logitDirectVars, logitEsts, logitVars)
+#       cpos = dnorm(logitDirectEsts, logitEsts, sqrt(logitVars))
+#       cpo = mean(cpos)
+#       logScore = mean(log(cpos))
+#       pits = pnorm(logitDirectEsts, logitEsts, sqrt(logitVars))
+#     }
+#   }
+#   else {
+#     # in this case, include binomial variation
+#     out = getCPO(directEsts, logitEsts, logitVars, n=n, bVar = TRUE)
+#     cpo = out$CPO
+#     logScore = out$logScore
+#     pits = out$PITs
+#     
+#     crps = crpsNormal(directEsts, logitEsts, logitVars, logit=FALSE, bVar = TRUE)
+#   }
+#   
+#   # return the results
+#   if(!clusterValidation) {
+#     results = matrix(c(MSE, Var, Biassq, MSELogit, VarLogit, BiassqLogit, cpo, crps, logScore), nrow=1, byrow = TRUE)
+#     colnames(results) = c("MSE", "Var", "Bias^2", "Logit MSE", "Logit Var", "Logit Bias^2", "CPO", "CRPS", "logScore")
+#   }
+#   else {
+#     results = matrix(c(MSE, Var, Biassq, cpo, crps, logScore), nrow=1, byrow = TRUE)
+#     colnames(results) = c("MSE", "Var", "Bias^2", "CPO", "CRPS", "logScore")
+#   }
+#   list(scores=as.data.frame(results), pit=pits, weights=weights, logitWeights=logitWeights)
+# }
+
 # a few resources for scoring rules:
 # http://webpages.math.luc.edu/~ebalderama/myfiles/modelchecking101_pres.pdf
 # http://www.math.chalmers.se/~bodavid/GMRF2015/Lectures/Flab4.pdf
@@ -226,79 +335,88 @@ getScoresSPDE = function(truth, numChildren, logitEst, est=NULL, var=NULL, probM
 # https://www.researchgate.net/profile/Havard_Rue/publication/226713867_Posterior_and_Cross-validatory_Predictive_Checks_A_Comparison_of_MCMC_and_INLA/links/551faa8c0cf29dcabb088bc6.pdf
 # original definition of cpo in Geisser's discussion in:
 # https://www.jstor.org/stable/pdf/2982063.pdf?refreqid=excelsior%3Aff026889bf010b97c9d0c7ae7bed6935
-# NOTE: for cluster level validation scores set the direct estimate values to be the truth and the direct estimate variance to 0
-getValidationScores = function(logitDirectEsts, logitDirectVars, logitEsts=NULL, logitVars=NULL, ests=NULL, 
-                               directEsts=NULL, probMat=NULL, weights=rep(1, length(logitDirectEsts)), 
-                               logitWeights=rep(1, length(logitDirectEsts)), usePearson=TRUE, nsim=10) {
+# INPUTS
+# truth: true empirical proportions in the clusters
+# urbanVec: a logical vector with the same length as logitDirectEsts. Used to average scoring rules 
+#           over urban and rural clusters separately
+# filterType: although all scoring rules are calculated, this determines an additional filtered set of final 
+#             scoring rules to set aside for display purposes
+# NOTE: binomial variation is always included. Do not use this function for the smoothed direct model
+getValidationScores = function(truth, logitEsts=NULL, logitVars=NULL, ests=NULL, 
+                               probMat=NULL, weights=rep(1, length(truth)), 
+                               usePearson=FALSE, nsim=10, n=25, urbanVec=NULL, 
+                               filterType=c("inSample", "leftOutCounty")) {
+  
+  filterType = match.arg(filterType)
   
   # weight each county prediction proportional to the inverse direct estimate variance
   weights = weights / sum(weights)
-  logitWeights = logitWeights / sum(logitWeights)
   
   # calculate logit scale predictive distribution if necessary
   if(is.null(logitEsts))
     logitEsts = rowMeans(logit(probMat))
   if(is.null(logitVars))
     logitVars = apply(logit(probMat), 1, var)
-  if(is.null(directEsts))
-    directEsts = logitNormMean(cbind(logitDirectEsts, logitDirectVars))
   
   # first calculate mean squared error on probability and logit scales, decomposed into variance and bias squared
   if(is.null(ests))
-    out = mse(directEsts, logitEsts, logit=FALSE, logitVars, nsim=nsim, weights=weights, decompose=TRUE)
+    out = mse(truth, logitEsts, logit=FALSE, logitVars, nsim=nsim, weights=weights, decompose=TRUE)
   else
-    out = mse(directEsts, ests, logit=TRUE, decompose=TRUE)
-  outLogit = mse(logitDirectEsts, logitEsts, logit=TRUE, logitVars, nsim=nsim, weights=logitWeights, decompose=TRUE)
+    out = mse(truth, ests, logit=TRUE, decompose=TRUE)
   MSE = out$MSE
   Var = out$var
-  Biassq = out$biassq
-  MSELogit = outLogit$MSE
-  VarLogit = outLogit$var
-  BiassqLogit = outLogit$biassq
+  Bias = out$bias
   
-  # the other scoring rules require us to know the full predictive distribution. Either 
-  # use a gaussian or pearson approximation
-  if(usePearson && !is.null(probMat)) {
-    # for the Pearson distribution to the probabilities
-    skewnessVals = apply(probMat, 1, skewness)
-    kurtosisVals = apply(probMat, 1, kurtosis)
+  # calculate the rest of the scoring rules
+  out = getCPO(truth, logitEsts, logitVars, n=n, probMat=probMat, bVar = TRUE)
+  cpo = out$CPO
+  logScore = out$logScore
+  pits = out$PITs
+  
+  crps = crpsNormal(truth, logitEsts, logitVars, logit=FALSE, bVar = TRUE)
+  
+  allResults = matrix(c(MSE, Var, Bias, cpo, crps, logScore), nrow=1, byrow = TRUE)
+  colnames(allResults) = c("MSE", "Var", "Bias", "CPO", "CRPS", "logScore")
+  
+  if(filterType == "inSample")
+    filterI = c(1:3, 5)
+  else if(filterType == "leftOutCounty")
+    filterI = c(1:5)
+  else
+    stop(paste0("unrecognized value of filterType ", filterType))
+  
+  outUrban = NULL
+  outRural = NULL
+  if(!is.null(urbanVec)) {
+    urbanProbMat = NULL
+    ruralProbMat = NULL
+    if(!is.null(probMat)) {
+      urbanProbMat = probMat[urbanVec,]
+      ruralProbMat = probMat[!urbanVec,]
+    }
+    outUrban = getValidationScores(truth[urbanVec], logitEsts[urbanVec], logitVars[urbanVec], ests[urbanVec], urbanProbMat, 
+                                   weights[urbanVec], usePearson, nsim, n[urbanVec], NULL, filterType)
+    outRural = getValidationScores(truth[!urbanVec], logitEsts[!urbanVec], logitVars[!urbanVec], ests[!urbanVec], ruralProbMat, 
+                                   weights[!urbanVec], usePearson, nsim, n[!urbanVec], NULL, filterType)
     
-    # using Pearson type IV approximation
-    momentMat = cbind(logitEsts, logitVars, skewnessVals, kurtosisVals)
-    # pearsonParMat = apply(momentMat, 1, pearsonFitM)
-    pearsonParMat = mapply(pearsonFitM, momentMat[,1], momentMat[,2], momentMat[,3], momentMat[,4])
-    pearsonParMat = split(t(pearsonParMat), 1:ncol(pearsonParMat))
+    allResults = matrix(c(MSE, Var, Bias, cpo, crps, logScore, outUrban$allResults, outRural$allResults),
+                        nrow=1, byrow = TRUE)
+    allNames = c("MSE", "Var", "Bias", "CPO", "CRPS", "logScore")
+    temp1 = paste0("Urban ", allNames)
+    temp2 = paste0("Rural ", allNames)
+    allNames = c(allNames, temp1, temp2)
+    colnames(allResults) = allNames
     
-    # calculate CPO, log score as defined by LPML in http://webpages.math.luc.edu/~ebalderama/myfiles/modelchecking101_pres.pdf
-    cpos = mapply(dpearson, x=logitDirectEsts, params=pearsonParMat)
-    cpo = mean(cpos)
-    logScore = mean(log(cpos))
-    
-    # calculate CRPS
-    crps = crpsPearsonDirect(logitDirectEsts, logitDirectVars, pearsonParMat)
-    crps = out[1]
-    
-    # calculate PIT
-    pits = mapply(ppearson, q=logitDirectEsts, params=pearsonParMat)
+    filterI = c(filterI, filterI + 6, filterI + 2 * 6)
   }
-  else {
-    # calculate CRPS using Gaussian approximation
-    cpos = dnorm(logitDirectEsts, logitEsts, logitVars)
-    cpo = mean(cpos)
-    logScore = mean(log(cpos))
-    
-    # calculate CRPS, log score as defined by LPML in http://webpages.math.luc.edu/~ebalderama/myfiles/modelchecking101_pres.pdf
-    out = crpsNormalDirect(logitDirectEsts, logitDirectVars, logitEsts, logitVars)
-    crps = out
-    
-    # calculate PIT
-    pits = mapply(pnorm, q=logitDirectEsts, logitEsts, logitVars)
-  }
+  
+  # filter out unwanted results for the final results table
+  scores = data.frame(as.list(allResults[,filterI]))
+  allResults = data.frame(as.list(allResults))
   
   # return the results
-  results = matrix(c(MSE, Var, Biassq, MSELogit, VarLogit, BiassqLogit, cpo, crps, logScore), nrow=1, byrow = TRUE)
-  colnames(results) = c("MSE", "Var", "Bias^2", "Logit MSE", "Logit Var", "Logit Bias^2", "CPO", "CRPS", "logScore")
-  list(scores=as.data.frame(results), pit=pits, weights=weights, logitWeights=logitWeights)
+  list(scores=scores, pit=pits, weights=weights, 
+       allResults=allResults, resultsUrban=outUrban, resultsRural=outRural)
 }
 
 # based off of calculations in:
@@ -361,7 +479,7 @@ getDICWAIC = function(logitDirectEsts, logitDirectVars, logitEsts=NULL, logitVar
   list(scores=as.data.frame(results), pit=pits, weights=weights)
 }
 
-mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1, weights=NULL, decompose=FALSE){
+mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1, weights=NULL, decompose=FALSE, urbanVec=NULL){
   if(!is.null(weights))
     weights = weights / sum(weights)
   
@@ -388,15 +506,15 @@ mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1, weights=NU
   
   if(decompose) {
     thisBias = my.est - truth
-    thisVar = (my.est - mean(my.est))^2
   }
   
   if(!is.null(weights)) {
     MSE = sum(res * weights)
     if(decompose) {
-      biassq=sum(thisBias * weights)^2
+      bias=sum(thisBias * weights)
+      thisVar = (res - sum(res*weights))^2
       thisVar = sum(thisVar * weights)
-      out = list(MSE=MSE, biassq=biassq, var=thisVar)
+      out = list(MSE=MSE, bias=bias, var=thisVar)
     }
     else
       out = MSE
@@ -404,12 +522,26 @@ mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1, weights=NU
   else {
     MSE = mean(res)
     if(decompose) {
-      biassq=mean(thisBias)^2
+      bias=mean(thisBias)
+      thisVar = (res - mean(res))^2
       thisVar = mean(thisVar)
-      out = list(MSE=MSE, biassq=biassq, var=thisVar)
+      out = list(MSE=MSE, bias=bias, var=thisVar)
     }
     else
       out = MSE
+  }
+  
+  if(!is.null(urbanVec) && decompose) {
+    # compute MSE and related values for urban and rural areas if necessary
+    urbanN = n[urbanVec]
+    urbanN = urbanN[!is.na(urbanN)]
+    ruralN = n[ruralVec]
+    ruralN = ruralN[!is.na(ruralN)]
+    outUrban = mse(truth[urbanVec], my.est[urbanVec], logit, my.var[urbanVec], nsim, urbanN, weights[urbanVec], decompose)
+    outRural = mse(truth[!urbanVec], my.est[!urbanVec], logit, my.var[!urbanVec], nsim, ruralN, weights[!urbanVec], decompose)
+    
+    # combine results
+    out = list(MSE=MSE, bias=bias, var=thisVar, MSEUrban=outUrban$MSE, biasUrban=outUrban$bias, varUrban=outUrban$var, MSERural=outRural$MSE, biasRural=outRural$bias, varRural=outRural$var)
   }
   
   out
@@ -781,6 +913,92 @@ crpsCountsNoBVar <- function(trueProportion, logitEst, logitVar, parClust=NULL, 
     res / n
   else
     res
+}
+# truth: a vector of observations on the desired scale
+# my.est: a vector of logit-scale predictions of the same length as truth 
+# my.var: a vector of logit-scale predictive variances of the same length as truth
+# logit: whether CRPS should be computed on the logit scale or the empirical proportion scale
+# nsim: if binomial variation is included, the number of probabilities over which to integrate in the pmf approximation
+# n: the binomial sample size. Can be a vector of the same length as truth
+# bVar: whether or not binomial variation should be included in the predictive distribution-
+getCPO <- function(truth, my.est, my.var=NULL, nsim=10, n=25, probMat=NULL, bVar=TRUE){
+  if(bVar) {
+    # first draw different values of p from the predictive distribution if necessary
+    if(is.null(probMat)) {
+      quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(my.est)), ncol=nsim, byrow=TRUE)
+      logitP = matrix(qnorm(quantiles, my.est, sd=sqrt(my.var)), ncol=nsim)
+      probMat = expit(logitP)
+    }
+    
+    # for each value of p, calculate the crps and return the mean
+    out = cpoBinomial(truth, probMat, n=n)
+    cpoVals = out$CPO
+    logScore = out$logScore
+    PIT = out$PITs
+  }
+  else {
+    stop("getCPO does not yet support not including binomial variation.  bVar must be set to TRUE")
+  }
+  
+  list(CPO=cpoVals, logScore=logScore, PITs=PIT)
+}
+
+# for a set of independent fixed binomials, determine the CRPS.
+# trueProportion: can be a vector
+# p.est: can be a matrix, with number of rows equal to length(trueProportion). In that case, the 
+#        number of columns can be thought of as the number of draws of p in the case of a random p.
+# n: can be a vector, with length equal to length(trueProportion)
+# empiricalProportion: if true, calculate the CRPS of the empirical proportion distribution on [0, 1] 
+#                      rather than the binomial distribution on [0, n]
+cpoBinomial = function(trueProportion, p.est=NULL, n=25, parClust=NULL, empiricalProportion=TRUE) {
+  # get observations at the count scale, make sure n is a vector
+  trueCounts = trueProportion * n
+  if(length(n) == 1)
+    n = rep(n, length(trueProportion))
+  
+  p.est = matrix(p.est, nrow=length(trueProportion))
+  
+  getPMF = function(rowI) {
+    ps = p.est[rowI,]
+    thisN = n[rowI]
+    
+    rowMeans(sapply(ps, function(p) {dbinom(0:thisN, thisN, p)}))
+  }
+  pmfs = lapply(1:nrow(p.est), getPMF)
+  cdfs = lapply(pmfs, cumsum)
+  PITs = lapply(1:length(cdfs), function(i) {
+    cdf = cdfs[[i]]
+    trueCount = trueCounts[i]
+    cdf[trueCount+1]
+  })
+  
+  rowFunCPO = function(rowI) {
+    # thisCount = eval(trueCounts[rowI])
+    # 
+    # ## in this case we must compute the probability mass function for this region ourselves
+    # thisN = eval(n[rowI])
+    # 
+    # cpoBinomialSingle = function(colI) {
+    #   thisP = p.est[rowI, colI]
+    #   dbinom(thisCount, thisN, thisP)
+    # }
+    # 
+    # # return the region CRPS, taking the expectation over the distribution of p
+    # mean(unlist(sapply(1:ncol(p.est), cpoBinomialSingle)))
+    
+    pmfs[[rowI]][trueCounts[rowI] + 1]
+  }
+  
+  if(is.null(parClust))
+    cpoByRegion = lapply(1:length(trueProportion), function(i) {rowFunCPO(i)})
+  else
+    cpoByRegion = parLapply(parClust, 1:length(trueProportion), function(i) {rowFunCPO(i)})
+  
+  cpoByRegion= unlist(cpoByRegion)
+  
+  logScore = mean(log(cpoByRegion))
+  
+  list(CPO = mean(cpoByRegion), logScore=logScore, PITs=PITs)
 }
 
 dss = function(truth, my.est, my.var){

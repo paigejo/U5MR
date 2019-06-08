@@ -229,6 +229,110 @@ generateSimDataSets = function(nsim=100, nsimBig = 250, seeds=c(580252, 1234), b
   invisible(NULL)
 }
 
-# 
+# simulate and save datasets used for the simulation study with the given model parameters
+# NOTE: paired with the dataset using the passed parameters will be another dataset from the 
+#       same model without a nugget/cluster effect
+# nsim: number of surveys taken from the true latent population in the standard size survey collections
+# nsimBig: number of surveys taken from the true latent population in the large size survey collections
+# seeds: random number seeds used for making the latent population and generating surveys respectively
+# beta0: latent gaussian model intercept
+# margVar: marginal variance of the spatial field
+# tausq: the nugget/cluster effect variance
+# gamma: latent gaussian model urban effect
+# HHoldVar: household effect variance
+# effRange: spatial range
+# urbanOverSamplefrac: the proportion with which to inflate the amount of urban samples in the surveys
+plotSimDataSets = function(nsim=100, nsimBig = 250, seeds=c(580252, 1234), beta0 = -1.75, margVar = .15^2, 
+                           tausq = .1^2, gamma = -1, HHoldVar = 0, effRange = 150, 
+                           urbanOverSamplefrac = 0, colorScale=makeRedBlueDivergingColors(64, rev = TRUE), 
+                           kenyaLatRange=c(-4.6, 5), kenyaLonRange=c(33.5, 42.0)) {
+  set.seed(seeds[1])
+  wd = getwd()
+  setwd("~/Google Drive/UW/Wakefield/WakefieldShared/U5MR/")
+  
+  # make strings representing the simulation with and without cluster effects
+  dataID = paste0("Beta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+                  round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar", HHoldVar, 
+                  "urbanOverSamplefrac", round(urbanOverSamplefrac, 4))
+  dataID0 = paste0("Beta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+                   round(0, 4), "gamma", round(gamma, 4), "HHoldVar", HHoldVar, 
+                   "urbanOverSamplefrac", round(urbanOverSamplefrac, 4))
+  
+  # there should be 1 true data set, but many simulated cluster samples
+  load("empiricalDistributions.RData")
+  
+  # save(overSampDat, SRSDat, file=paste0("simDataMulti", dataID, "Big.RData"))
+  load(paste0("simDataMulti", dataID, "Big.RData"))
+  
+  # plot the first simulation of the over sampled and simple random sample data sets
+  clustDat = SRSDat$clustDat[[1]]
+  clustDat = overSampDat$clustDat[[1]]
+  eaDat = overSampDat$eaDat
+  pdf(paste0("figures/exampleSRSSimulation", dataID, ".pdf"), width=8, height=8)
+  par(mfrow =c(2, 2))
+  obsCoords = cbind(clustDat$east, clustDat$north)
+  obsNs = clustDat$numChildren
+  obsCounts = clustDat$died
+  zlim = c(0, quantile(c(eaDat$died/eaDat$numChildren, clustDat$died/clustDat$numChildren, 
+                         eaDat$trueProbDeath), probs=.975))
+  quilt.plot(eaDat$east, eaDat$north, eaDat$died/eaDat$numChildren, main="All Empirical Mortality Rates", 
+             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
+  plotMapDat(project=TRUE)
+  quilt.plot(obsCoords, obsCounts/obsNs, main="Sample Empirical Mortality Rates", 
+             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
+  plotMapDat(project=TRUE)
+  quilt.plot(eaDat$east, eaDat$north, eaDat$trueProbDeath, main="All True Mortality Rates", 
+             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
+  plotMapDat(project=TRUE)
+  quilt.plot(obsCoords, clustDat$trueProbDeath, main="Sample True Mortality Rates", 
+             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
+  plotMapDat(project=TRUE)
+  dev.off()
+  
+  zlim = c(0, quantile(c(eaDat$died/eaDat$numChildren, clustDat$died/clustDat$numChildren, 
+                         eaDat$trueProbDeath), probs=.975))
+  png(file=paste0("figures/exampleOverSampSimulation", dataID, ".png"), width=900, height=500)
+  par(oma=c( 0,0,0,2), mar=c(5.1, 4.1, 4.1, 6), mfrow =c(1, 2))
+  
+  plot(cbind(eaDat$lon, eaDat$lat), type="n", ylim=kenyaLatRange, xlim=kenyaLonRange, 
+       xlab="Longitude", ylab="Latitude", main=paste0("Simulated NMRs"), asp=1)
+  quilt.plot(eaDat$lon, eaDat$lat, eaDat$died/eaDat$numChildren, nx=150, ny=150, col=colorScale, zlim=zlim, add=TRUE)
+  # world(add=TRUE)
+  plotMapDat(adm1)
+  
+  plot(cbind(clustDat$lon, clustDat$lat), type="n", ylim=kenyaLatRange, xlim=kenyaLonRange, 
+       xlab="Longitude", ylab="Latitude", main=paste0("Example Survey NMRs"), asp=1)
+  quilt.plot(clustDat$lon, clustDat$lat, clustDat$died/clustDat$numChildren, nx=150, ny=150, col=colorScale, zlim=zlim, add=TRUE)
+  # world(add=TRUE)
+  plotMapDat(adm1)
+  dev.off()
+  
+  clustDat = overSampDat$clustDat[[1]]
+  pdf(paste0("figures/exampleUrbanOverSampSimulation", dataID, ".pdf"), width=8, height=8)
+  par(mfrow =c(2, 2))
+  obsCoords = cbind(clustDat$east, clustDat$north)
+  obsNs = clustDat$numChildren
+  obsCounts = clustDat$died
+  zlim = c(0, quantile(c(eaDat$died/eaDat$numChildren, clustDat$died/clustDat$numChildren, 
+                         eaDat$trueProbDeath), probs=.975))
+  quilt.plot(eaDat$east, eaDat$north, eaDat$died/eaDat$numChildren, main="All Empirical Mortality Rates", 
+             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
+  plotMapDat(project=TRUE)
+  quilt.plot(obsCoords, obsCounts/obsNs, main="Sample Empirical Mortality Rates", 
+             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
+  plotMapDat(project=TRUE)
+  quilt.plot(eaDat$east, eaDat$north, eaDat$trueProbDeath, main="All True Mortality Rates", 
+             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
+  plotMapDat(project=TRUE)
+  quilt.plot(obsCoords, clustDat$trueProbDeath, main="Sample True Mortality Rates", 
+             xlab="Easting", ylab="Northing", xlim=eastLim, ylim=northLim, zlim=zlim)
+  plotMapDat(project=TRUE)
+  dev.off()
+  
+  
+  setwd(wd)
+  
+  invisible(NULL)
+}
 
 

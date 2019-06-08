@@ -1413,7 +1413,8 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
                            genRegionLevel=TRUE, keepPixelPreds=TRUE, 
                            urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
                            predictionType=c("mean", "median"), parClust=cl, 
-                           significance=.8, saveResults=TRUE, fileNameRoot="Ed") {
+                           significance=.8, saveResults=TRUE, fileNameRoot="Ed", 
+                           loadPreviousFit=FALSE) {
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
   
@@ -1444,24 +1445,31 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
   
   # first fit the full model (we will use this to initialize the model during the validation fits for each left out county)
   print("Fitting full model")
-  out = fitSPDEModel3(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
-                      predUrban, clusterIndices=1:nrow(clustDat), genCountyLevel=FALSE, popGrid=popGrid, nPostSamples=nPostSamples, 
-                      verbose = verbose, clusterEffect=includeClustEffect, 
-                      int.strategy=int.strategy, genRegionLevel=FALSE, counties=sort(unique(kenyaEAs$admin1)), 
-                      keepPixelPreds=keepPixelPreds, genEALevel=TRUE, regions=sort(unique(kenyaEAs$region)), 
-                      urbanEffect=urbanEffect, eaIndices=1:nrow(clustDat), 
-                      eaDat=eaDat, nSamplePixel=nSamplePixel, 
-                      significance=significance, onlyInexact=TRUE, allPixels=TRUE, 
-                      newMesh=TRUE, doValidation=TRUE)
+  fileName = paste0("resultsSPDE", fileNameRoot, "ValidationFull", "_includeClustEffect", includeClustEffect, 
+                    "_urbanEffect", urbanEffect, ".RData")
+  if(!loadPreviousFit) {
+    out = fitSPDEModel3(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
+                        predUrban, clusterIndices=1:nrow(clustDat), genCountyLevel=FALSE, popGrid=popGrid, nPostSamples=nPostSamples, 
+                        verbose = verbose, clusterEffect=includeClustEffect, 
+                        int.strategy=int.strategy, genRegionLevel=FALSE, counties=sort(unique(kenyaEAs$admin1)), 
+                        keepPixelPreds=keepPixelPreds, genEALevel=TRUE, regions=sort(unique(kenyaEAs$region)), 
+                        urbanEffect=urbanEffect, eaIndices=1:nrow(clustDat), 
+                        eaDat=eaDat, nSamplePixel=nSamplePixel, 
+                        significance=significance, onlyInexact=TRUE, allPixels=TRUE, 
+                        newMesh=TRUE, doValidation=TRUE)
+    
+    if(saveResults)
+      save(out, file=fileName)
+  }
+  else {
+    load(fileName)
+  }
   cpo = out$mod$cpo$cpo
+  cpoFailure = out$mod$cpo$failure
   dic = out$mod$dic$dic
   waic = out$mod$waic$waic
   modelFit = out$mod
-  
-  fileName = paste0("resultsSPDE", fileNameRoot, "ValidationFull", "_includeClustEffect", includeClustEffect, 
-                               "_urbanEffect", urbanEffect, ".RData")
-  if(saveResults)
-    save(out, file=fileName)
+  clusterPredsInSample = out$eaPreds$eaPredMat
   
   counties = sort(unique(poppc$County))
   allClusterI = c()
@@ -1481,16 +1489,14 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
                         significance=significance, onlyInexact=TRUE, allPixels=TRUE, 
                         newMesh=TRUE, previousResult=modelFit, predCountyI=i)
     
-    thisCountyPreds = fit$countyPreds$countyPredMatInexact
+    # thisCountyPreds = fit$countyPreds$countyPredMatInexact
     thisClusterPreds = fit$eaPreds$eaPredMat
-    thisClusterI = match(counties[i], clustDat$admin1)
+    thisClusterI = which(clustDat$admin1 == counties[i])
     allClusterI = c(allClusterI, thisClusterI)
     
     if(i == 1) {
-      countyPreds = thisCountyPreds
       clusterPreds = thisClusterPreds[thisClusterI,]
     } else {
-      countyPreds = rbind(countyPreds, thisCountyPreds)
       clusterPreds = rbind(clusterPreds, thisClusterPreds[thisClusterI,])
     }
   }
@@ -1499,47 +1505,55 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
   sortI = sort(allClusterI, index.return=TRUE)$ix
   clusterPreds = clusterPreds[sortI,]
   
-  # summary statistics for county level predictions
-  probMat = countyPreds
+  # # summary statistics for county level predictions
+  # probMat = countyPreds
+  # preds = rowMeans(probMat)
+  # vars = apply(probMat, 1, var)
+  # logitPreds = rowMeans(logit(probMat))
+  # logitVars = apply(logit(probMat), 1, var)
+  
+  # summary statistics for cluster level predictions
+  probMat = clusterPreds
   preds = rowMeans(probMat)
   vars = apply(probMat, 1, var)
   logitPreds = rowMeans(logit(probMat))
   logitVars = apply(logit(probMat), 1, var)
   
-  # summary statistics for cluster level predictions
-  probMatCluster = clusterPreds
-  predsCluster = rowMeans(probMatCluster)
-  varsCluster = apply(probMatCluster, 1, var)
-  logitPredsCluster = rowMeans(logit(probMatCluster))
-  logitVarsCluster = apply(logit(probMatCluster), 1, var)
+  probMatInSample = clusterPredsInSample
+  predsInSample = rowMeans(probMatInSample)
+  varsInSample = apply(probMatInSample, 1, var)
+  logitPredsInSample = rowMeans(logit(probMatInSample))
+  logitVarsInSample = apply(logit(probMatInSample), 1, var)
   
   # calculate validation scoring rules
-  weights = 1 / directVars
-  weights = weights / sum(weights)
-  logitWeights = 1 / directLogitVars
-  logitWeights = logitWeights / sum(logitWeights)
-  theseScores = getValidationScores(directLogitEsts, directLogitVars, logitPreds, logitVars, 
-                                    probMat=probMat, weights=weights, logitWeights=logitWeights, usePearson=TRUE)
-  theseScoresCluster = getValidationScores(dat$y / dat$n, rep(0, nrow(dat)), logitPredsCluster, logitVarsCluster, 
-                                           probMat=probMatCluster, usePearson=TRUE)
+  # weights = 1 / directVars
+  # weights = weights / sum(weights)
+  theseScores = getValidationScores(clustDat$y / clustDat$n, logitPreds, logitVars, 
+                                    ests=preds, probMat=probMat, usePearson=FALSE, n=clustDat$n, 
+                                    urbanVec=clustDat$urban, filterType="leftOutCounty")
+  
+  theseScoresInSample = getValidationScores(clustDat$y / clustDat$n, logitPredsInSample, logitVarsInSample, 
+                                    ests=predsInSample, probMat=probMatInSample, usePearson=FALSE, n=clustDat$n, 
+                                    urbanVec=clustDat$urban, filterType="inSample")
+  theseScoresInSample$scores = cbind(WAIC=waic, DIC=dic, theseScoresInSample$scores)
+  theseScoresInSample$allResults = cbind(WAIC=waic, DIC=dic, theseScoresInSample$allResults)
   
   # compile scores c("MSE", "CPO", "CRPS", "logScore")
-  scores = theseScores$scores
-  pit = theseScores$pit
-  scores = data.frame(MSE=scores$MSE, Biassq=scores$`Bias^2`, Var=scores$Var, CPO=scores$CPO, CRPS=scores$CRPS, logScore=scores$logScore)
+  spdeResultsInSample = theseScoresInSample
+  spdeResultsLeaveOutCounty = theseScores
+  spdeResultsLeaveOutCluster = data.frame(CPO=mean(cpo, na.rm=TRUE))
+  cpoFailure = mean(cpoFailure[!is.na(cpoFailure)] != 0)
   
-  scoresCluster = theseScoresCluster$scores
-  pitCluster = theseScoresCluster$pit
-  scoresCluster = data.frame(DIC=dic, WAIC=waic, MSE=scoresCluster$MSE, Biassq=scoresCluster$`Bias^2`, Var=scoresCluster$Var, 
-                             CPO=mean(cpo, na.rm=TRUE), CRPS=scoresCluster$CRPS, logScore=scoresCluster$logScore)
+  spdeResults = list(fullModelFit=modelFit, probMatInSample=probMatInSample, probMat=probMat, 
+                     spdeResultsInSample=spdeResultsInSample, spdeResultsLeaveOutCounty=spdeResultsLeaveOutCounty, 
+                     spdeResultsLeaveOutCluster=spdeResultsLeaveOutCluster, 
+                     cpoFailure=cpoFailure)
   
   # save and return results
-  spdeResults = list(scores=scores, pit=pit, scoresCluster=scoresCluster, pitCluster=pitCluster)
   fileName = paste0("resultsSPDE", fileNameRoot, "ValidationAll", "_includeClustEffect", includeClustEffect, 
                     "_urbanEffect", urbanEffect, ".RData")
-  mod = out$mod
   if(saveResults)
-    save(mod, spdeResults, file=fileName)
+    save(spdeResults, file=fileName)
   
   spdeResults
 }
