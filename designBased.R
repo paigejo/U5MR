@@ -252,7 +252,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
           # sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMat
           sampCountyMod[, j] = sapply(1:length(clustersPerCounty), function(i) {mean(expit(sampCounty[i, j] + rnorm(clustersPerCounty[i], sd=clusterSigma)))})
           sampClusterSRSDatRural[,j,i] = expit(sampCounty[, j] + rnorm(47, sd=clusterSigma))
-          sampClusterSRSDatUrban[,j,i] = sampClusterDatSRSRural[, j]
+          sampClusterSRSDatUrban[,j,i] = sampClusterSRSDatRural[,j,i]
         }
       }
       sampCountySRSDat[,,i] = sampCounty
@@ -419,7 +419,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
           # sampCountyMod[, j] = logitNormMean(muSigmaMat = muSigmaMat
           sampCountyMod[, j] = sapply(1:length(clustersPerCounty), function(i) {mean(expit(sampCounty[i, j] + rnorm(clustersPerCounty[i], sd=clusterSigma)))})
           sampClusterOverSampDatRural[,j,i] = sampCounty[, j] + rnorm(47, sd=clusterSigma)
-          sampClusterOverSampDatUrban[,j,i] = sampClusterDatOverSampRural[, j]
+          sampClusterOverSampDatUrban[,j,i] = sampClusterOverSampDatRural[,j,i]
         }
       }
       sampCountyOverSampDat[,,i] = sampCounty
