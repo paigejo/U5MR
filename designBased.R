@@ -34,6 +34,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   sortI = matchMultiple(counties, easpc$County)
   clustersPerUrban = easpc$EAUrb[sortI]
   clustersPerRural = easpc$EARur[sortI]
+  clustersPerCounty = rowSums(cbind(clustersPerUrban, clustersPerRural))
   
   # Define formula
   if(includeUrbanRural) {
