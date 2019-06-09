@@ -1,5 +1,6 @@
-# validate the smoothing models by leaving out data from one county at a time
+library(kableExtra)
 
+# validate the smoothing models by leaving out data from one county at a time
 validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, counties=sort(unique(poppc$County)), 
                            startFrom=0, loadPreviousSPDEFits=FALSE) {
   
@@ -136,10 +137,8 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   tabInSample = rbind(mercerResults$mercerResultsInSample$scores, 
                       bym2I$bym2ResultsInSample$scores, 
                       bym2II$bym2ResultsInSample$scores, 
-                      bym2II$bym2ResultsModInSample$scores, 
                       bym2III$bym2ResultsInSample$scores, 
                       bym2IV$bym2ResultsInSample$scores, 
-                      bym2IV$bym2ResultsModInSample$scores, 
                       spdeI$spdeResultsInSample$scores, 
                       spdeII$spdeResultsInSample$scores, 
                       spdeIII$spdeResultsInSample$scores, 
@@ -151,10 +150,8 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   PITsInSample = list(mercer=mercerResults$mercerResultsInSample$pit, 
                       bym2I=bym2I$bym2ResultsInSample$pit, 
                       bym2II=bym2II$bym2ResultsInSample$pit, 
-                      bym2IIMod=bym2II$bym2ResultsModInSample$pit, 
                       bym2III=bym2III$bym2ResultsInSample$pit, 
                       bym2IV=bym2IV$bym2ResultsInSample$pit, 
-                      bym2IVMod=bym2IV$bym2ResultsModInSample$pit, 
                       spdeI=spdeI$spdeResultsInSample$pit, 
                       spdeII=spdeII$spdeResultsInSample$pit, 
                       spdeIII=spdeIII$spdeResultsInSample$pit, 
@@ -176,10 +173,8 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   PITsLeaveOutCounty = list(mercer=mercerResults$mercerResultsLeaveOutCounty$pit, 
                             bym2I=bym2I$bym2ResultsLeaveOutCounty$pit, 
                             bym2II=bym2II$bym2ResultsLeaveOutCounty$pit, 
-                            bym2IIMod=bym2II$bym2ResultsModLeaveOutCounty$pit, 
                             bym2III=bym2III$bym2ResultsLeaveOutCounty$pit, 
                             bym2IV=bym2IV$bym2ResultsLeaveOutCounty$pit, 
-                            bym2IVMod=bym2IV$bym2ResultsModLeaveOutCounty$pit, 
                             spdeI=spdeI$spdeResultsLeaveOutCounty$pit, 
                             spdeII=spdeII$spdeResultsLeaveOutCounty$pit, 
                             spdeIII=spdeIII$spdeResultsLeaveOutCounty$pit, 
@@ -197,10 +192,8 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   rownames(tabLeaveOutCluster) = c("BYM2 I", "BYM2 II", "BYM2 III", "BYM2 IV", "SPDE I", "SPDE II", "SPDE III", "SPDE IV")
   PITsLeaveOutCluster = list(bym2I=bym2I$bym2ResultsLeaveOutCluster$pit, 
                              bym2II=bym2II$bym2ResultsLeaveOutCluster$pit, 
-                             bym2IIMod=bym2II$bym2ResultsModLeaveOutCluster$pit, 
                              bym2III=bym2III$bym2ResultsLeaveOutCluster$pit, 
                              bym2IV=bym2IV$bym2ResultsLeaveOutCluster$pit, 
-                             bym2IVMod=bym2IV$bym2ResultsModLeaveOutCluster$pit, 
                              spdeI=spdeI$spdeResultsLeaveOutCluster$pit, 
                              spdeII=spdeII$spdeResultsLeaveOutCluster$pit, 
                              spdeIII=spdeIII$spdeResultsLeaveOutCluster$pit, 
@@ -210,10 +203,8 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   tabInSampleAll = rbind(mercerResults$mercerResultsInSample$allResults, 
                          bym2I$bym2ResultsInSample$allResults, 
                          bym2II$bym2ResultsInSample$allResults, 
-                         bym2II$bym2ResultsModInSample$allResults, 
                          bym2III$bym2ResultsInSample$allResults, 
                          bym2IV$bym2ResultsInSample$allResults, 
-                         bym2IV$bym2ResultsModInSample$allResults, 
                          spdeI$spdeResultsInSample$allResults, 
                          spdeII$spdeResultsInSample$allResults, 
                          spdeIII$spdeResultsInSample$allResults, 
@@ -222,10 +213,8 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   tabLeaveOutCountyAll = rbind(mercerResults$mercerResultsLeaveOutCounty$allResults, 
                                bym2I$bym2ResultsLeaveOutCounty$allResults, 
                                bym2II$bym2ResultsLeaveOutCounty$allResults, 
-                               bym2II$bym2ResultsModLeaveOutCounty$allResults, 
                                bym2III$bym2ResultsLeaveOutCounty$allResults, 
                                bym2IV$bym2ResultsLeaveOutCounty$allResults, 
-                               bym2IV$bym2ResultsModLeaveOutCounty$allResults, 
                                spdeI$spdeResultsLeaveOutCounty$allResults, 
                                spdeII$spdeResultsLeaveOutCounty$allResults, 
                                spdeIII$spdeResultsLeaveOutCounty$allResults, 
@@ -300,13 +289,102 @@ printValidationResults = function(resultNameRoot="Ed") {
   
   ## print out the scoring rule tables
   print("In sample results:")
-  print(xtable(validationResults$scoresInSample, digits=c(1, 3, -2, rep(3, ncol(validationResults$scoresInSample)-2)), 
-         display=c("s", "fg", "f", rep("fg", ncol(validationResults$scoresInSample)-2))), 
+  displayRow = "s"
+  displayIC = rep("f", 2)
+  displayMSE = rep("f", 3)
+  displayVar = rep("f", 3)
+  displayBias = rep("f", 3)
+  displayCRPS = "f"
+  display = c(displayRow, displayIC, displayMSE, displayVar, displayBias, displayCRPS)
+  colScaleIC = rep(1, 2)
+  colScaleMSE = rep(10^2, 3)
+  colScaleVar = rep(10^3, 3)
+  colScaleBias = rep(10^3, 3)
+  colScaleCRPS = 1
+  colScale = c(colScaleIC, colScaleMSE, colScaleVar, colScaleBias, colScaleCRPS)
+  colUnitsIC = rep("", 2)
+  colUnitsMSE = rep(" ($\\times 10^{-2}$)", 3)
+  colUnitsVar = rep(" ($\\times 10^{-3}$)", 3)
+  colUnitsBias = rep(" ($\\times 10^{-3}$)", 3)
+  colUnitsCRPS = ""
+  colUnits = c(colUnitsIC, colUnitsMSE, colUnitsVar, colUnitsBias, colUnitsCRPS)
+  digitsIC = rep(0, 2)
+  digitsMSE = rep(1, 3)
+  digitsVar = rep(1, 3)
+  digitsBias = rep(1, 3)
+  digitsCRPS = 2
+  colDigits = c(digitsIC, digitsMSE, digitsVar, digitsBias, digitsCRPS)
+  
+  tab = validationResults$scoresInSample
+  for(i in 1:ncol(tab)) {
+    tab[,i] = as.numeric(round(tab[,i] * colScale[i], digits=colDigits[i]))
+    colnames(tab)[i] = paste0(colnames(tab)[i], colUnits[i])
+  }
+  colnames(tab) = gsub(".", " ", colnames(tab), fixed=TRUE)
+  colnames(tab) = gsub("Urban", "Urb", colnames(tab), fixed=TRUE)
+  colnames(tab) = gsub("Rural", "Rur", colnames(tab), fixed=TRUE)
+  tab = tab[,-1] # filter out WAIC since it doesn't work for spatially correlated data
+  colDigits=colDigits[-1]
+  display=display[-1]
+  print(xtable(tab, digits=c(1,colDigits), display=display), 
         include.colnames=TRUE,
         hline.after=0, 
         math.style.exponents=TRUE, 
-        sanitize.text.function=function(x){x})
+        sanitize.text.function=function(x){x}, 
+        scalebox=0.5)
+  
+  # print(xtable(tab, digits=digits, display=display), 
+  #       include.colnames=TRUE,
+  #       hline.after=0, 
+  #       math.style.exponents=TRUE, 
+  #       sanitize.text.function=function(x){x}, 
+  #       scalebox=0.5)
   print("Leave out county results:")
+  
+  displayRow = "s"
+  displayMSE = rep("f", 3)
+  displayVar = rep("f", 3)
+  displayBias = rep("f", 3)
+  displayCPO = "f"
+  displayCRPS = "f"
+  display = c(displayRow, displayMSE, displayVar, displayBias, displayCPO, displayCRPS)
+  colScaleMSE = rep(10^2, 3)
+  colScaleVar = rep(10^3, 3)
+  colScaleBias = rep(10^3, 3)
+  colScaleCPO = 1
+  colScaleCRPS = 1
+  colScale = c(colScaleMSE, colScaleVar, colScaleBias, colScaleCPO, colScaleCRPS)
+  colUnitsMSE = rep(" ($\\times 10^{-2}$)", 3)
+  colUnitsVar = rep(" ($\\times 10^{-3}$)", 3)
+  colUnitsBias = rep(" ($\\times 10^{-3}$)", 3)
+  colUnitsCPO = ""
+  colUnitsCRPS = ""
+  colUnits = c(colUnitsMSE, colUnitsVar, colUnitsBias, colUnitsCPO, colUnitsCRPS)
+  digitsMSE = rep(1, 3)
+  digitsVar = rep(1, 3)
+  digitsBias = rep(1, 3)
+  digitsCPO = 2
+  digitsCRPS = 2
+  colDigits = c(digitsMSE, digitsVar, digitsBias, digitsCPO, digitsCRPS)
+  
+  tab = data.frame(validationResults$scoresLeaveOutCounty)
+  for(i in 1:ncol(tab)) {
+    tab[,i] = as.numeric(round(unlist(tab[,i]) * colScale[i], digits=colDigits[i]))
+    colnames(tab)[i] = paste0(colnames(tab)[i], colUnits[i])
+  }
+  colnames(tab) = gsub(".", " ", colnames(tab), fixed=TRUE)
+  colnames(tab) = gsub("Urban", "Urb", colnames(tab), fixed=TRUE)
+  colnames(tab) = gsub("Rural", "Rur", colnames(tab), fixed=TRUE)
+  print(xtable(tab, digits=c(1,colDigits), display=display), 
+        include.colnames=TRUE,
+        hline.after=0, 
+        math.style.exponents=TRUE, 
+        sanitize.text.function=function(x){x}, 
+        scalebox=0.5)
+  display = c(displayRow, displayIC, displayMSE, displayVar, displayBias, displayCPO, displayCRPS)
+  colScale = c(colScaleIC, colScaleMSE, colScaleVar, colScaleBias, colScaleCPO, colScaleCRPS)
+  colUnits = c(colUnitsIC, colUnitsMSE, colUnitsVar, colUnitsBias, colUnitsCPO, colUnitsCRPS)
+  colDigits = c(digitsIC, digitsMSE, digitsVar, digitsBias, digitsCPO, digitsCRPS)
   print(xtable(validationResults$scoresLeaveOutCounty, digits=c(1, 1, 1, rep(3, ncol(validationResults$scoresLeaveOutCounty)-2)), 
          display=c("s", "f", "f", rep("fg", ncol(validationResults$scoresLeaveOutCounty)-2))), 
         include.colnames=TRUE,

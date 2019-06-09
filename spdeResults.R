@@ -1478,8 +1478,12 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
       print(paste0("Fitting model with data from county ", i, "/", length(counties), " left out"))
     thisCountyName = counties[i]
     
+    thisCounty = clustDat$admin1 == thisCountyName
+    thisObsCounts = obsCounts
+    thisObsCounts[thisCounty] = NA
+    
     # fit model, get all predictions for each areal level and each posterior sample
-    fit = fitSPDEModel3(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
+    fit = fitSPDEModel3(obsCoords, obsNs=obsNs, thisObsCounts, obsUrban, predCoords, predNs=predNs, 
                         predUrban, clusterIndices=1:nrow(clustDat), genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
                         verbose = verbose, clusterEffect=includeClustEffect, 
                         int.strategy=int.strategy, genRegionLevel=FALSE, counties=sort(unique(kenyaEAs$admin1)), 

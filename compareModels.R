@@ -35,7 +35,8 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
                              tableFormat=c("2", "1"), colScale=c(10^4, 10^5, 100^2, 10^3, 100, 100), 
                              colUnits=c(" ($\\times 10^{-4}$)", " ($\\times 10^{-5}$)", " ($\\times 10^{-4}$)", 
                                         " ($\\times 10^{-3}$)", " ($\\times 10^{-2}$)", " ($\\times 10^{-2}$)"), 
-                             colDigits=c(1, 1, 1, 1, 0, 1), counties=sort(unique(poppc$admin1))) {
+                             colDigits=c(1, 1, 1, 1, 0, 1), counties=sort(unique(poppc$admin1)), 
+                             loadTempProgress=FALSE) {
   
   # match the arguments with their correct values
   resultType = match.arg(resultType)
@@ -81,7 +82,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
                  "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
   
   # compute the results if necessary
-  if(!loadResults) {
+  if(!loadResults && !loadTempProgress) {
     
     ## generate the true values at the county level for the 
     ## given settings if these are new settings
@@ -826,10 +827,25 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         #                     cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresspde))
       }
     }
+    
+    # save progress
+    runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                   "HHoldVar0urbanOverSamplefrac0", testText, bigText, sampling, 
+                   "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
+    
+    # first collect all the results. Save everything except for the postprocessing arguments: 
+    # produceFigures, digits
+    objectNames = ls()
+    objectNames = objectNames[-match(c("produceFigures", "xtable.args", "tableFormat", "colScale", 
+                                       "colUnits", "colDigits"), objectNames)]
+    save(list=objectNames, file=paste0("scoresTemp", runId, ".RData"))
   }
   else {
     # in this case, we have already computed the results so just load them into the environment
-    load(paste0("scores", runId, ".RData"))
+    if(loadResults)
+      load(paste0("scores", runId, ".RData"))
+    else if(loadTempProgress)
+      load(paste0("scoresTemp", runId, ".RData"))
     
     allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 Ia", "BYM2 IIa", "BYM2 IIa'", "BYM2 IIIa", "BYM2 IVa", "BYM2 IVa'", 
                  "BYM2 Ib", "BYM2 IIb", "BYM2 IIb'", "BYM2 IIIb", "BYM2 IVb", "BYM2 IVb'", 
