@@ -1067,20 +1067,20 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       parRowNames = c(parRowNames, rep("Smoothed Direct", nrow(mercerPar)))
     }
     if("BYM2 Ia" %in% models || "BYM2 Ib" %in% models) {
-      parTab = rbind(parTab, designResNoUrbClust[[2]])
-      parRowNames = c(parRowNames, rep("BYM2 I", nrow(designResNoUrbClust[[2]])))
+      parTab = rbind(parTab, designResNoUrbClust[[length(designResNoUrbClust)]])
+      parRowNames = c(parRowNames, rep("BYM2 I", nrow(designResNoUrbClust[[length(designResNoUrbClust)]])))
     }
     if("BYM2 IIa" %in% models || "BYM2 IIa'" %in% models || "BYM2 IIb" %in% models || "BYM2 IIb'" %in% models) {
-      parTab = rbind(parTab, designResNoUrb[[2]])
-      parRowNames = c(parRowNames, rep("BYM2 II", nrow(designResNoUrb[[2]])))
+      parTab = rbind(parTab, designResNoUrb[[length(designResNoUrb)]])
+      parRowNames = c(parRowNames, rep("BYM2 II", nrow(designResNoUrb[[length(designResNoUrb)]])))
     }
     if("BYM2 IIIa" %in% models || "BYM2 IIIb" %in% models || "BYM2 IIIa'" %in% models || "BYM2 IIIb'" %in% models) {
-      parTab = rbind(parTab, designResNoClust[[2]])
-      parRowNames = c(parRowNames, rep("BYM2 III", nrow(designResNoClust[[2]])))
+      parTab = rbind(parTab, designResNoClust[[length(designResNoClust)]])
+      parRowNames = c(parRowNames, rep("BYM2 III", nrow(designResNoClust[[length(designResNoClust)]])))
     }
     if("BYM2 IVa" %in% models || "BYM2 IVb" %in% models || "BYM2 IVa'" %in% models || "BYM2 IVb'" %in% models) {
-      parTab = rbind(parTab, designRes[[2]])
-      parRowNames = c(parRowNames, rep("BYM2 IV", nrow(designRes[[2]])))
+      parTab = rbind(parTab, designRes[[length(designRes)]])
+      parRowNames = c(parRowNames, rep("BYM2 IV", nrow(designRes[[length(designRes)]])))
     }
     spdeParIndices = c(1:2, 4:6) # leave out variance and width
     if("SPDE I" %in% models) {

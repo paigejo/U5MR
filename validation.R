@@ -92,13 +92,13 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   if(startFrom <= 6) {
     print("Validating SPDE II model...")
     spdeII = validateSPDEDat(clustDat = dat, directLogitEsts=directEstResults$logit.est, directLogitVars=directEstResults$var.est, 
-                             directVars=directEstResults$varProbScale, includeClustEffect = FALSE, urbanEffect = TRUE, saveResults = TRUE, 
+                             directVars=directEstResults$varProbScale, includeClustEffect = TRUE, urbanEffect = FALSE, saveResults = TRUE, 
                              loadPreviousFit=loadPreviousSPDEFits)
   }
   else {
     print("Loading SPDE II results...")
-    fileName = paste0("resultsSPDE", resultNameRoot, "ValidationAll", "_includeClustEffect", FALSE, 
-                      "_urbanEffect", TRUE, ".RData")
+    fileName = paste0("resultsSPDE", resultNameRoot, "ValidationAll", "_includeClustEffect", TRUE, 
+                      "_urbanEffect", FALSE, ".RData")
     load(fileName)
     spdeII = spdeResults
   }
@@ -106,13 +106,13 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   if(startFrom <= 7) {
     print("Validating SPDE III model...")
     spdeIII = validateSPDEDat(clustDat = dat, directLogitEsts=directEstResults$logit.est, directLogitVars=directEstResults$var.est, 
-                              directVars=directEstResults$varProbScale, includeClustEffect = TRUE, urbanEffect = FALSE, saveResults = TRUE, 
+                              directVars=directEstResults$varProbScale, includeClustEffect = FALSE, urbanEffect = TRUE, saveResults = TRUE, 
                               loadPreviousFit=loadPreviousSPDEFits)
   }
   else {
     print("Loading SPDE III results...")
-    fileName = paste0("resultsSPDE", resultNameRoot, "ValidationAll", "_includeClustEffect", TRUE, 
-                      "_urbanEffect", FALSE, ".RData")
+    fileName = paste0("resultsSPDE", resultNameRoot, "ValidationAll", "_includeClustEffect", FALSE, 
+                      "_urbanEffect", TRUE, ".RData")
     load(fileName)
     spdeIII = spdeResults
   }
@@ -332,6 +332,16 @@ printValidationResults = function(resultNameRoot="Ed") {
         math.style.exponents=TRUE, 
         sanitize.text.function=function(x){x}, 
         scalebox=0.5)
+  tab = t(tab)
+  colnames(tab) = gsub("SPDE ", "", colnames(tab), fixed=TRUE)
+  colnames(tab) = gsub("BYM2 ", "", colnames(tab), fixed=TRUE)
+  colnames(tab) = gsub("Smoothed Direct", " ", colnames(tab), fixed=TRUE)
+  temp = xtable2kable(xtable(tab), 
+                      include.colnames=TRUE,
+                      hline.after=0, 
+                      math.style.exponents=TRUE, 
+                      sanitize.text.function=function(x){x})
+  print(add_header_above(kable_styling(temp), c(" " = 1, "Smoothed Direct" = 1, "BYM2"=4, "SPDE"=4)))
   
   # print(xtable(tab, digits=digits, display=display), 
   #       include.colnames=TRUE,
@@ -375,22 +385,45 @@ printValidationResults = function(resultNameRoot="Ed") {
   colnames(tab) = gsub(".", " ", colnames(tab), fixed=TRUE)
   colnames(tab) = gsub("Urban", "Urb", colnames(tab), fixed=TRUE)
   colnames(tab) = gsub("Rural", "Rur", colnames(tab), fixed=TRUE)
+  # print(xtable(tab, digits=c(1,colDigits), display=display), 
+  #       include.colnames=TRUE,
+  #       hline.after=0, 
+  #       math.style.exponents=TRUE, 
+  #       sanitize.text.function=function(x){x}, 
+  #       scalebox=0.5)
   print(xtable(tab, digits=c(1,colDigits), display=display), 
         include.colnames=TRUE,
         hline.after=0, 
         math.style.exponents=TRUE, 
         sanitize.text.function=function(x){x}, 
         scalebox=0.5)
-  display = c(displayRow, displayIC, displayMSE, displayVar, displayBias, displayCPO, displayCRPS)
-  colScale = c(colScaleIC, colScaleMSE, colScaleVar, colScaleBias, colScaleCPO, colScaleCRPS)
-  colUnits = c(colUnitsIC, colUnitsMSE, colUnitsVar, colUnitsBias, colUnitsCPO, colUnitsCRPS)
-  colDigits = c(digitsIC, digitsMSE, digitsVar, digitsBias, digitsCPO, digitsCRPS)
-  print(xtable(validationResults$scoresLeaveOutCounty, digits=c(1, 1, 1, rep(3, ncol(validationResults$scoresLeaveOutCounty)-2)), 
-         display=c("s", "f", "f", rep("fg", ncol(validationResults$scoresLeaveOutCounty)-2))), 
+  tab = t(tab)
+  colnames(tab) = gsub("SPDE ", "", colnames(tab), fixed=TRUE)
+  colnames(tab) = gsub("BYM2 ", "", colnames(tab), fixed=TRUE)
+  colnames(tab) = gsub("Smoothed Direct", " ", colnames(tab), fixed=TRUE)
+  temp = xtable2kable(xtable(tab), 
+                      include.colnames=TRUE,
+                      hline.after=0, 
+                      math.style.exponents=TRUE, 
+                      sanitize.text.function=function(x){x})
+  add_header_above(kable_styling(temp), c(" " = 1, "Smoothed Direct" = 1, "BYM2"=4, "SPDE"=4))
+  
+  print("Leave out cluster results:")
+  colScale = colScaleCPO
+  colDigits = digitsCPO
+  colUnits = colUnitsCPO
+  display = c(displayRow, displayCPO)
+  tab = data.frame(validationResults$scoresLeaveOutCluster)
+  for(i in 1:ncol(tab)) {
+    tab[,i] = as.numeric(round(unlist(tab[,i]) * colScale[i], digits=colDigits[i]))
+    colnames(tab)[i] = paste0(colnames(tab)[i], colUnits[i])
+  }
+  print(xtable(tab, digits=c(1,colDigits), display=display), 
         include.colnames=TRUE,
         hline.after=0, 
         math.style.exponents=TRUE, 
-        sanitize.text.function=function(x){x})
+        sanitize.text.function=function(x){x}, 
+        scalebox=0.5)
 }
 
 

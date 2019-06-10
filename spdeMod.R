@@ -1313,17 +1313,11 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
       counties = as.character(counties)
       
       if(integrateByPixel) {
-        if(is.null(predCountyI))
-          mat = t(sapply(counties, function(countyName) {popGrid$admin1 == countyName}))
-        else
-          mat = matrix(popGrid$admin1 == counties[predCountyI], nrow=1)
+        mat = t(sapply(counties, function(countyName) {popGrid$admin1 == countyName}))
         mat = sweep(mat, 2, popGrid$popOrig, "*")
       }
       else {
-        if(is.null(predCountyI))
-          mat = t(sapply(counties, function(countyName) {eaDat$admin1 == countyName}))
-        else
-          mat = matrix(eaDat$admin1 == counties[predCountyI], nrow=1)
+        mat = t(sapply(counties, function(countyName) {eaDat$admin1 == countyName}))
         mat = sweep(mat, 2, eaDat$numChildren, "*")
       }
       sweep(mat, 1, 1/rowSums(mat), "*")
