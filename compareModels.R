@@ -855,7 +855,8 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     models = allModels[modelsI]
     
     # also, don't resave these results that we've already saved
-    saveResults = FALSE
+    if(!loadTempProgress)
+      saveResults = FALSE
   }
   
   # final table: 
