@@ -844,8 +844,11 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     # in this case, we have already computed the results so just load them into the environment
     if(loadResults)
       load(paste0("scores", runId, ".RData"))
-    else if(loadTempProgress)
+    else if(loadTempProgress) {
+      temp = loadTempProgress
       load(paste0("scoresTemp", runId, ".RData"))
+      loadTempProgress = temp
+    }
     
     allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 Ia", "BYM2 IIa", "BYM2 IIa'", "BYM2 IIIa", "BYM2 IVa", "BYM2 IVa'", 
                  "BYM2 Ib", "BYM2 IIb", "BYM2 IIb'", "BYM2 IIIb", "BYM2 IVb", "BYM2 IVb'", 
