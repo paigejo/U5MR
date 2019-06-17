@@ -36,7 +36,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
                              colUnits=c(" ($\\times 10^{-4}$)", " ($\\times 10^{-5}$)", " ($\\times 10^{-5}$)", 
                                         " ($\\times 10^{-3}$)", " ($\\times 10^{-2}$)", " ($\\times 10^{-2}$)"), 
                              colDigits=c(1, 1, 1, 1, 0, 1), counties=sort(unique(poppc$admin1)), 
-                             loadTempProgress=TRUE) {
+                             loadTempProgress=FALSE) {
   
   # match the arguments with their correct values
   resultType = match.arg(resultType)
@@ -440,7 +440,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     # compute scores
     scoresDirect = scoresNaive = scoresMercer = scoresBYMNoUrb = scoresBYM = scoresBYMNoUrbMod = scoresBYMMod = scoresBYMNoUrbClust = scoresBYMNoClust = 
       scoresBYMNoUrbPopAgg = scoresBYMPopAgg = scoresBYMNoUrbModPopAgg = scoresBYMModPopAgg = scoresBYMNoUrbClustPopAgg = scoresBYMNoClustPopAgg = 
-      scoresSPDENoUrb = scoresSPDE = data.frame()
+      scoresSPDENoUrbClust = scoresSPDENoUrb = scoresSPDENoClust = scoresSPDE = data.frame()
     
     # convert results to the desired aggregation level 
     # not including urban or cluster effect

@@ -1507,5 +1507,31 @@ dSumBinomSim = function(k, ns=25, ps=.5, nSim=1000) {
   cdf(k) - cdf(k - 1)
 }
 
+# function for adding on binomial variation to simulation draws
+# logitProbMat: matrix of simulated logit probability draws with nrows=length(nsList)=number of regions 
+#               and ncols=length(clustVars)=number of simulations
+# nsList: A list above vectors of length equal to the number of regions, where the length of each vector 
+#         corresponds to the number of EAs in that region, and the values within each vector are the 
+#         number of children in each EA
+# clustVars: a vector of length equal to ncol(logitProbMat), which is the number of probability draws 
+#            from the predictive distribution. Each element is the cluster variance from that predictive distributions 
+simBinVar = function(logitProbMat, nsList, clustVars=rep(0, nrow(logitProbMat))) {
+  ns = matrix(rep(ns, ncol(logitProbMat)), ncol=ncol(logitProbMat))
+  clustVars = matrix(rep(clustVars, nrow(logitProbMat)), nrow=nrow(logitProbMat))
+  mapply(simBinVarHelper, logitProb=logitProbMat, ns=ns, clustVar=clustVars)
+}
+
+# function for adding on binomial variation to simulation draws
+simBinVarHelper = function(logitProb, ns, clustVar=0) {
+  if(clustVar == 0)
+    logit(rbinom(1, expit(logitProb), sum(ns)) / sum(ns))
+  else
+    logit(sum(rbinom(length(ns), expit(logitProb + rnorm(length(ns), sd=sqrt(clustVar))), ns)) / sum(ns))
+}
+
+
+
+
+
 
 

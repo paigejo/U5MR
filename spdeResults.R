@@ -58,6 +58,9 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
   fileName = paste0("resultsSPDEBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
                     round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
                     "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, testText, ".RData")
+  fileNameTemp = paste0("resultsSPDEBetaTemp", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+                    round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
+                    "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, testText, ".RData")
   
   if(!loadProgress) {
     print("Generating SRS results")
@@ -68,7 +71,7 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
     
     # save our progress as we go
     if(saveResults)
-      save(spdeSRS, file=fileName)
+      save(spdeSRS, file=fileNameTemp)
   }
   else {
     # load our previous progress if necessary
@@ -947,9 +950,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                         int.strategy=int.strategy, genRegionLevel=genRegionLevel, 
                         keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
                         urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
-                        eaDat=eaDat, truthByCounty=truthByCounty, truthByRegion=truthByRegion, 
-                        truthByPixel=truthByPixel, nSamplePixel=nSamplePixel, 
-                        significance=significance)
+                        eaDat=eaDat, nSamplePixel=nSamplePixel, significance=significance)
     print(paste0("Fit completed: iteration ", i, "/", nsim))
     countyPreds = fit$countyPreds
     regionPreds = fit$regionPreds
