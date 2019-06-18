@@ -1093,7 +1093,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          predictionType=c("mean", "median"), eaDat=NULL, nSamplePixel=10, 
                          clusterEffect=FALSE, significance=.8, 
                          onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE, doValidation=FALSE, 
-                         previousResult=NULL, predCountyI=NULL) {
+                         previousResult=NULL, predCountyI=NULL, continuousOnly=FALSE) {
   
   if(!is.null(predCountyI) && !onlyInexact)
     stop("If generating predictions for a fixed county (i.e. predCountyI is not NULL) then onlyInexact currently must be set to TRUE")
@@ -1328,7 +1328,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     cat(".")
     
     # integrate over the EAs to get aggregated predictions
-    if(genEALevel && !onlyInexact) {
+    if(genEALevel && !onlyInexact && !continuousOnly) {
       predCountiesEa = eaDat$admin1
       
       countyBinomialIntegration = function(countyName) {
@@ -1385,7 +1385,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     cat(".")
     
     # integrate over the EAs to get aggregated predictions
-    if(genEALevel && !onlyInexact) {
+    if(genEALevel && !onlyInexact && !continuousOnly) {
       
       predCountiesEa = eaDat$admin1
       predRegionsEa = countyToRegion(predCountiesEa)
@@ -1409,7 +1409,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   
   # generate pixel level predictions if necessary
   # pixelsWithData = sort(unique(eaToPixel))
-  if(!onlyInexact) {
+  if(!onlyInexact && !continuousOnly) {
     eaToPixel = eaDat$pixelI
     pixelsWithData = unique(eaToPixel) # don't sort so that these indices matchup with the indices in truth
   }
@@ -1451,7 +1451,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     cat(".")
     
     # integrate over the EAs to get aggregated predictions
-    if(genEALevel && !onlyInexact) {
+    if(genEALevel && !onlyInexact && !continuousOnly) {
       # the following are respectively a matrix of probability draws from the county 
       # distributions and a list of county probability distributions
       if(is.null(eaDat))
