@@ -1409,7 +1409,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   
   # generate pixel level predictions if necessary
   # pixelsWithData = sort(unique(eaToPixel))
-  if(!onlyInexact && !continuousOnly) {
+  if(!onlyInexact || continuousOnly) {
     eaToPixel = eaDat$pixelI
     pixelsWithData = unique(eaToPixel) # don't sort so that these indices matchup with the indices in truth
   }
