@@ -184,11 +184,12 @@ getScoresSPDE = function(truth, numChildren, logitEst, est=NULL, var=NULL, probM
     var = sum((est - truth)^2) / length(est)
   }
   else if(!is.null(probMat)) {
-    if(is.null(var)) {
+    # if(is.null(var))
       # var = apply(probMat, 1, sd)^2
+    
+    if(is.null(var))
       est = rowMeans(probMat)
-      var = sum((est - truth)^2) / length(est)
-    }
+    var = sum((est - truth)^2) / length(est)
   }
   else {
     stop("For the SPDE model, either marginals or probMat must be provided")
