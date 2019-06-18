@@ -78,7 +78,8 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
     #   var = apply(probMat, 1, sd)^2
     if(is.null(est))
       est = rowMeans(probMat)
-    var = sum((est-truth)^2) / length(truth)
+    res = est-truth
+    var = mean((res - mean(res))^2)
   }
   else {
     quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(logitEst)), ncol=nsim, byrow=TRUE)
@@ -88,7 +89,8 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
     #   var = apply(pMat, 1, sd)^2
     if(is.null(est))
       est = rowMeans(probMat)
-    var = sum((est-truth)^2) / length(truth)
+    res = est-truth
+    var = mean((res - mean(res))^2)
   }
   
   # calculate predictive variance on the proportion scale
@@ -181,7 +183,8 @@ getScoresSPDE = function(truth, numChildren, logitEst, est=NULL, var=NULL, probM
     
     # var = sapply(1:length(pmfs), function(i) {sum(((0:numChildren[i]) / numChildren[i])^2 * pmfs[[i]]) - (sum(((0:numChildren[i]) / numChildren[i]) * pmfs[[i]]))^2})
     est = sapply(1:length(pmfs), function(i) {sum((0:length(pmfs[[i]])) * pmfs[[i]]) / length(pmfs[[i]])})
-    var = sum((est - truth)^2) / length(est)
+    res = est - truth
+    var = mean((res - mean(res))^2)
   }
   else if(!is.null(probMat)) {
     # if(is.null(var))
@@ -189,14 +192,15 @@ getScoresSPDE = function(truth, numChildren, logitEst, est=NULL, var=NULL, probM
     
     if(is.null(var))
       est = rowMeans(probMat)
-    var = sum((est - truth)^2) / length(est)
+    res = est - truth
+    var = mean((res - mean(res))^2)
   }
   else {
     stop("For the SPDE model, either marginals or probMat must be provided")
   }
   
   # calculate predictive variance on the proportion scale
-  thisVar = mean(var)
+  thisVar = var
   
   # if CIs are included, but binomial variation is not, calculate credible intervals based on them
   if(!(any(is.null(logitL)) || any(is.null(logitU))) && !bVar) {
