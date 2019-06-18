@@ -10,7 +10,7 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
                        genRegionLevel=TRUE, keepPixelPreds=TRUE, kmres=5, 
                        genEALevel=TRUE, urbanEffect=TRUE, tausq=0, 
                        saveResults=!test, margVar=.15^2, gamma=-1, 
-                       beta0=-1.75, loadProgress=FALSE) {
+                       beta0=-1.75, loadProgress=FALSE, continuousOnly=TRUE) {
   # Load data
   # load("simDataMulti.RData") # overSampDat, SRSDat
   # load a different 1 of these depending on whether a cluster effect should be included 
@@ -67,7 +67,8 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
     spdeSRS = resultsSPDEHelper3(clustSRS, eaDat, nPostSamples = nPostSamples, verbose=verbose,
                                  includeClustEffect=includeClustEffect, int.strategy=int.strategy,
                                  genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds,
-                                 genEALevel=genEALevel, urbanEffect=urbanEffect, kmres=kmres)
+                                 genEALevel=genEALevel, urbanEffect=urbanEffect, kmres=kmres, 
+                                 continuousOnly=continuousOnly)
     
     # save our progress as we go
     if(saveResults)
@@ -83,7 +84,8 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
   spdeOverSamp = resultsSPDEHelper3(clustOverSamp, eaDat, nPostSamples = nPostSamples, verbose=verbose, 
                                     includeClustEffect=includeClustEffect, int.strategy=int.strategy, 
                                     genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds, 
-                                    genEALevel=genEALevel, urbanEffect=urbanEffect, kmres=kmres)
+                                    genEALevel=genEALevel, urbanEffect=urbanEffect, kmres=kmres, 
+                                    continuousOnly=continuousOnly)
   
   if(saveResults)
     save(spdeSRS, spdeOverSamp, file=fileName)
@@ -818,7 +820,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                               genRegionLevel=TRUE, keepPixelPreds=TRUE, genEALevel=TRUE, 
                               urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
                               predictionType=c("mean", "median"), parClust=cl, calcCrps=TRUE, 
-                              significance=.8) {
+                              significance=.8, continuousOnly=FALSE) {
   
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
@@ -950,12 +952,18 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                         int.strategy=int.strategy, genRegionLevel=genRegionLevel, 
                         keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
                         urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
-                        eaDat=eaDat, nSamplePixel=nSamplePixel, significance=significance)
+                        eaDat=eaDat, nSamplePixel=nSamplePixel, significance=significance, 
+                        onlyInexact=continuousOnly)
     print(paste0("Fit completed: iteration ", i, "/", nsim))
     countyPreds = fit$countyPreds
     regionPreds = fit$regionPreds
     pixelPreds = fit$pixelPreds
     eaPreds = fit$eaPreds
+    
+    if(continuousOnly) {
+      warning("Since continuousOnly is set to TRUE, setting genEALevel to FALSE")
+      genEALevel = FALSE
+    }
     
     ## calculate model fit properties for each level of predictions
     
@@ -993,12 +1001,18 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
       scoresPixelInexact = getScoresSPDE(truthByPixel$truth, truthByPixel$n, thisu1mPixelInexact, 
                                          expit(thisu1mPixelInexact), bVar=FALSE, probMat=pixelPreds$pixelPredMatInexact)
       cat(".")
-      scoresPixelExact = getScoresSPDE(truthByPixel$truth, truthByPixel$n, thisu1mPixelExact, 
-                                       expit(thisu1mPixelExact), bVar=FALSE, probMat=pixelPreds$pixelPredMatExact)
-      cat(".")
-      scoresPixelExactBVar = getScoresSPDE(truthByPixel$truth, truthByPixel$n, thisu1mPixelExact, 
-                                           expit(thisu1mPixelExact), bVar=TRUE, pmfs=pixelPreds$pixelPredMatExactB)
-      cat(".")
+      if(!continuousOnly) {
+        scoresPixelExact = getScoresSPDE(truthByPixel$truth, truthByPixel$n, thisu1mPixelExact, 
+                                         expit(thisu1mPixelExact), bVar=FALSE, probMat=pixelPreds$pixelPredMatExact)
+        cat(".")
+        scoresPixelExactBVar = getScoresSPDE(truthByPixel$truth, truthByPixel$n, thisu1mPixelExact, 
+                                             expit(thisu1mPixelExact), bVar=TRUE, pmfs=pixelPreds$pixelPredMatExactB)
+        cat(".")
+      }
+      else {
+        scoresPixelExact = NA
+        scoresPixelExactBVar = NA
+      }
     }
     else {
       scoresPixelInexact = NA
@@ -1017,12 +1031,18 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     scoresCountyInexact = getScoresSPDE(truthByCounty$truth, truthByCounty$n, thisu1mCountyInexact, 
                                         expit(thisu1mCountyInexact), NULL, bVar=FALSE, probMat=countyPreds$countyPredMatInexact)
     cat(".")
-    scoresCountyExact = getScoresSPDE(truthByCounty$truth, truthByCounty$n, thisu1mCountyExact, 
-                                      expit(thisu1mCountyExact), NULL, bVar=FALSE, probMat=countyPreds$countyPredMatExact)
-    cat(".")
-    scoresCountyExactBVar = getScoresSPDE(truthByCounty$truth, truthByCounty$n, thisu1mCountyExact, 
-                                          expit(thisu1mCountyExact), NULL, bVar=TRUE, pmfs=countyPreds$countyPredMatExactB)
-    cat(".")
+    if(!continuousOnly) {
+      scoresCountyExact = getScoresSPDE(truthByCounty$truth, truthByCounty$n, thisu1mCountyExact, 
+                                        expit(thisu1mCountyExact), NULL, bVar=FALSE, probMat=countyPreds$countyPredMatExact)
+      cat(".")
+      scoresCountyExactBVar = getScoresSPDE(truthByCounty$truth, truthByCounty$n, thisu1mCountyExact, 
+                                            expit(thisu1mCountyExact), NULL, bVar=TRUE, pmfs=countyPreds$countyPredMatExactB)
+      cat(".")
+    }
+    else {
+      scoresCountyExact = NA
+      scoresCountyExactBVar = NA
+    }
     
     # region level
     if(genRegionLevel) {
@@ -1036,12 +1056,18 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
       scoresRegionInexact = getScoresSPDE(truthByRegion$truth, truthByRegion$n, thisu1mRegionInexact, 
                                           expit(thisu1mRegionInexact), NULL, bVar=FALSE, probMat=regionPreds$regionPredMatInexact)
       cat(".")
-      scoresRegionExact = getScoresSPDE(truthByRegion$truth, truthByRegion$n, thisu1mRegionExact, 
-                                        expit(thisu1mRegionExact), NULL, bVar=FALSE, probMat=regionPreds$regionPredMatExact)
-      cat(".")
-      scoresRegionExactBVar = getScoresSPDE(truthByRegion$truth, truthByRegion$n, thisu1mRegionExact, 
-                                            expit(thisu1mRegionExact), NULL, bVar=TRUE, pmfs=regionPreds$regionPredMatExactB)
-      cat(".")
+      if(!continuousOnly) {
+        scoresRegionExact = getScoresSPDE(truthByRegion$truth, truthByRegion$n, thisu1mRegionExact, 
+                                          expit(thisu1mRegionExact), NULL, bVar=FALSE, probMat=regionPreds$regionPredMatExact)
+        cat(".")
+        scoresRegionExactBVar = getScoresSPDE(truthByRegion$truth, truthByRegion$n, thisu1mRegionExact, 
+                                              expit(thisu1mRegionExact), NULL, bVar=TRUE, pmfs=regionPreds$regionPredMatExactB)
+        cat(".")
+      }
+      else {
+        scoresRegionExact = NA
+        scoresRegionExactBVar = NA
+      }
     }
     else {
       scoresRegionInexact = NA

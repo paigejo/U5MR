@@ -74,15 +74,21 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
   # calculate predictive variance at the proportion scale based on the joint simulation probability matrix 
   # if available or assume gaussian predictive distribution on the logit scale otherwise
   if(!is.null(probMat)) {
-    if(is.null(var))
-      var = apply(probMat, 1, sd)^2
+    # if(is.null(var))
+    #   var = apply(probMat, 1, sd)^2
+    if(is.null(est))
+      est = rowMeans(probMat)
+    var = sum((est-truth)^2) / length(truth)
   }
   else {
     quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(logitEst)), ncol=nsim, byrow=TRUE)
     logitP = matrix(qnorm(quantiles, logitEst, sd=sqrt(logitVar)), ncol=nsim)
     pMat = expit(logitP)
-    if(is.null(var))
-      var = apply(pMat, 1, sd)^2
+    # if(is.null(var))
+    #   var = apply(pMat, 1, sd)^2
+    if(is.null(est))
+      est = rowMeans(probMat)
+    var = sum((est-truth)^2) / length(truth)
   }
   
   # calculate predictive variance on the proportion scale
@@ -172,11 +178,17 @@ getScoresSPDE = function(truth, numChildren, logitEst, est=NULL, var=NULL, probM
   if(!is.null(pmfs)) {
     if(!bVar && is.null(probMat))
       stop("bVar FALSE, but only pmfs included")
-    var = sapply(1:length(pmfs), function(i) {sum(((0:numChildren[i]) / numChildren[i])^2 * pmfs[[i]]) - (sum(((0:numChildren[i]) / numChildren[i]) * pmfs[[i]]))^2})
+    
+    # var = sapply(1:length(pmfs), function(i) {sum(((0:numChildren[i]) / numChildren[i])^2 * pmfs[[i]]) - (sum(((0:numChildren[i]) / numChildren[i]) * pmfs[[i]]))^2})
+    est = sapply(1:length(pmfs), function(i) {sum((0:length(pmfs[[i]])) * pmfs[[i]]) / length(pmfs[[i]])})
+    var = sum((est - truth)^2) / length(est)
   }
   else if(!is.null(probMat)) {
-    if(is.null(var))
-      var = apply(probMat, 1, sd)^2
+    if(is.null(var)) {
+      # var = apply(probMat, 1, sd)^2
+      est = rowMeans(probMat)
+      var = sum((est - truth)^2) / length(est)
+    }
   }
   else {
     stop("For the SPDE model, either marginals or probMat must be provided")
@@ -1510,12 +1522,15 @@ dSumBinomSim = function(k, ns=25, ps=.5, nSim=1000) {
 # function for adding on binomial variation to simulation draws
 # logitProbMat: matrix of simulated logit probability draws with nrows=length(nsList)=number of regions 
 #               and ncols=length(clustVars)=number of simulations
-# nsList: A list above vectors of length equal to the number of regions, where the length of each vector 
+# nsList: If ms is NULL, a list of vectors of length equal to the number of regions, where the length of each vector 
 #         corresponds to the number of EAs in that region, and the values within each vector are the 
-#         number of children in each EA
+#         number of children in each EA. If ms is not NULL, this is a vector of assumed number of children
+#         per EA
 # clustVars: a vector of length equal to ncol(logitProbMat), which is the number of probability draws 
-#            from the predictive distribution. Each element is the cluster variance from that predictive distributions 
-simBinVar = function(logitProbMat, nsList, clustVars=rep(0, nrow(logitProbMat))) {
+#            from the predictive distribution. Each element is the cluster variance from that predictive 
+#            distributions draw
+# 
+simBinVar = function(logitProbMat, nsList, clustVars=rep(0, nrow(logitProbMat)), ms=NULL) {
   ns = matrix(rep(ns, ncol(logitProbMat)), ncol=ncol(logitProbMat))
   clustVars = matrix(rep(clustVars, nrow(logitProbMat)), nrow=nrow(logitProbMat))
   mapply(simBinVarHelper, logitProb=logitProbMat, ns=ns, clustVar=clustVars)
