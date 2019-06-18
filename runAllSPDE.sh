@@ -1,2 +1,2 @@
 #!/bin/bash
-sbatch --array=1-64 runAllSPDEMulti.sbatch
+sbatch --array=1-16 runAllSPDEMulti.sbatch

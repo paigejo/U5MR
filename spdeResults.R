@@ -995,7 +995,8 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
       # TODO: fix NA problem with CRPS
       # calculate estimates, but convert to the logit scale (estimates are the same with or without binomial variation)
       thisu1mPixelInexact = logit(rowMeans(pixelPreds$pixelPredMatInexact))
-      thisu1mPixelExact = logit(rowMeans(pixelPreds$pixelPredMatExact))
+      if(!continuousOnly)
+        thisu1mPixelExact = logit(rowMeans(pixelPreds$pixelPredMatExact))
       
       # scoring rules for all aggregation models
       scoresPixelInexact = getScoresSPDE(truthByPixel$truth, truthByPixel$n, thisu1mPixelInexact, 
@@ -1025,7 +1026,8 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     
     # first generate the county estimates
     thisu1mCountyInexact = logit(rowMeans(countyPreds$countyPredMatInexact))
-    thisu1mCountyExact = logit(rowMeans(countyPreds$countyPredMatExact))
+    if(!continuousOnly)
+      thisu1mCountyExact = logit(rowMeans(countyPreds$countyPredMatExact))
     
     # scoring rules for all aggregation models
     scoresCountyInexact = getScoresSPDE(truthByCounty$truth, truthByCounty$n, thisu1mCountyInexact, 
@@ -1050,7 +1052,8 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
       
       # first generate the region estimates
       thisu1mRegionInexact = logit(rowMeans(regionPreds$regionPredMatInexact))
-      thisu1mRegionExact = logit(rowMeans(regionPreds$regionPredMatExact))
+      if(!continuousOnly)
+        thisu1mRegionExact = logit(rowMeans(regionPreds$regionPredMatExact))
       
       # scoring rules for all aggregation models
       scoresRegionInexact = getScoresSPDE(truthByRegion$truth, truthByRegion$n, thisu1mRegionInexact, 
@@ -1224,7 +1227,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
   } else {
     # parallel version
     
-    results = foreach(i = 1:nsim, .combine=combineResults, .verbose=TRUE, .multicombine=TRUE, .export=ls()) %dopar% {
+    results = foreach(i = 1:nsim, .combine=combineResults, .verbose=TRUE, .multicombine=TRUE, .export=ls) %dopar% {
       mainFunction(i, FALSE)
     }
     
