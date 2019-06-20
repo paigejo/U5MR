@@ -33,7 +33,7 @@ expit <- function(x) {
 #       distributions from the logit scale
 # NOTE: Discrete, count level credible intervals are estimated based on the input probMat along with coverage and CRPS
 getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL, probMat=NULL, significance=.8, nsim=10, 
-                     do1row=TRUE) {
+                     do1row=TRUE, includeBVarResults=TRUE) {
   # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
   thisBias = bias(truth, logitEst, logit=FALSE, logitVar, n=1)
   
@@ -121,13 +121,20 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
     results = matrix(c(thisBias, thisVar, thisMSE, thisCRPSNoBinom, thisCRPSBinom, thisCoverageNoBinom, thisCoverageBinom, 
                        thisWidthNoBinom, thisWidthBinom), nrow=1)
     colnames(results) = c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")
-    as.data.frame(results)
+    
+    if(includeBVarResults)
+      as.data.frame(results)
+    else
+      as.data.frame(results)[1,c(1:4, 6, 8)]
   } else {
     results = matrix(c(thisBias, thisVar, thisMSE, thisCRPSNoBinom, thisCoverageNoBinom, thisWidthNoBinom, 
                        thisBias, thisVar, thisMSE, thisCRPSBinom, thisCoverageBinom, thisWidthBinom), 
                      nrow=2, byrow = TRUE)
     colnames(results) = c("bias", "var", "mse", "crps", "coverage", "length")
-    as.data.frame(results)
+    if(includeBVarResults)
+      as.data.frame(results)
+    else
+      as.data.frame(results)[1,]
   }
 }
 

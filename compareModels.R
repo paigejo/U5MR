@@ -24,8 +24,8 @@ source("scores.R")
 # saveResults: whether or not to save a disk image of the results
 # loadResults: if TRUE loads the saved disk image rather than recomputing results
 # xtable.args: the arguments passed to xtable for printing results
-# tableFormat: If "1", binomial scores are considered the same model as non-binomial scores. 
-#              If "2", binomial scores are put on extra rows of the printed table
+# tableFormat: if "1", binomial scores are considered the same model as non-binomial scores. 
+#             i "2", binomial scores are put on extra rows of the printed table
 runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1, 
                              beta0=-1.75, resultType=c("county", "pixel", "EA"), 
                              sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:19, 
@@ -36,7 +36,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
                              colUnits=c(" ($\\times 10^{-4}$)", " ($\\times 10^{-5}$)", " ($\\times 10^{-5}$)", 
                                         " ($\\times 10^{-3}$)", " ($\\times 10^{-2}$)", " ($\\times 10^{-2}$)"), 
                              colDigits=c(1, 1, 1, 1, 0, 1), counties=sort(unique(poppc$admin1)), 
-                             loadTempProgress=FALSE) {
+                             loadTempProgress=FALSE, includeBVarResults=FALSE, continuousSPDEonly=TRUE) {
   
   # match the arguments with their correct values
   resultType = match.arg(resultType)
@@ -69,9 +69,9 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   # allNames = c("Naive", "Direct ", "Smoothed Direct", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
   # allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer et al. Binom.", "BYM Binom. (no urb/clust)", "BYM Binom. (no urb)", "BYM Binom. (no clust)", "BYM Binom.", "SPDE Binom. (no urb)", "SPDE Binom.")
   # BYM models are in order of complexity: no urban/cluster, no urban, no cluster, full
-  allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 Ia", "BYM2 IIa", "BYM2 IIa'", "BYM2 IIIa", "BYM2 IVa", "BYM2 IVa'", 
-               "BYM2 Ib", "BYM2 IIb", "BYM2 IIb'", "BYM2 IIIb", "BYM2 IVb", "BYM2 IVb'", 
-               "SPDE I", "SPDE II", "SPDE III", "SPDE IV")
+  allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 ucA", "BYM2 uCA", "BYM2 uCa'", "BYM2 UcA", "BYM2 UCA", "BYM2 UCa'", 
+               "BYM2 uca", "BYM2 uCa", "BYM2 uCa'", "BYM2 Uca", "BYM2 UCa", "BYM2 UCa'", 
+               "SPDE uc", "SPDE uC", "SPDE Uc", "SPDE UC")
   allNamesBinomial = paste0(allNames, " Bin.")
   allModels = allNames
   models = allModels[modelsI]
@@ -134,7 +134,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         mercerPar = merceroverSampPar
       }
     }
-    if("BYM2 Ia" %in% models) {
+    if("BYM2 ucA" %in% models) {
       includeUrbanRural = FALSE
       includeCluster = FALSE
       aggregateByPopulation = FALSE
@@ -144,14 +144,22 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       if(sampling == "SRS") {
         designRes$overSampDat = NULL
         designRes$overSampDatPar = NULL
+        if(resultType == "pixel")
+          designRes[[1]] = designRes$SRSdatPixelUrban
+        else if(resultType == "EA")
+          designRes[[1]] = designRes$SRSdatClusterUrban
       }
       else {
         designRes$SRSdat = NULL
         designRes$SRSdatPar = NULL
+        if(resultType == "pixel")
+          designRes[[1]] = designRes$overSampDatPixelUrban
+        else if(resultType == "EA")
+          designRes[[1]] = designRes$overSampDatClusterUrban
       }
       designResNoUrbClust = designRes
     }
-    if("BYM2 IIa" %in% models) {
+    if("BYM2 uCA" %in% models) {
       includeUrbanRural = FALSE
       includeCluster = TRUE
       aggregateByPopulation = FALSE
@@ -160,50 +168,110 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       if(sampling == "SRS") {
         designRes$overSampDat = NULL
         designRes$overSampDatPar = NULL
+        if(resultType == "pixel")
+          designRes[[1]] = designRes$SRSdatPixelUrban
+        else if(resultType == "EA")
+          designRes[[1]] = designRes$SRSdatClusterUrban
       }
       else {
         designRes$SRSdat = NULL
         designRes$SRSdatPar = NULL
+        if(resultType == "pixel")
+          designRes[[1]] = designRes$overSampDatPixelUrban
+        else if(resultType == "EA")
+          designRes[[1]] = designRes$overSampDatClusterUrban
       }
       designResNoUrb = designRes
     }
-    if("BYM2 IIa'" %in% models) {
+    if("BYM2 uCa'" %in% models) {
       includeUrbanRural = FALSE
       includeCluster = TRUE
       aggregateByPopulation = FALSE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
                   includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "debiasedMaxDataSets", 100, testText, '.RData'))
-      if(sampling == "SRS")
+      if(sampling == "SRS") {
         designRes$overSampDat = NULL
-      else
+        designRes$overSampDatPar = NULL
+        if(resultType == "pixel")
+          designRes[[1]] = designRes$SRSdatPixelUrban
+        else if(resultType == "EA")
+          designRes[[1]] = designRes$SRSdatClusterUrban
+      }
+      else {
         designRes$SRSdat = NULL
+        designRes$SRSdatPar = NULL
+        if(resultType == "pixel")
+          designRes[[1]] = designRes$overSampDatPixelUrban
+        else if(resultType == "EA")
+          designRes[[1]] = designRes$overSampDatClusterUrban
+      }
       designResNoUrbMod = designRes
     }
-    if("BYM2 IIIa" %in% models) {
+    if("BYM2 UcA" %in% models) {
       includeUrbanRural = TRUE
       includeCluster = FALSE
       aggregateByPopulation = FALSE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
                   includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 100, testText, '.RData'))
-      if(sampling == "SRS")
+      if(sampling == "SRS") {
         designRes$overSampDat = NULL
-      else
+        designRes$overSampDatPar = NULL
+        if(resultType == "pixel") {
+          designRes[[2]] = designRes$SRSdatPixelUrban
+          designRes[[1]] = designRes$SRSdatPixelRural
+        }
+        else if(resultType == "EA") {
+          designRes[[2]] = designRes$SRSdatClusterUrban
+          designRes[[1]] = designRes$SRSdatClusterRural
+        }
+      }
+      else {
         designRes$SRSdat = NULL
+        designRes$SRSdatPar = NULL
+        if(resultType == "pixel") {
+          designRes[[2]] = designRes$overSampDatPixelUrban
+          designRes[[1]] = designRes$overSampDatPixelRural
+        }
+        else if(resultType == "EA") {
+          designRes[[2]] = designRes$overSampDatClusterUrban
+          designRes[[1]] = designRes$overSampDatClusterRural
+        }
+      }
       designResNoClust = designRes
     }
-    if("BYM2 IVa'" %in% models) {
+    if("BYM2 UCa'" %in% models) {
       includeUrbanRural = TRUE
       includeCluster = TRUE
       aggregateByPopulation = FALSE
       load(paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
                   includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "debiasedMaxDataSets", 100, testText, '.RData'))
-      if(sampling == "SRS")
+      if(sampling == "SRS") {
         designRes$overSampDat = NULL
-      else
+        designRes$overSampDatPar = NULL
+        if(resultType == "pixel") {
+          designRes[[2]] = designRes$SRSdatPixelUrban
+          designRes[[1]] = designRes$SRSdatPixelRural
+        }
+        else if(resultType == "EA") {
+          designRes[[2]] = designRes$SRSdatClusterUrban
+          designRes[[1]] = designRes$SRSdatClusterRural
+        }
+      }
+      else {
         designRes$SRSdat = NULL
+        designRes$SRSdatPar = NULL
+        if(resultType == "pixel") {
+          designRes[[2]] = designRes$overSampDatPixelUrban
+          designRes[[1]] = designRes$overSampDatPixelRural
+        }
+        else if(resultType == "EA") {
+          designRes[[2]] = designRes$overSampDatClusterUrban
+          designRes[[1]] = designRes$overSampDatClusterRural
+        }
+      }
       designResMod = designRes
     }
-    if("BYM2 IVa" %in% models) {
+    if("BYM2 UCA" %in% models) {
       includeUrbanRural = TRUE
       includeCluster = TRUE
       aggregateByPopulation = FALSE
@@ -212,14 +280,30 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       if(sampling == "SRS") {
         designRes$overSampDat = NULL
         designRes$overSampDatPar = NULL
+        if(resultType == "pixel") {
+          designRes[[2]] = designRes$SRSdatPixelUrban
+          designRes[[1]] = designRes$SRSdatPixelRural
+        }
+        else if(resultType == "EA") {
+          designRes[[2]] = designRes$SRSdatClusterUrban
+          designRes[[1]] = designRes$SRSdatClusterRural
+        }
       }
       else {
         designRes$SRSdat = NULL
         designRes$SRSdatPar = NULL
+        if(resultType == "pixel") {
+          designRes[[2]] = designRes$overSampDatPixelUrban
+          designRes[[1]] = designRes$overSampDatPixelRural
+        }
+        else if(resultType == "EA") {
+          designRes[[2]] = designRes$overSampDatClusterUrban
+          designRes[[1]] = designRes$overSampDatClusterRural
+        }
       }
       designResTemp = designRes
     }
-    if("BYM2 Ib" %in% models) {
+    if("BYM2 uca" %in% models) {
       includeUrbanRural = FALSE
       includeCluster = FALSE
       aggregateByPopulation = TRUE
@@ -229,14 +313,22 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       if(sampling == "SRS") {
         designRes$overSampDat = NULL
         designRes$overSampDatPar = NULL
+        if(resultType == "pixel")
+          designRes[[1]] = designRes$SRSdatPixelUrban
+        else if(resultType == "EA")
+          designRes[[1]] = designRes$SRSdatClusterUrban
       }
       else {
         designRes$SRSdat = NULL
         designRes$SRSdatPar = NULL
+        if(resultType == "pixel")
+          designRes[[1]] = designRes$overSampDatPixelUrban
+        else if(resultType == "EA")
+          designRes[[1]] = designRes$overSampDatClusterUrban
       }
       designResNoUrbClustPopAgg = designRes
     }
-    if("BYM2 IIb" %in% models) {
+    if("BYM2 uCa" %in% models) {
       includeUrbanRural = FALSE
       includeCluster = TRUE
       aggregateByPopulation = TRUE
@@ -245,14 +337,22 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       if(sampling == "SRS") {
         designRes$overSampDat = NULL
         designRes$overSampDatPar = NULL
+        if(resultType == "pixel")
+          designRes[[1]] = designRes$SRSdatPixelUrban
+        else if(resultType == "EA")
+          designRes[[1]] = designRes$SRSdatClusterUrban
       }
       else {
         designRes$SRSdat = NULL
         designRes$SRSdatPar = NULL
+        if(resultType == "pixel")
+          designRes[[1]] = designRes$overSampDatPixelUrban
+        else if(resultType == "EA")
+          designRes[[1]] = designRes$overSampDatClusterUrban
       }
       designResNoUrbPopAgg = designRes
     }
-    if("BYM2 IIb'" %in% models) {
+    if("BYM2 uCa'" %in% models) {
       includeUrbanRural = FALSE
       includeCluster = TRUE
       aggregateByPopulation = TRUE
@@ -261,14 +361,22 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       if(sampling == "SRS") {
         designRes$overSampDat = NULL
         designRes$overSampDatPar = NULL
+        if(resultType == "pixel")
+          designRes[[1]] = designRes$SRSdatPixelUrban
+        else if(resultType == "EA")
+          designRes[[1]] = designRes$SRSdatClusterUrban
       }
       else {
         designRes$SRSdat = NULL
         designRes$SRSdatPar = NULL
+        if(resultType == "pixel")
+          designRes[[1]] = designRes$overSampDatPixelUrban
+        else if(resultType == "EA")
+          designRes[[1]] = designRes$overSampDatClusterUrban
       }
       designResNoUrbModPopAgg = designRes
     }
-    if("BYM2 IIIb" %in% models) {
+    if("BYM2 Uca" %in% models) {
       includeUrbanRural = TRUE
       includeCluster = FALSE
       aggregateByPopulation = TRUE
@@ -277,14 +385,30 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       if(sampling == "SRS") {
         designRes$overSampDat = NULL
         designRes$overSampDatPar = NULL
+        if(resultType == "pixel") {
+          designRes[[2]] = designRes$SRSdatPixelUrban
+          designRes[[1]] = designRes$SRSdatPixelRural
+        }
+        else if(resultType == "EA") {
+          designRes[[2]] = designRes$SRSdatClusterUrban
+          designRes[[1]] = designRes$SRSdatClusterRural
+        }
       }
       else {
         designRes$SRSdat = NULL
         designRes$SRSdatPar = NULL
+        if(resultType == "pixel") {
+          designRes[[2]] = designRes$overSampDatPixelUrban
+          designRes[[1]] = designRes$overSampDatPixelRural
+        }
+        else if(resultType == "EA") {
+          designRes[[2]] = designRes$overSampDatClusterUrban
+          designRes[[1]] = designRes$overSampDatClusterRural
+        }
       }
       designResNoClustPopAgg = designRes
     }
-    if("BYM2 IVb'" %in% models) {
+    if("BYM2 UCa'" %in% models) {
       includeUrbanRural = TRUE
       includeCluster = TRUE
       aggregateByPopulation = TRUE
@@ -293,14 +417,30 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       if(sampling == "SRS") {
         designRes$overSampDat = NULL
         designRes$overSampDatPar = NULL
+        if(resultType == "pixel") {
+          designRes[[2]] = designRes$SRSdatPixelUrban
+          designRes[[1]] = designRes$SRSdatPixelRural
+        }
+        else if(resultType == "EA") {
+          designRes[[2]] = designRes$SRSdatClusterUrban
+          designRes[[1]] = designRes$SRSdatClusterRural
+        }
       }
       else {
         designRes$SRSdat = NULL
         designRes$SRSdatPar = NULL
+        if(resultType == "pixel") {
+          designRes[[2]] = designRes$overSampDatPixelUrban
+          designRes[[1]] = designRes$overSampDatPixelRural
+        }
+        else if(resultType == "EA") {
+          designRes[[2]] = designRes$overSampDatClusterUrban
+          designRes[[1]] = designRes$overSampDatClusterRural
+        }
       }
       designResModPopAgg = designRes
     }
-    if("BYM2 IVb" %in% models) {
+    if("BYM2 UCa" %in% models) {
       includeUrbanRural = TRUE
       includeCluster = TRUE
       aggregateByPopulation = TRUE
@@ -309,16 +449,32 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       if(sampling == "SRS") {
         designRes$overSampDat = NULL
         designRes$overSampDatPar = NULL
+        if(resultType == "pixel") {
+          designRes[[2]] = designRes$SRSdatPixelUrban
+          designRes[[1]] = designRes$SRSdatPixelRural
+        }
+        else if(resultType == "EA") {
+          designRes[[2]] = designRes$SRSdatClusterUrban
+          designRes[[1]] = designRes$SRSdatClusterRural
+        }
       }
       else {
         designRes$SRSdat = NULL
         designRes$SRSdatPar = NULL
+        if(resultType == "pixel") {
+          designRes[[2]] = designRes$overSampDatPixelUrban
+          designRes[[1]] = designRes$overSampDatPixelRural
+        }
+        else if(resultType == "EA") {
+          designRes[[2]] = designRes$overSampDatClusterUrban
+          designRes[[1]] = designRes$overSampDatClusterRural
+        }
       }
       designResPopAgg = designRes
     }
-    if("BYM2 IVa" %in% models)
+    if("BYM2 UCA" %in% models)
       designRes = designResTemp
-    if("SPDE I" %in% models) {
+    if("SPDE uc" %in% models) {
       urbanEffect = FALSE
       includeClustEffect = FALSE
       testText = ifelse(test, "Test", "")
@@ -331,7 +487,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       else
         spdeNoUrbClust = spdeOverSamp
     }
-    if("SPDE II" %in% models) {
+    if("SPDE uC" %in% models) {
       urbanEffect = FALSE
       includeClustEffect = TRUE
       testText = ifelse(test, "Test", "")
@@ -344,7 +500,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       else
         spdeNoUrb = spdeOverSamp
     }
-    if("SPDE III" %in% models) {
+    if("SPDE Uc" %in% models) {
       urbanEffect = TRUE
       includeClustEffect = FALSE
       testText = ifelse(test, "Test", "")
@@ -357,7 +513,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       else
         spdeNoClust = spdeOverSamp
     }
-    if("SPDE IV" %in% models) {
+    if("SPDE UC" %in% models) {
       urbanEffect = TRUE
       includeClustEffect = TRUE
       testText = ifelse(test, "Test", "")
@@ -393,8 +549,17 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     # }
     
     # function for generating discrete model pixel and EA level predictions 
-    # given the county level predictions
-    getSubLevelResults = function(resultTable) {
+    # given the county level predictions. In the case that two result tables are given, 
+    # the first is assumed to be for rural areas, and the second is for urban areas. 
+    # Also, urbanVec is a vector of urban logical labels for the desired aggregation level
+    getSubLevelResults = function(resultTable, resultTableUrban=NULL, urbanVec=NULL) {
+      if(!is.null(resultTableUrban) && !is.null(urbanVec)) {
+        tabRural = getSubLevelResults(resultTableRural)
+        tabUrban = getSubLevelResults(resultTableUrban)
+        tabRural[urbanVec,] = tabUrban[UrbanVec,]
+        return(tabRural)
+      }
+      
       # get the order of the counties that resultTable is in
       counties = sort(unique(eaDat$admin1))
       
@@ -444,7 +609,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     
     # convert results to the desired aggregation level 
     # not including urban or cluster effect
-    if("BYM2 Ia" %in% models) {
+    if("BYM2 ucA" %in% models) {
       designResNoUrbClust[[1]]$Q10 = getSubLevelResults(designResNoUrbClust[[1]]$Q10)
       designResNoUrbClust[[1]]$Q50 = getSubLevelResults(designResNoUrbClust[[1]]$Q50)
       designResNoUrbClust[[1]]$Q90 = getSubLevelResults(designResNoUrbClust[[1]]$Q90)
@@ -453,7 +618,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     }
     
     # not including urban effect
-    if("BYM2 IIa" %in% models) {
+    if("BYM2 uCA" %in% models) {
       designResNoUrb[[1]]$Q10 = getSubLevelResults(designResNoUrb[[1]]$Q10)
       designResNoUrb[[1]]$Q50 = getSubLevelResults(designResNoUrb[[1]]$Q50)
       designResNoUrb[[1]]$Q90 = getSubLevelResults(designResNoUrb[[1]]$Q90)
@@ -462,25 +627,48 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     }
     
     # including urban effect
-    if("BYM2 IIIa" %in% models) {
-      designResNoClust[[1]]$Q10 = getSubLevelResults(designResNoClust[[1]]$Q10)
-      designResNoClust[[1]]$Q50 = getSubLevelResults(designResNoClust[[1]]$Q50)
-      designResNoClust[[1]]$Q90 = getSubLevelResults(designResNoClust[[1]]$Q90)
-      designResNoClust[[1]]$mean = getSubLevelResults(designResNoClust[[1]]$mean)
-      designResNoClust[[1]]$stddev = getSubLevelResults(designResNoClust[[1]]$stddev)
+    if("BYM2 UcA" %in% models) {
+      if(resultType != "county") {
+        designResNoClust[[1]]$Q10 = getSubLevelResults(designResNoClust[[1]]$Q10, designResNoClust[[2]]$Q10, truth$urban)
+        designResNoClust[[1]]$Q50 = getSubLevelResults(designResNoClust[[1]]$Q50, designResNoClust[[2]]$Q50, truth$urban)
+        designResNoClust[[1]]$Q90 = getSubLevelResults(designResNoClust[[1]]$Q90, designResNoClust[[2]]$Q90, truth$urban)
+        designResNoClust[[1]]$mean = getSubLevelResults(designResNoClust[[1]]$mean, designResNoClust[[2]]$mean, truth$urban)
+        designResNoClust[[1]]$stddev = getSubLevelResults(designResNoClust[[1]]$stddev, designResNoClust[[2]]$stddev, truth$urban)
+      }
+      else {
+        designResNoClust[[1]]$Q10 = getSubLevelResults(designResNoClust[[1]]$Q10)
+        designResNoClust[[1]]$Q50 = getSubLevelResults(designResNoClust[[1]]$Q50)
+        designResNoClust[[1]]$Q90 = getSubLevelResults(designResNoClust[[1]]$Q90)
+        designResNoClust[[1]]$mean = getSubLevelResults(designResNoClust[[1]]$mean)
+        designResNoClust[[1]]$stddev = getSubLevelResults(designResNoClust[[1]]$stddev)
+      }
     }
     
     # including urban effect
-    if("BYM2 IVa" %in% models) {
-      designRes[[1]]$Q10 = getSubLevelResults(designRes[[1]]$Q10)
-      designRes[[1]]$Q50 = getSubLevelResults(designRes[[1]]$Q50)
-      designRes[[1]]$Q90 = getSubLevelResults(designRes[[1]]$Q90)
-      designRes[[1]]$mean = getSubLevelResults(designRes[[1]]$mean)
-      designRes[[1]]$stddev = getSubLevelResults(designRes[[1]]$stddev)
+    if("BYM2 UCA" %in% models) {
+      designRes[[1]]$Q10 = getSubLevelResults(designRes[[1]]$Q10, designRes[[2]]$Q10, truth$urban)
+      designRes[[1]]$Q50 = getSubLevelResults(designRes[[1]]$Q50, designRes[[2]]$Q50, truth$urban)
+      designRes[[1]]$Q90 = getSubLevelResults(designRes[[1]]$Q90, designRes[[2]]$Q90, truth$urban)
+      designRes[[1]]$mean = getSubLevelResults(designRes[[1]]$mean, designRes[[2]]$mean, truth$urban)
+      designRes[[1]]$stddev = getSubLevelResults(designRes[[1]]$stddev, designRes[[2]]$stddev, truth$urban)
+      if(resultType != "county") {
+        designRes[[1]]$Q10 = getSubLevelResults(designRes[[1]]$Q10, designRes[[2]]$Q10, truth$urban)
+        designRes[[1]]$Q50 = getSubLevelResults(designRes[[1]]$Q50, designRes[[2]]$Q50, truth$urban)
+        designRes[[1]]$Q90 = getSubLevelResults(designRes[[1]]$Q90, designRes[[2]]$Q90, truth$urban)
+        designRes[[1]]$mean = getSubLevelResults(designRes[[1]]$mean, designRes[[2]]$mean, truth$urban)
+        designRes[[1]]$stddev = getSubLevelResults(designRes[[1]]$stddev, designRes[[2]]$stddev, truth$urban)
+      }
+      else {
+        designRes[[1]]$Q10 = getSubLevelResults(designRes[[1]]$Q10)
+        designRes[[1]]$Q50 = getSubLevelResults(designRes[[1]]$Q50)
+        designRes[[1]]$Q90 = getSubLevelResults(designRes[[1]]$Q90)
+        designRes[[1]]$mean = getSubLevelResults(designRes[[1]]$mean)
+        designRes[[1]]$stddev = getSubLevelResults(designRes[[1]]$stddev)
+      }
     }
     
     # not including urban effect, modified to be debiased using marginal rather than conditional effect as prediction
-    if("BYM2 IIa'" %in% models) {
+    if("BYM2 uCa'" %in% models) {
       designResNoUrbMod[[1]]$Q10 = getSubLevelResults(designResNoUrbMod[[1]]$Q10)
       designResNoUrbMod[[1]]$Q50 = getSubLevelResults(designResNoUrbMod[[1]]$Q50)
       designResNoUrbMod[[1]]$Q90 = getSubLevelResults(designResNoUrbMod[[1]]$Q90)
@@ -489,15 +677,29 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     }
     
     # including urban effect, modified to be debiased using marginal rather than conditional effect as prediction
-    if("BYM2 IVa'" %in% models) {
-      designResMod[[1]]$Q10 = getSubLevelResults(designResMod[[1]]$Q10)
-      designResMod[[1]]$Q50 = getSubLevelResults(designResMod[[1]]$Q50)
-      designResMod[[1]]$Q90 = getSubLevelResults(designResMod[[1]]$Q90)
-      designResMod[[1]]$mean = getSubLevelResults(designResMod[[1]]$mean)
-      designResMod[[1]]$stddev = getSubLevelResults(designResMod[[1]]$stddev)
+    if("BYM2 UCa'" %in% models) {
+      designResMod[[1]]$Q10 = getSubLevelResults(designResMod[[1]]$Q10, designResMod[[2]]$Q10, truth$urban)
+      designResMod[[1]]$Q50 = getSubLevelResults(designResMod[[1]]$Q50, designResMod[[2]]$Q50, truth$urban)
+      designResMod[[1]]$Q90 = getSubLevelResults(designResMod[[1]]$Q90, designResMod[[2]]$Q90, truth$urban)
+      designResMod[[1]]$mean = getSubLevelResults(designResMod[[1]]$mean, designResMod[[2]]$mean, truth$urban)
+      designResMod[[1]]$stddev = getSubLevelResults(designResMod[[1]]$stddev, designResMod[[2]]$stddev, truth$urban)
+      if(resultType != "county") {
+        designResMod[[1]]$Q10 = getSubLevelResults(designResMod[[1]]$Q10, designResMod[[2]]$Q10, truth$urban)
+        designResMod[[1]]$Q50 = getSubLevelResults(designResMod[[1]]$Q50, designResMod[[2]]$Q50, truth$urban)
+        designResMod[[1]]$Q90 = getSubLevelResults(designResMod[[1]]$Q90, designResMod[[2]]$Q90, truth$urban)
+        designResMod[[1]]$mean = getSubLevelResults(designResMod[[1]]$mean, designResMod[[2]]$mean, truth$urban)
+        designResMod[[1]]$stddev = getSubLevelResults(designResMod[[1]]$stddev, designResMod[[2]]$stddev, truth$urban)
+      }
+      else {
+        designResMod[[1]]$Q10 = getSubLevelResults(designResMod[[1]]$Q10)
+        designResMod[[1]]$Q50 = getSubLevelResults(designResMod[[1]]$Q50)
+        designResMod[[1]]$Q90 = getSubLevelResults(designResMod[[1]]$Q90)
+        designResMod[[1]]$mean = getSubLevelResults(designResMod[[1]]$mean)
+        designResMod[[1]]$stddev = getSubLevelResults(designResMod[[1]]$stddev)
+      }
     }
     
-    if("BYM2 Ib" %in% models) {
+    if("BYM2 uca" %in% models) {
       designResNoUrbClustPopAgg[[1]]$Q10 = getSubLevelResults(designResNoUrbClustPopAgg[[1]]$Q10)
       designResNoUrbClustPopAgg[[1]]$Q50 = getSubLevelResults(designResNoUrbClustPopAgg[[1]]$Q50)
       designResNoUrbClustPopAgg[[1]]$Q90 = getSubLevelResults(designResNoUrbClustPopAgg[[1]]$Q90)
@@ -506,7 +708,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     }
     
     # not including urban effect
-    if("BYM2 IIb" %in% models) {
+    if("BYM2 uCa" %in% models) {
       designResNoUrbPopAgg[[1]]$Q10 = getSubLevelResults(designResNoUrbPopAgg[[1]]$Q10)
       designResNoUrbPopAgg[[1]]$Q50 = getSubLevelResults(designResNoUrbPopAgg[[1]]$Q50)
       designResNoUrbPopAgg[[1]]$Q90 = getSubLevelResults(designResNoUrbPopAgg[[1]]$Q90)
@@ -515,25 +717,43 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     }
     
     # including urban effect
-    if("BYM2 IIIb" %in% models) {
-      designResNoClustPopAgg[[1]]$Q10 = getSubLevelResults(designResNoClustPopAgg[[1]]$Q10)
-      designResNoClustPopAgg[[1]]$Q50 = getSubLevelResults(designResNoClustPopAgg[[1]]$Q50)
-      designResNoClustPopAgg[[1]]$Q90 = getSubLevelResults(designResNoClustPopAgg[[1]]$Q90)
-      designResNoClustPopAgg[[1]]$mean = getSubLevelResults(designResNoClustPopAgg[[1]]$mean)
-      designResNoClustPopAgg[[1]]$stddev = getSubLevelResults(designResNoClustPopAgg[[1]]$stddev)
+    if("BYM2 Uca" %in% models) {
+      if(resultType != "county") {
+        designResNoClustPopAgg[[1]]$Q10 = getSubLevelResults(designResNoClustPopAgg[[1]]$Q10, designResNoClustPopAgg[[2]]$Q10, truth$urban)
+        designResNoClustPopAgg[[1]]$Q50 = getSubLevelResults(designResNoClustPopAgg[[1]]$Q50, designResNoClustPopAgg[[2]]$Q50, truth$urban)
+        designResNoClustPopAgg[[1]]$Q90 = getSubLevelResults(designResNoClustPopAgg[[1]]$Q90, designResNoClustPopAgg[[2]]$Q90, truth$urban)
+        designResNoClustPopAgg[[1]]$mean = getSubLevelResults(designResNoClustPopAgg[[1]]$mean, designResNoClustPopAgg[[2]]$mean, truth$urban)
+        designResNoClustPopAgg[[1]]$stddev = getSubLevelResults(designResNoClustPopAgg[[1]]$stddev, designResNoClustPopAgg[[2]]$stddev, truth$urban)
+      }
+      else {
+        designResNoClustPopAgg[[1]]$Q10 = getSubLevelResults(designResNoClustPopAgg[[1]]$Q10)
+        designResNoClustPopAgg[[1]]$Q50 = getSubLevelResults(designResNoClustPopAgg[[1]]$Q50)
+        designResNoClustPopAgg[[1]]$Q90 = getSubLevelResults(designResNoClustPopAgg[[1]]$Q90)
+        designResNoClustPopAgg[[1]]$mean = getSubLevelResults(designResNoClustPopAgg[[1]]$mean)
+        designResNoClustPopAgg[[1]]$stddev = getSubLevelResults(designResNoClustPopAgg[[1]]$stddev)
+      }
     }
     
     # including urban effect
-    if("BYM2 IVb" %in% models) {
-      designResPopAgg[[1]]$Q10 = getSubLevelResults(designResPopAgg[[1]]$Q10)
-      designResPopAgg[[1]]$Q50 = getSubLevelResults(designResPopAgg[[1]]$Q50)
-      designResPopAgg[[1]]$Q90 = getSubLevelResults(designResPopAgg[[1]]$Q90)
-      designResPopAgg[[1]]$mean = getSubLevelResults(designResPopAgg[[1]]$mean)
-      designResPopAgg[[1]]$stddev = getSubLevelResults(designResPopAgg[[1]]$stddev)
+    if("BYM2 UCa" %in% models) {
+      if(resultType != "county") {
+        designResPopAgg[[1]]$Q10 = getSubLevelResults(designResPopAgg[[1]]$Q10, designResPopAgg[[2]]$Q10, truth$urban)
+        designResPopAgg[[1]]$Q50 = getSubLevelResults(designResPopAgg[[1]]$Q50, designResPopAgg[[2]]$Q50, truth$urban)
+        designResPopAgg[[1]]$Q90 = getSubLevelResults(designResPopAgg[[1]]$Q90, designResPopAgg[[2]]$Q90, truth$urban)
+        designResPopAgg[[1]]$mean = getSubLevelResults(designResPopAgg[[1]]$mean, designResPopAgg[[2]]$mean, truth$urban)
+        designResPopAgg[[1]]$stddev = getSubLevelResults(designResPopAgg[[1]]$stddev, designResPopAgg[[2]]$stddev, truth$urban)
+      }
+      else {
+        designResPopAgg[[1]]$Q10 = getSubLevelResults(designResPopAgg[[1]]$Q10)
+        designResPopAgg[[1]]$Q50 = getSubLevelResults(designResPopAgg[[1]]$Q50)
+        designResPopAgg[[1]]$Q90 = getSubLevelResults(designResPopAgg[[1]]$Q90)
+        designResPopAgg[[1]]$mean = getSubLevelResults(designResPopAgg[[1]]$mean)
+        designResPopAgg[[1]]$stddev = getSubLevelResults(designResPopAgg[[1]]$stddev)
+      }
     }
     
     # not including urban effect, modified to be debiased using marginal rather than conditional effect as prediction
-    if("BYM2 IIb'" %in% models) {
+    if("BYM2 uCa'" %in% models) {
       designResNoUrbModPopAgg[[1]]$Q10 = getSubLevelResults(designResNoUrbModPopAgg[[1]]$Q10)
       designResNoUrbModPopAgg[[1]]$Q50 = getSubLevelResults(designResNoUrbModPopAgg[[1]]$Q50)
       designResNoUrbModPopAgg[[1]]$Q90 = getSubLevelResults(designResNoUrbModPopAgg[[1]]$Q90)
@@ -542,12 +762,21 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     }
     
     # including urban effect, modified to be debiased using marginal rather than conditional effect as prediction
-    if("BYM2 IVb'" %in% models) {
-      designResModPopAgg[[1]]$Q10 = getSubLevelResults(designResModPopAgg[[1]]$Q10)
-      designResModPopAgg[[1]]$Q50 = getSubLevelResults(designResModPopAgg[[1]]$Q50)
-      designResModPopAgg[[1]]$Q90 = getSubLevelResults(designResModPopAgg[[1]]$Q90)
-      designResModPopAgg[[1]]$mean = getSubLevelResults(designResModPopAgg[[1]]$mean)
-      designResModPopAgg[[1]]$stddev = getSubLevelResults(designResModPopAgg[[1]]$stddev)
+    if("BYM2 UCa'" %in% models) {
+      if(resultType != "county") {
+        designResModPopAgg[[1]]$Q10 = getSubLevelResults(designResModPopAgg[[1]]$Q10, designResModPopAgg[[2]]$Q10, truth$urban)
+        designResModPopAgg[[1]]$Q50 = getSubLevelResults(designResModPopAgg[[1]]$Q50, designResModPopAgg[[2]]$Q50, truth$urban)
+        designResModPopAgg[[1]]$Q90 = getSubLevelResults(designResModPopAgg[[1]]$Q90, designResModPopAgg[[2]]$Q90, truth$urban)
+        designResModPopAgg[[1]]$mean = getSubLevelResults(designResModPopAgg[[1]]$mean, designResModPopAgg[[2]]$mean, truth$urban)
+        designResModPopAgg[[1]]$stddev = getSubLevelResults(designResModPopAgg[[1]]$stddev, designResModPopAgg[[2]]$stddev, truth$urban)
+      }
+      else {
+        designResModPopAgg[[1]]$Q10 = getSubLevelResults(designResModPopAgg[[1]]$Q10)
+        designResModPopAgg[[1]]$Q50 = getSubLevelResults(designResModPopAgg[[1]]$Q50)
+        designResModPopAgg[[1]]$Q90 = getSubLevelResults(designResModPopAgg[[1]]$Q90)
+        designResModPopAgg[[1]]$mean = getSubLevelResults(designResModPopAgg[[1]]$mean)
+        designResModPopAgg[[1]]$stddev = getSubLevelResults(designResModPopAgg[[1]]$stddev)
+      }
     }
     
     for(i in c(1:maxDataSets)) { # for problem fitting mercerSRS for SRS sampling, tausq=0
@@ -566,30 +795,30 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       if("Smoothed Direct" %in% models)
         merceri = getSubLevelResults(mercer[[i]])
       if(resultType != "county") {
-        # if("SPDE I" %in% models)
+        # if("SPDE uc" %in% models)
         #   spdeNoUrbClusti = spdeNoUrbClust[[resultName]][[i]][as.numeric(as.character(truth[[resultType]])),]
-        # if("SPDE II" %in% models)
+        # if("SPDE uC" %in% models)
         #   spdeNoUrbi = spdeNoUrb[[resultName]][[i]][as.numeric(as.character(truth[[resultType]])),]
-        # if("SPDE III" %in% models)
+        # if("SPDE Uc" %in% models)
         #   spdeNoClusti = spdeNoClust[[resultName]][[i]][as.numeric(as.character(truth[[resultType]])),]
-        # if("SPDE IV" %in% models)
+        # if("SPDE UC" %in% models)
         #   spdei = spde[[resultName]][[i]][as.numeric(as.character(truth[[resultType]])),]
         if("Direct" %in% models)
           directEsti = getSubLevelResults(directEst[[i]])
       } else {
-        # if("SPDE I" %in% models)
+        # if("SPDE uc" %in% models)
         #   spdeNoUrbClusti = spdeNoUrbClust[[resultName]][[i]]
-        # if("SPDE II" %in% models)
+        # if("SPDE uC" %in% models)
         #   spdeNoUrbi = spdeNoUrb[[resultName]][[i]]
-        # if("SPDE III" %in% models)
+        # if("SPDE Uc" %in% models)
         #   spdeNoClusti = spdeNoClust[[resultName]][[i]]
-        # if("SPDE IV" %in% models)
+        # if("SPDE UC" %in% models)
         #   spdei = spde[[resultName]][[i]]
       }
       
       if(resultType == "EA") {
         # set first row of spde results to be the EA index
-        # if("SPDE I" %in% models) {
+        # if("SPDE uc" %in% models) {
         #   spdeNoUrbClusti[[resultType]] = 1:nrow(spdeNoUrbClusti)
         #   
         #   whichName = which(names(spdeNoUrbClusti) == "EA")
@@ -597,7 +826,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         #   
         #   names(spdeNoUrbClusti)[1] = "EA"
         # }
-        # if("SPDE II" %in% models) {
+        # if("SPDE uC" %in% models) {
         #   spdeNoUrbi[[resultType]] = 1:nrow(spdeNoUrbi)
         #   
         #   whichName = which(names(spdeNoUrbi) == "EA")
@@ -605,7 +834,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         #   
         #   names(spdeNoUrbi)[1] = "EA"
         # }
-        # if("SPDE III" %in% models) {
+        # if("SPDE Uc" %in% models) {
         #   spdeNoClusti[[resultType]] = 1:nrow(spdeNoClusti)
         #   
         #   whichName = which(names(spdeNoClusti) == "EA")
@@ -613,7 +842,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         #   
         #   names(spdeNoClusti)[1] = "EA"
         # }
-        # if("SPDE IV" %in% models) {
+        # if("SPDE UC" %in% models) {
         #   spdei[[resultType]] = 1:nrow(spdei)
         #   
         #   whichName = which(names(spdei) == "EA")
@@ -626,19 +855,19 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       # for spde results, modify the name of the results
       # modify result row and column table names according to aggregation level
       if(resultType == "county") {
-        # if("SPDE I" %in% models) {
+        # if("SPDE uc" %in% models) {
         #   whichName = which(names(spdeNoUrbClusti) == "admin1")
         #   names(spdeNoUrbClusti)[whichName] = resultType
         # }
-        # if("SPDE II" %in% models) {
+        # if("SPDE uC" %in% models) {
         #   whichName = which(names(spdeNoUrbi) == "admin1")
         #   names(spdeNoUrbi)[whichName] = resultType
         # }
-        # if("SPDE III" %in% models) {
+        # if("SPDE Uc" %in% models) {
         #   whichName = which(names(spdeNoClusti) == "admin1")
         #   names(spdeNoClusti)[whichName] = resultType
         # }
-        # if("SPDE IV" %in% models) {
+        # if("SPDE UC" %in% models) {
         #   # with urban effect:
         #   whichName = which(names(spdei) == "admin1")
         #   names(spdei)[whichName] = resultType
@@ -647,7 +876,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       
       if(resultType == "pixel") {
         # set first row of spde results to be the pixel index
-        # if("SPDE I" %in% models) {
+        # if("SPDE uc" %in% models) {
         #   spdeNoUrbClusti[[resultType]] = truth$pixel
         #   
         #   whichName = which(names(spdeNoUrbClusti) == "pixel")
@@ -655,7 +884,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         #   
         #   names(spdeNoUrbClusti)[1] = "pixel"
         # }
-        # if("SPDE II" %in% models) {
+        # if("SPDE uC" %in% models) {
         #   spdeNoUrbi[[resultType]] = truth$pixel
         #   
         #   whichName = which(names(spdeNoUrbi) == "pixel")
@@ -663,7 +892,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         #   
         #   names(spdeNoUrbi)[1] = "pixel"
         # }
-        # if("SPDE III" %in% models) {
+        # if("SPDE Uc" %in% models) {
         #   spdeNoClusti[[resultType]] = truth$pixel
         #   
         #   whichName = which(names(spdeNoClusti) == "pixel")
@@ -671,7 +900,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         #   
         #   names(spdeNoClusti)[1] = "pixel"
         # }
-        # if("SPDE IV" %in% models) {
+        # if("SPDE UC" %in% models) {
         #   spdei[[resultType]] = truth$pixel
         #   
         #   whichName = which(names(spdei) == "pixel")
@@ -683,13 +912,13 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       
       # TODO: fix the below code block
       # change names of table variables in spde model with no urban effect to reflect that
-      # if("SPDE I" %in% models)
-      #   names(spdeNoUrbClusti)[2:6] = paste0(names(spdeNoUrbClusti)[2:6], " I")
-      # if("SPDE II" %in% models)
+      # if("SPDE uc" %in% models)
+      #   names(spdeNoUrbClusti)[2:6] = paste0(names(spdeNoUrbClusti)[2:6], " uc")
+      # if("SPDE uC" %in% models)
       #   names(spdeNoUrbi)[2:6] = paste0(names(spdeNoUrbi)[2:6], "NoUrb")
-      # if("SPDE II" %in% models)
+      # if("SPDE uC" %in% models)
       #   names(spdeNoUrbi)[2:6] = paste0(names(spdeNoUrbi)[2:6], "NoUrb")
-      # if("SPDE II" %in% models)
+      # if("SPDE uC" %in% models)
       #   names(spdeNoUrbi)[2:6] = paste0(names(spdeNoUrbi)[2:6], "NoUrb")
       
       if("Direct" %in% models) {
@@ -702,13 +931,13 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         allres = merge(allres, naivei, by=resultType)
       if("Smoothed Direct" %in% models)
         allres = merge(allres, merceri, by=resultType)
-      # if("SPDE I" %in% models)
+      # if("SPDE uc" %in% models)
       #   allres = merge(allres, spdeNoUrbClusti, by=resultType)
-      # if("SPDE II" %in% models)
+      # if("SPDE uC" %in% models)
       #   allres = merge(allres, spdeNoUrbi, by=resultType)
-      # if("SPDE III" %in% models)
+      # if("SPDE Uc" %in% models)
       #   allres = merge(allres, spdeNoClusti, by=resultType)
-      # if("SPDE IV" %in% models)
+      # if("SPDE UC" %in% models)
       #   allres = merge(allres, spdei, by=resultType)
       
       # set whether or not to calculate scores on logit scale depending on result type
@@ -739,67 +968,67 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         scoresMercer <- rbind(scoresMercer,
                               cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresmercer))
       }
-      if("BYM2 Ia" %in% models) {
+      if("BYM2 ucA" %in% models) {
         my.scoresbymNoUrbClust = getScores(thisTruth, numChildren, designResNoUrbClust[[1]]$mean[,i], (designResNoUrbClust[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoUrbClust <- rbind(scoresBYMNoUrbClust,
                                      cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbClust))
       }
-      if("BYM2 IIa" %in% models) {
+      if("BYM2 uCA" %in% models) {
         my.scoresbymNoUrb = getScores(thisTruth, numChildren, designResNoUrb[[1]]$mean[,i], (designResNoUrb[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoUrb <- rbind(scoresBYMNoUrb,
                                 cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrb))
       }
-      if("BYM2 IIa'" %in% models) {
+      if("BYM2 uCa'" %in% models) {
         my.scoresbymNoUrbMod = getScores(thisTruth, numChildren, designResNoUrbMod[[1]]$mean[,i], (designResNoUrbMod[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoUrbMod <- rbind(scoresBYMNoUrbMod,
                                    cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbMod))
       }
-      if("BYM2 IIIa" %in% models) {
+      if("BYM2 UcA" %in% models) {
         my.scoresbymNoClust = getScores(thisTruth, numChildren, designResNoClust[[1]]$mean[,i], (designResNoClust[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoClust <- rbind(scoresBYMNoClust,
                                   cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoClust))
       }
-      if("BYM2 IVa" %in% models) {
+      if("BYM2 UCA" %in% models) {
         my.scoresbym = getScores(thisTruth, numChildren, designRes[[1]]$mean[,i], (designRes[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYM <- rbind(scoresBYM,
                            cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbym))
       }
-      if("BYM2 IVa'" %in% models) {
+      if("BYM2 UCa'" %in% models) {
         my.scoresbymMod = getScores(thisTruth, numChildren, designResMod[[1]]$mean[,i], (designResMod[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMMod <- rbind(scoresBYMMod,
                               cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymMod))
       }
-      if("BYM2 Ib" %in% models) {
+      if("BYM2 uca" %in% models) {
         my.scoresbymNoUrbClustPopAgg = getScores(thisTruth, numChildren, designResNoUrbClustPopAgg[[1]]$mean[,i], (designResNoUrbClustPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoUrbClustPopAgg <- rbind(scoresBYMNoUrbClustPopAgg,
                                      cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbClustPopAgg))
       }
-      if("BYM2 IIb" %in% models) {
+      if("BYM2 uCa" %in% models) {
         my.scoresbymNoUrbPopAgg = getScores(thisTruth, numChildren, designResNoUrbPopAgg[[1]]$mean[,i], (designResNoUrbPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoUrbPopAgg <- rbind(scoresBYMNoUrbPopAgg,
                                 cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbPopAgg))
       }
-      if("BYM2 IIb'" %in% models) {
+      if("BYM2 uCa'" %in% models) {
         my.scoresbymNoUrbModPopAgg = getScores(thisTruth, numChildren, designResNoUrbModPopAgg[[1]]$mean[,i], (designResNoUrbModPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoUrbModPopAgg <- rbind(scoresBYMNoUrbModPopAgg,
                                    cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbModPopAgg))
       }
-      if("BYM2 IIIb" %in% models) {
+      if("BYM2 Uca" %in% models) {
         my.scoresbymNoClustPopAgg = getScores(thisTruth, numChildren, designResNoClustPopAgg[[1]]$mean[,i], (designResNoClustPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoClustPopAgg <- rbind(scoresBYMNoClustPopAgg,
                                   cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoClustPopAgg))
       }
-      if("BYM2 IVb" %in% models) {
+      if("BYM2 UCa" %in% models) {
         my.scoresbymPopAgg = getScores(thisTruth, numChildren, designResPopAgg[[1]]$mean[,i], (designResPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMPopAgg <- rbind(scoresBYMPopAgg,
                            cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymPopAgg))
       }
-      if("BYM2 IVb'" %in% models) {
+      if("BYM2 UCa'" %in% models) {
         my.scoresbymModPopAgg = getScores(thisTruth, numChildren, designResModPopAgg[[1]]$mean[,i], (designResModPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMModPopAgg <- rbind(scoresBYMModPopAgg,
                               cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymModPopAgg))
       }
-      if("SPDE II" %in% models) {
+      if("SPDE uC" %in% models) {
         # stop("determine if the spde code should compute all of these directly")
         # my.biasspdeNoUrb = bias(thisTruth, allres$logit.est.spdeNoUrb, logit=useLogit, my.var=allres$var.est.spdeNoUrb)
         # my.msespdeNoUrb = mse(thisTruth, allres$logit.est.spdeNoUrb, logit=useLogit, my.var=allres$var.est.spdeNoUrb)
@@ -813,7 +1042,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         #                          cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresspdeNoUrb))
         # scoresSPDENoUrb = rbind(scoresSPDENoUrb # TODO: fix this
       }
-      if("SPDE IV" %in% models) {
+      if("SPDE UC" %in% models) {
         # stop("determine if the spde code should compute all of these directly")
         # my.biasspde = bias(thisTruth, allres$logit.est.spde, logit=useLogit, my.var=allres$var.est.spde)
         # my.msespde = mse(thisTruth, allres$logit.est.spde, logit=useLogit, my.var=allres$var.est.spde)
@@ -850,9 +1079,9 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       loadTempProgress = temp
     }
     
-    allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 Ia", "BYM2 IIa", "BYM2 IIa'", "BYM2 IIIa", "BYM2 IVa", "BYM2 IVa'", 
-                 "BYM2 Ib", "BYM2 IIb", "BYM2 IIb'", "BYM2 IIIb", "BYM2 IVb", "BYM2 IVb'", 
-                 "SPDE I", "SPDE II", "SPDE III", "SPDE IV")
+    allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 ucA", "BYM2 uCA", "BYM2 uCa'", "BYM2 UcA", "BYM2 UCA", "BYM2 UCa'", 
+                 "BYM2 uca", "BYM2 uCa", "BYM2 uCa'", "BYM2 Uca", "BYM2 UCa", "BYM2 UCa'", 
+                 "SPDE uc", "SPDE uC", "SPDE Uc", "SPDE UC")
     allNamesBinomial = paste0(allNames, " Bin.")
     allModels = allNames
     models = allModels[modelsI]
@@ -871,31 +1100,31 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     direct = apply(scoresDirect[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
   if("Smoothed Direct" %in% models)
     mercer = apply(scoresMercer[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("BYM2 Ia" %in% models)
+  if("BYM2 ucA" %in% models)
     bymNoUrbClust = apply(scoresBYMNoUrbClust[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("BYM2 IIa" %in% models)
+  if("BYM2 uCA" %in% models)
     bymNoUrb = apply(scoresBYMNoUrb[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("BYM2 IIa'" %in% models)
+  if("BYM2 uCa'" %in% models)
     bymNoUrbMod = apply(scoresBYMNoUrbMod[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("BYM2 IIIa" %in% models)
+  if("BYM2 UcA" %in% models)
     bymNoClust = apply(scoresBYMNoClust[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("BYM2 IVa" %in% models)
+  if("BYM2 UCA" %in% models)
     bym = apply(scoresBYM[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("BYM2 IVa'" %in% models)
+  if("BYM2 UCa'" %in% models)
     bymMod = apply(scoresBYMMod[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("BYM2 Ib" %in% models)
+  if("BYM2 uca" %in% models)
     bymNoUrbClustPopAgg = apply(scoresBYMNoUrbClustPopAgg[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("BYM2 IIb" %in% models)
+  if("BYM2 uCa" %in% models)
     bymNoUrbPopAgg = apply(scoresBYMNoUrbPopAgg[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("BYM2 IIb'" %in% models)
+  if("BYM2 uCa'" %in% models)
     bymNoUrbModPopAgg = apply(scoresBYMNoUrbModPopAgg[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("BYM2 IIIb" %in% models)
+  if("BYM2 Uca" %in% models)
     bymNoClustPopAgg = apply(scoresBYMNoClustPopAgg[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("BYM2 IVb" %in% models)
+  if("BYM2 UCa" %in% models)
     bymPopAgg = apply(scoresBYMPopAgg[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("BYM2 IVb'" %in% models)
+  if("BYM2 UCa'" %in% models)
     bymModPopAgg = apply(scoresBYMModPopAgg[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("SPDE I" %in% models) {
+  if("SPDE uc" %in% models) {
     theseNames = names(spdeNoUrbClust)
     namesI = grepl(tolower(resultType), tolower(theseNames))
     first = TRUE
@@ -911,7 +1140,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       }
     }
   }
-  if("SPDE II" %in% models) {
+  if("SPDE uC" %in% models) {
     theseNames = names(spdeNoUrb)
     namesI = grepl(tolower(resultType), tolower(theseNames))
     first = TRUE
@@ -927,7 +1156,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       }
     }
   }
-  if("SPDE III" %in% models) {
+  if("SPDE Uc" %in% models) {
     theseNames = names(spdeNoClust)
     namesI = grepl(tolower(resultType), tolower(theseNames))
     first = TRUE
@@ -943,7 +1172,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       }
     }
   }
-  if("SPDE IV" %in% models) {
+  if("SPDE UC" %in% models) {
     theseNames = names(spde)
     namesI = grepl(tolower(resultType), tolower(theseNames))
     first = TRUE
@@ -967,38 +1196,38 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     tab = rbind(tab, c(direct[idx]))
   if("Smoothed Direct" %in% models)
     tab = rbind(tab, c(mercer[idx]))
-  if("BYM2 Ia" %in% models)
+  if("BYM2 ucA" %in% models)
     tab = rbind(tab, c(bymNoUrbClust[idx]))
-  if("BYM2 IIa" %in% models)
+  if("BYM2 uCA" %in% models)
     tab = rbind(tab, c(bymNoUrb[idx]))
-  if("BYM2 IIa'" %in% models)
+  if("BYM2 uCa'" %in% models)
     tab = rbind(tab, c(bymNoUrbMod[idx]))
-  if("BYM2 IIIa" %in% models)
+  if("BYM2 UcA" %in% models)
     tab = rbind(tab, c(bymNoClust[idx]))
-  if("BYM2 IVa" %in% models)
+  if("BYM2 UCA" %in% models)
     tab = rbind(tab, c(bym[idx]))
-  if("BYM2 IVa'" %in% models)
+  if("BYM2 UCa'" %in% models)
     tab = rbind(tab, c(bymMod[idx]))
-  if("BYM2 Ib" %in% models)
+  if("BYM2 uca" %in% models)
     tab = rbind(tab, c(bymNoUrbClustPopAgg[idx]))
-  if("BYM2 IIb" %in% models)
+  if("BYM2 uCa" %in% models)
     tab = rbind(tab, c(bymNoUrbPopAgg[idx]))
-  if("BYM2 IIb'" %in% models)
+  if("BYM2 uCa'" %in% models)
     tab = rbind(tab, c(bymNoUrbModPopAgg[idx]))
-  if("BYM2 IIIb" %in% models)
+  if("BYM2 Uca" %in% models)
     tab = rbind(tab, c(bymNoClustPopAgg[idx]))
-  if("BYM2 IVb" %in% models)
+  if("BYM2 UCa" %in% models)
     tab = rbind(tab, c(bymPopAgg[idx]))
-  if("BYM2 IVb'" %in% models)
+  if("BYM2 UCa'" %in% models)
     tab = rbind(tab, c(bymModPopAgg[idx]))
   # SPDE models are in format 2
-  # if("SPDE I" %in% models)
+  # if("SPDE uc" %in% models)
   #   tab = rbind(tab, c(spdeNoUrbClust[idx]))
-  # if("SPDE II" %in% models)
+  # if("SPDE uC" %in% models)
   #   tab = rbind(tab, c(spdeNoUrb[idx]))
-  # if("SPDE III" %in% models)
+  # if("SPDE Uc" %in% models)
   #   tab = rbind(tab, c(spdeNoClust[idx]))
-  # if("SPDE IV" %in% models)
+  # if("SPDE UC" %in% models)
   #   tab = rbind(tab, c(spde[idx]))
   colnames(tab) = c("Bias", "Var", "MSE", "CRPS", "CRPS Bin.", "80\\% Cvg", "80\\% Cvg Bin.", "CI Width", "CI Width Bin.")
   finalNames = allNames[modelsI]
@@ -1016,28 +1245,59 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     thisFinalNames = c()
     
     for(i in 1:nrow(otherTable)) {
-      tab = rbind(tab, 
-                  otherTable[i,], 
-                  binomialTable[i,])
-      thisFinalNames = c(thisFinalNames, finalNames[i], finalNamesBinomial[i])
+      if(includeBVarResults) {
+        tab = rbind(tab, 
+                    otherTable[i,], 
+                    binomialTable[i,])
+        thisFinalNames = c(thisFinalNames, finalNames[i], finalNamesBinomial[i])
+      }
+      else {
+        tab = rbind(tab, 
+                    otherTable[i,])
+        thisFinalNames = c(thisFinalNames, finalNames[i])
+      }
     }
     
     # add in SPDE models if necessary
-    if("SPDE I" %in% models) {
-      thisFinalNames = c(thisFinalNames, paste0("SPDE I", c(" Cts.", " Discrete", " Exact")))
-      tab = rbind(tab, spdeNoUrbClustScores)
+    if("SPDE uc" %in% models) {
+      if(continuousSPDEonly) {
+        thisFinalNames = c(thisFinalNames, "SPDE uc")
+        tab = rbind(tab, spdeNoUrbClustScores[1,])
+      }
+      else {
+        thisFinalNames = c(thisFinalNames, paste0("SPDE uc", c(" Cts.", " Discrete", " Exact")))
+        tab = rbind(tab, spdeNoUrbClustScores)
+      }
     }
-    if("SPDE II" %in% models) {
-      thisFinalNames = c(thisFinalNames, paste0("SPDE II", c(" Cts.", " Discrete", " Exact")))
-      tab = rbind(tab, spdeNoUrbScores)
+    if("SPDE uC" %in% models) {
+      if(continuousSPDEonly) {
+        thisFinalNames = c(thisFinalNames, "SPDE uC")
+        tab = rbind(tab, spdeNoUrbScores[1,])
+      }
+      else {
+        thisFinalNames = c(thisFinalNames, paste0("SPDE uC", c(" Cts.", " Discrete", " Exact")))
+        tab = rbind(tab, spdeNoUrbScores)
+      }
     }
-    if("SPDE III" %in% models) {
-      thisFinalNames = c(thisFinalNames, paste0("SPDE III", c(" Cts.", " Discrete", " Exact")))
-      tab = rbind(tab, spdeNoClustScores)
+    if("SPDE Uc" %in% models) {
+      if(continuousSPDEonly) {
+        thisFinalNames = c(thisFinalNames, "SPDE Uc")
+        tab = rbind(tab, spdeNoClustScores[1,])
+      }
+      else {
+        thisFinalNames = c(thisFinalNames, paste0("SPDE Uc", c(" Cts.", " Discrete", " Exact")))
+        tab = rbind(tab, spdeNoClustScores)
+      }
     }
-    if("SPDE IV" %in% models) {
-      thisFinalNames = c(thisFinalNames, paste0("SPDE IV", c(" Cts.", " Discrete", " Exact")))
-      tab = rbind(tab, spdeScores)
+    if("SPDE UC" %in% models) {
+      if(continuousSPDEonly) {
+        thisFinalNames = c(thisFinalNames, "SPDE UC")
+        tab = rbind(tab, spdeScores[1,])
+      }
+      else {
+        thisFinalNames = c(thisFinalNames, paste0("SPDE UC", c(" Cts.", " Discrete", " Exact")))
+        tab = rbind(tab, spdeScores)
+      }
     }
     
     rownames(tab) = thisFinalNames
@@ -1072,24 +1332,24 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       parTab = rbind(parTab, mercerPar)
       parRowNames = c(parRowNames, rep("Smoothed Direct", nrow(mercerPar)))
     }
-    if("BYM2 Ia" %in% models || "BYM2 Ib" %in% models) {
+    if("BYM2 ucA" %in% models || "BYM2 uca" %in% models) {
       parTab = rbind(parTab, designResNoUrbClust[[length(designResNoUrbClust)]])
-      parRowNames = c(parRowNames, rep("BYM2 I", nrow(designResNoUrbClust[[length(designResNoUrbClust)]])))
+      parRowNames = c(parRowNames, rep("BYM2 uc", nrow(designResNoUrbClust[[length(designResNoUrbClust)]])))
     }
-    if("BYM2 IIa" %in% models || "BYM2 IIa'" %in% models || "BYM2 IIb" %in% models || "BYM2 IIb'" %in% models) {
+    if("BYM2 uCA" %in% models || "BYM2 uCa'" %in% models || "BYM2 uCa" %in% models || "BYM2 uCa'" %in% models) {
       parTab = rbind(parTab, designResNoUrb[[length(designResNoUrb)]])
-      parRowNames = c(parRowNames, rep("BYM2 II", nrow(designResNoUrb[[length(designResNoUrb)]])))
+      parRowNames = c(parRowNames, rep("BYM2 uC", nrow(designResNoUrb[[length(designResNoUrb)]])))
     }
-    if("BYM2 IIIa" %in% models || "BYM2 IIIb" %in% models || "BYM2 IIIa'" %in% models || "BYM2 IIIb'" %in% models) {
+    if("BYM2 UcA" %in% models || "BYM2 Uca" %in% models || "BYM2 Uca'" %in% models || "BYM2 Ucb'" %in% models) {
       parTab = rbind(parTab, designResNoClust[[length(designResNoClust)]])
-      parRowNames = c(parRowNames, rep("BYM2 III", nrow(designResNoClust[[length(designResNoClust)]])))
+      parRowNames = c(parRowNames, rep("BYM2 Uc", nrow(designResNoClust[[length(designResNoClust)]])))
     }
-    if("BYM2 IVa" %in% models || "BYM2 IVb" %in% models || "BYM2 IVa'" %in% models || "BYM2 IVb'" %in% models) {
+    if("BYM2 UCA" %in% models || "BYM2 UCa" %in% models || "BYM2 UCa'" %in% models || "BYM2 UCa'" %in% models) {
       parTab = rbind(parTab, designRes[[length(designRes)]])
-      parRowNames = c(parRowNames, rep("BYM2 IV", nrow(designRes[[length(designRes)]])))
+      parRowNames = c(parRowNames, rep("BYM2 UC", nrow(designRes[[length(designRes)]])))
     }
     spdeParIndices = c(1:2, 4:6) # leave out variance and width
-    if("SPDE I" %in% models) {
+    if("SPDE uc" %in% models) {
       thisParTab = matrix(spdeNoUrbClust$interceptSummary[spdeParIndices], nrow=1)
       theseRowNames = "Intercept"
       if(!is.null(spdeNoUrbClust$urbanSummary[spdeParIndices])) {
@@ -1119,9 +1379,9 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       colnames(thisParTab) = names(parTab)
       rownames(thisParTab) = theseRowNames
       parTab = rbind(parTab, thisParTab)
-      parRowNames = c(parRowNames, rep("SPDE I", nrow(thisParTab)))
+      parRowNames = c(parRowNames, rep("SPDE uc", nrow(thisParTab)))
     }
-    if("SPDE II" %in% models) {
+    if("SPDE uC" %in% models) {
       thisParTab = matrix(spdeNoUrb$interceptSummary[spdeParIndices], nrow=1)
       theseRowNames = "Intercept"
       if(!is.null(spdeNoUrb$urbanSummary[spdeParIndices])) {
@@ -1151,9 +1411,9 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       colnames(thisParTab) = names(parTab)
       rownames(thisParTab) = theseRowNames
       parTab = rbind(parTab, thisParTab)
-      parRowNames = c(parRowNames, rep("SPDE II", nrow(thisParTab)))
+      parRowNames = c(parRowNames, rep("SPDE uC", nrow(thisParTab)))
     }
-    if("SPDE III" %in% models) {
+    if("SPDE Uc" %in% models) {
       thisParTab = matrix(spdeNoClust$interceptSummary[spdeParIndices], nrow=1)
       theseRowNames = "Intercept"
       if(!is.null(spdeNoClust$urbanSummary[spdeParIndices])) {
@@ -1183,9 +1443,9 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       colnames(thisParTab) = names(parTab)
       rownames(thisParTab) = theseRowNames
       parTab = rbind(parTab, thisParTab)
-      parRowNames = c(parRowNames, rep("SPDE III", nrow(thisParTab)))
+      parRowNames = c(parRowNames, rep("SPDE Uc", nrow(thisParTab)))
     }
-    if("SPDE IV" %in% models) {
+    if("SPDE UC" %in% models) {
       thisParTab = matrix(spde$interceptSummary[spdeParIndices], nrow=1)
       theseRowNames = "Intercept"
       if(!is.null(spde$urbanSummary[spdeParIndices])) {
@@ -1215,7 +1475,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       colnames(thisParTab) = names(parTab)
       rownames(thisParTab) = theseRowNames
       parTab = rbind(parTab, thisParTab)
-      parRowNames = c(parRowNames, rep("SPDE IV", nrow(thisParTab)))
+      parRowNames = c(parRowNames, rep("SPDE UC", nrow(thisParTab)))
     }
     
     # add the model to the row names, remove the numbers at the end of the duplicated row names, print out the aggregated parameter table
