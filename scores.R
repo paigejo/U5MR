@@ -57,29 +57,10 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
   # thisWidthNoBinom = mean(expit(logitU) - expit(logitL))
   # thisWidthBinom = mean(probU - probL)
   
-  # calculate mean squared error and bias at the proportion scale
-  if(is.null(est)) {
-    # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
-    thisBias = bias(truth, logitEst, logit=FALSE, logitVar, n=1)
-    
-    thisMSE = mse(truth, logitEst, logit=FALSE, logitVar, nsim=nsim)
-  }
-  else {
-    # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
-    thisBias = bias(truth, logit(est), logit=FALSE, n=1)
-    
-    thisMSE = mse(truth, logit(est), logit=FALSE, nsim=nsim)
-  }
-  
-  # calculate predictive variance at the proportion scale based on the joint simulation probability matrix 
-  # if available or assume gaussian predictive distribution on the logit scale otherwise
+  # compute central estimates if probMat is not null
   if(!is.null(probMat)) {
-    # if(is.null(var))
-    #   var = apply(probMat, 1, sd)^2
     if(is.null(est))
       est = rowMeans(probMat)
-    res = est-truth
-    var = mean((res - mean(res))^2)
   }
   else {
     quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(logitEst)), ncol=nsim, byrow=TRUE)
@@ -89,12 +70,13 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
     #   var = apply(pMat, 1, sd)^2
     if(is.null(est))
       est = rowMeans(probMat)
-    res = est-truth
-    var = mean((res - mean(res))^2)
   }
   
-  # calculate predictive variance on the proportion scale
-  thisVar = mean(var)
+  # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
+  out = mse(truth, logit(est), logit=FALSE, nsim=nsim, decompose = TRUE)
+  thisMSE = out$MSE
+  thisBias = out$bias
+  thisVar = out$var
   
   # calculate coverage and credible interval width with and without binomial variation
   coverageNoBinom = coverage(truth, doLogit=FALSE, bVar=FALSE, numChildren=numChildren, logitEst=logitEst, logitVar=logitVar, 
@@ -172,47 +154,30 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
 getScoresSPDE = function(truth, numChildren, logitEst, est=NULL, var=NULL, probMat=NULL, significance=.8, nsim=10, 
                          bVar, pmfs=NULL, logitVar=NULL, logitL=NULL, logitU=NULL) {
   
-  # calculate mean squared error and bias at the proportion scale
-  if(is.null(est)) {
-    # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
-    thisBias = bias(truth, logitEst, logit=FALSE, logitVar, n=1)
-    
-    thisMSE = mse(truth, logitEst, logit=FALSE, logitVar, nsim=nsim, n=1)
-  }
-  else {
-    # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
-    thisBias = bias(truth, est, logit=TRUE, n=1)
-    
-    thisMSE = mse(truth, est, logit=TRUE, nsim=nsim, n=1)
-  }
-  
-  # calculate predictive variance at the proportion scale based on the marginals or joint 
-  # simulation probability matrix if available or assume gaussian predictive distribution 
-  # on the logit scale otherwise
+  # calculate predictive estimates at the proportion scale
   if(!is.null(pmfs)) {
     if(!bVar && is.null(probMat))
       stop("bVar FALSE, but only pmfs included")
     
     # var = sapply(1:length(pmfs), function(i) {sum(((0:numChildren[i]) / numChildren[i])^2 * pmfs[[i]]) - (sum(((0:numChildren[i]) / numChildren[i]) * pmfs[[i]]))^2})
     est = sapply(1:length(pmfs), function(i) {sum((0:length(pmfs[[i]])) * pmfs[[i]]) / length(pmfs[[i]])})
-    res = est - truth
-    var = mean((res - mean(res))^2)
   }
   else if(!is.null(probMat)) {
     # if(is.null(var))
-      # var = apply(probMat, 1, sd)^2
+    # var = apply(probMat, 1, sd)^2
     
     if(is.null(var))
       est = rowMeans(probMat)
-    res = est - truth
-    var = mean((res - mean(res))^2)
   }
   else {
     stop("For the SPDE model, either marginals or probMat must be provided")
   }
   
-  # calculate predictive variance on the proportion scale
-  thisVar = var
+  # calculate mean squared error and bias at the proportion scale
+  out = mse(truth, est, logit=TRUE, nsim=nsim, n=1, decompose=TRUE)
+  thisMSE = out$MSE
+  thisVar = out$var
+  thisBias = out$bias
   
   # if CIs are included, but binomial variation is not, calculate credible intervals based on them
   if(!(any(is.null(logitL)) || any(is.null(logitU))) && !bVar) {
@@ -521,17 +486,13 @@ mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1, weights=NU
     # first draw different values of p from the predictive distribution
     if(is.null(my.var)) {
       my.est = expit(my.est)
-      res = (my.est - truth)^2
     } else {
       quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(my.est)), ncol=nsim, byrow=TRUE)
       logitP = matrix(qnorm(quantiles, my.est, sd=sqrt(my.var)), ncol=nsim)
       my.est = rowMeans(expit(logitP))
-      res = (my.est - truth)^2 * n^2
     }
   }
-  else {
-    res <- (truth - my.est)^2
-  }
+  res = my.est - truth
   
   if(decompose) {
     thisBias = my.est - truth
@@ -540,7 +501,7 @@ mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1, weights=NU
   if(!is.null(weights)) {
     MSE = sum(res * weights)
     if(decompose) {
-      bias=sum(thisBias * weights)
+      bias=sum(res * weights)
       thisVar = (res - sum(res*weights))^2
       thisVar = sum(thisVar * weights)
       out = list(MSE=MSE, bias=bias, var=thisVar)
@@ -549,9 +510,9 @@ mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1, weights=NU
       out = MSE
   }
   else {
-    MSE = mean(res)
+    MSE = mean(res^2)
     if(decompose) {
-      bias=mean(thisBias)
+      bias=mean(res)
       thisVar = (res - mean(res))^2
       thisVar = mean(thisVar)
       out = list(MSE=MSE, bias=bias, var=thisVar)

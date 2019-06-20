@@ -69,7 +69,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   # allNames = c("Naive", "Direct ", "Smoothed Direct", "BYM (no urban/cluster)", "BYM (no urban)", "BYM (no cluster)", "BYM", "SPDE (no urban)", "SPDE")
   # allNamesBinomial = c("Naive Binom.", "Direct Binom.", "Mercer et al. Binom.", "BYM Binom. (no urb/clust)", "BYM Binom. (no urb)", "BYM Binom. (no clust)", "BYM Binom.", "SPDE Binom. (no urb)", "SPDE Binom.")
   # BYM models are in order of complexity: no urban/cluster, no urban, no cluster, full
-  allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 ucA", "BYM2 uCA", "BYM2 uCa'", "BYM2 UcA", "BYM2 UCA", "BYM2 UCa'", 
+  allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 ucA", "BYM2 uCA", "BYM2 uCA'", "BYM2 UcA", "BYM2 UCA", "BYM2 UCA'", 
                "BYM2 uca", "BYM2 uCa", "BYM2 uCa'", "BYM2 Uca", "BYM2 UCa", "BYM2 UCa'", 
                "SPDE uc", "SPDE uC", "SPDE Uc", "SPDE UC")
   allNamesBinomial = paste0(allNames, " Bin.")
@@ -239,7 +239,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       }
       designResNoClust = designRes
     }
-    if("BYM2 UCa'" %in% models) {
+    if("BYM2 UCA'" %in% models) {
       includeUrbanRural = TRUE
       includeCluster = TRUE
       aggregateByPopulation = FALSE
@@ -646,11 +646,6 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     
     # including urban effect
     if("BYM2 UCA" %in% models) {
-      designRes[[1]]$Q10 = getSubLevelResults(designRes[[1]]$Q10, designRes[[2]]$Q10, truth$urban)
-      designRes[[1]]$Q50 = getSubLevelResults(designRes[[1]]$Q50, designRes[[2]]$Q50, truth$urban)
-      designRes[[1]]$Q90 = getSubLevelResults(designRes[[1]]$Q90, designRes[[2]]$Q90, truth$urban)
-      designRes[[1]]$mean = getSubLevelResults(designRes[[1]]$mean, designRes[[2]]$mean, truth$urban)
-      designRes[[1]]$stddev = getSubLevelResults(designRes[[1]]$stddev, designRes[[2]]$stddev, truth$urban)
       if(resultType != "county") {
         designRes[[1]]$Q10 = getSubLevelResults(designRes[[1]]$Q10, designRes[[2]]$Q10, truth$urban)
         designRes[[1]]$Q50 = getSubLevelResults(designRes[[1]]$Q50, designRes[[2]]$Q50, truth$urban)
@@ -668,7 +663,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     }
     
     # not including urban effect, modified to be debiased using marginal rather than conditional effect as prediction
-    if("BYM2 uCa'" %in% models) {
+    if("BYM2 uCA'" %in% models) {
       designResNoUrbMod[[1]]$Q10 = getSubLevelResults(designResNoUrbMod[[1]]$Q10)
       designResNoUrbMod[[1]]$Q50 = getSubLevelResults(designResNoUrbMod[[1]]$Q50)
       designResNoUrbMod[[1]]$Q90 = getSubLevelResults(designResNoUrbMod[[1]]$Q90)
@@ -677,12 +672,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     }
     
     # including urban effect, modified to be debiased using marginal rather than conditional effect as prediction
-    if("BYM2 UCa'" %in% models) {
-      designResMod[[1]]$Q10 = getSubLevelResults(designResMod[[1]]$Q10, designResMod[[2]]$Q10, truth$urban)
-      designResMod[[1]]$Q50 = getSubLevelResults(designResMod[[1]]$Q50, designResMod[[2]]$Q50, truth$urban)
-      designResMod[[1]]$Q90 = getSubLevelResults(designResMod[[1]]$Q90, designResMod[[2]]$Q90, truth$urban)
-      designResMod[[1]]$mean = getSubLevelResults(designResMod[[1]]$mean, designResMod[[2]]$mean, truth$urban)
-      designResMod[[1]]$stddev = getSubLevelResults(designResMod[[1]]$stddev, designResMod[[2]]$stddev, truth$urban)
+    if("BYM2 UCA'" %in% models) {
       if(resultType != "county") {
         designResMod[[1]]$Q10 = getSubLevelResults(designResMod[[1]]$Q10, designResMod[[2]]$Q10, truth$urban)
         designResMod[[1]]$Q50 = getSubLevelResults(designResMod[[1]]$Q50, designResMod[[2]]$Q50, truth$urban)
@@ -993,7 +983,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         scoresBYM <- rbind(scoresBYM,
                            cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbym))
       }
-      if("BYM2 UCa'" %in% models) {
+      if("BYM2 UCA'" %in% models) {
         my.scoresbymMod = getScores(thisTruth, numChildren, designResMod[[1]]$mean[,i], (designResMod[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMMod <- rbind(scoresBYMMod,
                               cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymMod))
@@ -1079,7 +1069,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       loadTempProgress = temp
     }
     
-    allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 ucA", "BYM2 uCA", "BYM2 uCa'", "BYM2 UcA", "BYM2 UCA", "BYM2 UCa'", 
+    allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 ucA", "BYM2 uCA", "BYM2 uCA'", "BYM2 UcA", "BYM2 UCA", "BYM2 UCA'", 
                  "BYM2 uca", "BYM2 uCa", "BYM2 uCa'", "BYM2 Uca", "BYM2 UCa", "BYM2 UCa'", 
                  "SPDE uc", "SPDE uC", "SPDE Uc", "SPDE UC")
     allNamesBinomial = paste0(allNames, " Bin.")
@@ -1110,7 +1100,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     bymNoClust = apply(scoresBYMNoClust[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
   if("BYM2 UCA" %in% models)
     bym = apply(scoresBYM[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
-  if("BYM2 UCa'" %in% models)
+  if("BYM2 UCA'" %in% models)
     bymMod = apply(scoresBYMMod[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
   if("BYM2 uca" %in% models)
     bymNoUrbClustPopAgg = apply(scoresBYMNoUrbClustPopAgg[, c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")], 2, mean)
@@ -1206,7 +1196,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     tab = rbind(tab, c(bymNoClust[idx]))
   if("BYM2 UCA" %in% models)
     tab = rbind(tab, c(bym[idx]))
-  if("BYM2 UCa'" %in% models)
+  if("BYM2 UCA'" %in% models)
     tab = rbind(tab, c(bymMod[idx]))
   if("BYM2 uca" %in% models)
     tab = rbind(tab, c(bymNoUrbClustPopAgg[idx]))
@@ -1344,7 +1334,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       parTab = rbind(parTab, designResNoClust[[length(designResNoClust)]])
       parRowNames = c(parRowNames, rep("BYM2 Uc", nrow(designResNoClust[[length(designResNoClust)]])))
     }
-    if("BYM2 UCA" %in% models || "BYM2 UCa" %in% models || "BYM2 UCa'" %in% models || "BYM2 UCa'" %in% models) {
+    if("BYM2 UCA" %in% models || "BYM2 UCa" %in% models || "BYM2 UCA'" %in% models || "BYM2 UCa'" %in% models) {
       parTab = rbind(parTab, designRes[[length(designRes)]])
       parRowNames = c(parRowNames, rep("BYM2 UC", nrow(designRes[[length(designRes)]])))
     }
