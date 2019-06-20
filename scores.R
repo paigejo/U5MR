@@ -33,7 +33,7 @@ expit <- function(x) {
 #       distributions from the logit scale
 # NOTE: Discrete, count level credible intervals are estimated based on the input probMat along with coverage and CRPS
 getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL, probMat=NULL, significance=.8, nsim=10, 
-                     do1row=TRUE, includeBVarResults=TRUE) {
+                     do1row=TRUE, includeBVarResults=FALSE) {
   # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
   thisBias = bias(truth, logitEst, logit=FALSE, logitVar, n=1)
   
@@ -100,21 +100,32 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
   coverageNoBinom = coverage(truth, doLogit=FALSE, bVar=FALSE, numChildren=numChildren, logitEst=logitEst, logitVar=logitVar, 
                              lowerRejectProb=lowerRejectProb, upperRejectProb=upperRejectProb, probMat=probMat, 
                              significance=significance, returnIntervalWidth=TRUE, nsim=nsim)
-  coverageBinom = coverage(truth, doLogit=FALSE, bVar=TRUE, numChildren=numChildren, logitEst=logitEst, logitVar=logitVar, 
-                           lowerRejectProb=lowerRejectProb, upperRejectProb=upperRejectProb, probMat=probMat, 
-                           significance=significance, returnIntervalWidth=TRUE, returnPMFs=TRUE, nsim=nsim)
-  
   thisCoverageNoBinom = coverageNoBinom[1]
-  thisCoverageBinom = coverageBinom$intervalInfo[1]
   thisWidthNoBinom = coverageNoBinom[2]
-  thisWidthBinom = coverageBinom$intervalInfo[2]
-  
-  # also get the probability mass functions for the binomial predictive distributions for the CRPS calculations
-  pmfs = coverageBinom$pmfs
+  if(includeBVarResults) {
+    coverageBinom = coverage(truth, doLogit=FALSE, bVar=TRUE, numChildren=numChildren, logitEst=logitEst, logitVar=logitVar, 
+                             lowerRejectProb=lowerRejectProb, upperRejectProb=upperRejectProb, probMat=probMat, 
+                             significance=significance, returnIntervalWidth=TRUE, returnPMFs=TRUE, nsim=nsim)
+    thisCoverageBinom = coverageBinom$intervalInfo[1]
+    thisWidthBinom = coverageBinom$intervalInfo[2]
+    
+    # also get the probability mass functions for the binomial predictive distributions for the CRPS calculations
+    pmfs = coverageBinom$pmfs
+  }
+  else {
+    thisCoverageBinom = NA
+    thisWidthBinom = NA
+    pmfs = NULL
+  }
   
   # calculate CRPS on the proportion scale with and without binomial variation
   thisCRPSNoBinom = crpsNormal(truth, logitEst, logitVar, logit=FALSE, n=numChildren, bVar=FALSE, probMat=probMat, nsim=nsim)
-  thisCRPSBinom = crpsNormal(truth, logitEst, logitVar, logit=FALSE, n=numChildren, bVar=TRUE, probMat=probMat, nsim=nsim, pmfs=pmfs)
+  if(includeBVarResults) {
+    thisCRPSBinom = crpsNormal(truth, logitEst, logitVar, logit=FALSE, n=numChildren, bVar=TRUE, probMat=probMat, nsim=nsim, pmfs=pmfs)
+  }
+  else {
+    thisCRPSBinom = NA
+  }
   
   # return the results
   if(do1row) {
@@ -122,19 +133,13 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
                        thisWidthNoBinom, thisWidthBinom), nrow=1)
     colnames(results) = c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")
     
-    if(includeBVarResults)
-      as.data.frame(results)
-    else
-      as.data.frame(results)[1,c(1:4, 6, 8)]
+    as.data.frame(results)
   } else {
     results = matrix(c(thisBias, thisVar, thisMSE, thisCRPSNoBinom, thisCoverageNoBinom, thisWidthNoBinom, 
                        thisBias, thisVar, thisMSE, thisCRPSBinom, thisCoverageBinom, thisWidthBinom), 
                      nrow=2, byrow = TRUE)
     colnames(results) = c("bias", "var", "mse", "crps", "coverage", "length")
-    if(includeBVarResults)
-      as.data.frame(results)
-    else
-      as.data.frame(results)[1,]
+    as.data.frame(results)
   }
 }
 
