@@ -84,7 +84,7 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
   else {
     quantiles = matrix(rep(seq(0, 1 - 1 / nsim, by = 1/nsim) + 1 / (2 * nsim), length(logitEst)), ncol=nsim, byrow=TRUE)
     logitP = matrix(qnorm(quantiles, logitEst, sd=sqrt(logitVar)), ncol=nsim)
-    pMat = expit(logitP)
+    probMat = expit(logitP)
     # if(is.null(var))
     #   var = apply(pMat, 1, sd)^2
     if(is.null(est))
