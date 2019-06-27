@@ -1,4 +1,4 @@
-# get PC prior for the BYM2 total variance
+# get PC prior for the BYM2 and SPDE total variance
 library(INLA)
 set.seed(123)
 N = 10000
@@ -10,6 +10,17 @@ effect = exp(z)
 quantile(effect, c(0.025, 0.975))
 #      2.5%     97.5% 
 # 0.5016154 1.8766063 
+
+set.seed(123)
+N = 10000
+U = .15
+prec = inla.pc.rprec(alpha = 0.01, u = U, n = N)
+sig = 1/sqrt(prec)
+z = rnorm(N, mean = rep(0, N), sd = sig)
+effect = exp(z)
+quantile(effect, c(0.025, 0.975))
+#        2.5%     97.5% 
+#   0.9016866 1.0990210 
 
 # get PC prior for the cluster effect variance
 # Mortality = 0.04 # Kenya's first year mortality rate is approximately 4% for 2005-2009

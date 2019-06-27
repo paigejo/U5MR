@@ -62,7 +62,7 @@ getSPDEMeshGrid2 = function(locs=cbind(ed$east, ed$north), n=1500, max.n=2000, d
 # NOTE: by default, this constructs a spde prior with unit median marginal variance 
 #       and median effective range equal to a fifth of the spatial range 
 # or use inla.spde2.pcmatern (possibly allow (1/4,4) variance here rather than (1/2,2))
-getSPDEPrior = function(mesh, sigma0=1) {
+getSPDEPrior = function(mesh, sigma0=1, strictPrior=FALSE) {
   size <- min(c(diff(range(mesh$loc[, 1])), diff(range(mesh$loc[, 2])))) # 1277.237
   # range0 <- size/5
   # kappa0 <- sqrt(8)/range0
@@ -72,7 +72,10 @@ getSPDEPrior = function(mesh, sigma0=1) {
   #                           theta.prior.prec = c(0.1, 1))
   
   range0 <- size/5
-  spde = inla.spde2.pcmatern(mesh, prior.range=c(range0, 0.5), prior.sigma = c(1, 0.01))
+  if(!strictPrior)
+    spde = inla.spde2.pcmatern(mesh, prior.range=c(range0, 0.5), prior.sigma = c(1, 0.01))
+  else
+    spde = inla.spde2.pcmatern(mesh, prior.range=c(range0, 0.5), prior.sigma = c(.15, 0.01))
   spde
 }
 
@@ -1093,7 +1096,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          predictionType=c("mean", "median"), eaDat=NULL, nSamplePixel=10, 
                          clusterEffect=FALSE, significance=.8, 
                          onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE, doValidation=FALSE, 
-                         previousResult=NULL, predCountyI=NULL, continuousOnly=FALSE) {
+                         previousResult=NULL, predCountyI=NULL, continuousOnly=FALSE, strictPrior=TRUE) {
   
   if(!is.null(predCountyI) && !onlyInexact)
     stop("If generating predictions for a fixed county (i.e. predCountyI is not NULL) then onlyInexact currently must be set to TRUE")
@@ -1120,7 +1123,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   
   # make default prior
   if(is.null(prior)) {
-    prior = getSPDEPrior(mesh)
+    prior = getSPDEPrior(mesh, strictPrior=strictPrior)
   }
   
   # make covariate matrices (intercept plus urban/rural depending on whether urban effect included)
@@ -1197,10 +1200,13 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   stack.full = stack.est
   stackDat = inla.stack.data(stack.full, spde=prior)
   allQuantiles = c(0.5, (1-significance) / 2, 1 - (1-significance) / 2)
+  if(!strictPrior)
+    clusterList = list(param=c(3, 0.01), prior="pc.prec")
+  else
+    clusterList = list(param=c(.15, 0.01), prior="pc.prec")
   if(clusterEffect) {
     mod = inla(y ~ - 1 + X + f(field, model=prior) + 
-                 f(clust, model="iid", 
-                   hyper = list(prec = list(prior = "pc.prec", param = c(3,0.01)))),
+                 f(clust, model="iid", hyper = list(prec = clusterList)),
                data = stackDat, Ntrials=stackDat$Ntrials,
                control.predictor=list(A=inla.stack.A(stack.full), compute=TRUE, link=stackDat$link, quantiles=allQuantiles),
                family="binomial", verbose=verbose, control.inla=control.inla,

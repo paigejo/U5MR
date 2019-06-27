@@ -6,7 +6,7 @@
 
 # same as runBYM, except fits the BYM2 reparameterized model (iid component in the BYM2 is that the county level)
 runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluster=TRUE, maxDataSets=NULL, 
-                   aggregateByPopulation=FALSE, margVar=0.15^2, gamma=-1, plotPriorPost=FALSE) {
+                   aggregateByPopulation=FALSE, margVar=0.15^2, gamma=-1, plotPriorPost=FALSE, strictPrior=TRUE) {
   
   # load and relevant data
   if(!test)
@@ -37,33 +37,41 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   clustersPerCounty = rowSums(cbind(clustersPerUrban, clustersPerRural))
   
   # Define formula
+  if(!strictPrior)
+    hyperList = list(param=c(1, 0.01), prior="pc.prec")
+  else
+    hyperList = list(param=c(.15, 0.01), prior="pc.prec")
+  if(!strictPrior)
+    clusterList = list(param=c(3, 0.01), prior="pc.prec")
+  else
+    clusterList = list(param=c(.15, 0.01), prior="pc.prec")
   if(includeUrbanRural) {
     if(includeCluster) {
       formula = y ~ urban +
         f(idx, model="bym2",
           graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
-          hyper=list(prec=list(param=c(1, 0.01), prior="pc.prec"), phi=list(param=c(0.5, 0.5), prior="pc"))) +
+          hyper=list(prec=hyperList, phi=list(param=c(0.5, 0.5), prior="pc"))) +
         f(idxEps, model = "iid",
-          hyper = list(prec = list(prior = "pc.prec", param = c(3,0.01))))
+          hyper = list(prec = clusterList))
     } else {
       formula = y ~ urban + 
         f(idx, model="bym2",
           graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
-          hyper=list(prec=list(param=c(1, 0.01), prior="pc.prec"), phi=list(param=c(0.5, 0.5), prior="pc")))
+          hyper=list(prec=hyperList, phi=list(param=c(0.5, 0.5), prior="pc")))
     }
   } else {
     if(includeCluster) {
       formula = y ~ f(idx, model="bym2",
                       graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
-                      hyper=list(prec=list(param=c(1, 0.01), prior="pc.prec"), 
+                      hyper=list(prec=hyperList, 
                                  phi=list(param=c(0.5, 0.5), prior="pc"))) +
         f(idxEps, model = "iid",
-          hyper = list(prec = list(prior = "pc.prec", param = c(3,0.01))))
+          hyper = list(prec = clusterList))
     } else {
       formula = y ~ 
         f(idx, model="bym2",
           graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
-          hyper=list(prec=list(param=c(1, 0.01), prior="pc.prec"), phi=list(param=c(0.5, 0.5), prior="pc")))
+          hyper=list(prec=clusterList, phi=list(param=c(0.5, 0.5), prior="pc")))
     }
   }
   
@@ -824,9 +832,10 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   #                      includeUrbanRural, '.RData'), designRes = designRes)
   
   testText = ifelse(test, "Test", "")
+  strictPriorText = ifelse(strictPrior, "strictPrior", "")
   save(file = paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
                      includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, "maxDataSets", 
-                     maxDataSets, testText, '.RData'), 
+                     maxDataSets, strictPriorText, testText, '.RData'), 
        designRes = designRes)
   
   # include the debiased results if cluster effect is included
@@ -846,7 +855,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
     
     save(file = paste0('bym2Beta-1.75margVar', round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 'UrbRur',
                        includeUrbanRural, 'Cluster', includeCluster, "aggByPop", aggregateByPopulation, 'debiasedMaxDataSets', 
-                       maxDataSets, testText, '.RData'), 
+                       maxDataSets, strictPriorText, testText, '.RData'), 
          designRes = designRes)
   }
   

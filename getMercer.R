@@ -7,7 +7,7 @@ library(INLA)
 
 # load a different 1 of these depending on whether a cluster effect should be included 
 # in the simulation of the data or not (tausq is the cluster effect variance)
-getMercer = function(tausq=.1^2, test=FALSE, margVar=0.15^2, gamma=-1) {
+getMercer = function(tausq=.1^2, test=FALSE, margVar=0.15^2, gamma=-1, strictPrior=TRUE) {
   if(!test)
     load(paste0("resultsDirectNaiveBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
            "HHoldVar0urbanOverSamplefrac0.RData"))
@@ -56,7 +56,7 @@ getMercer = function(tausq=.1^2, test=FALSE, margVar=0.15^2, gamma=-1) {
     
     
     tmpSRS = mercer_u1m2(directEstSRS[[i]]$logit.est, directEstSRS[[i]]$var.est, 
-                        graph.path = "Kenyaadm1.graph")
+                        graph.path = "Kenyaadm1.graph", strictPrior=strictPrior)
     
     resSRS = data.frame(admin1=directEstSRS[[i]]$admin1,
                         u1m.mercer=expit(tmpSRS$summary.linear.predictor$mean),
@@ -135,12 +135,13 @@ getMercer = function(tausq=.1^2, test=FALSE, margVar=0.15^2, gamma=-1) {
                                  Q50=rowMeans(merceroverSampPar50), 
                                  Q90=rowMeans(merceroverSampPar90)))
   
+  strictPriorText = ifelse(strictPrior, "strictPrior", "")
   if(!test)
     save(merceroverSamp, mercerSRS, mercerSRSPar, merceroverSampPar, file=paste0("resultsMercerBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
-                                                "HHoldVar0urbanOverSamplefrac0.RData"))
+                                                "HHoldVar0urbanOverSamplefrac0", strictPriorText, ".RData"))
   else
     save(merceroverSamp, mercerSRS, mercerSRSPar, merceroverSampPar, file=paste0("resultsMercerBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
-                                                "HHoldVar0urbanOverSamplefrac0Test.RData"))
+                                                "HHoldVar0urbanOverSamplefrac0", strictPriorText, "Test.RData"))
   
   invisible(NULL)
 }

@@ -27,7 +27,7 @@ mercer_u1m = function(logit.est, var.est, graph.path){
 
 # modified version of the Mercer et al. model using the BYM2 model with joint PC prior
 mercer_u1m2 = function(logit.est, var.est, graph.path, plotPriorPost=FALSE, previousResult=NULL, 
-                       doValidation=FALSE, predCountyI=NULL) {
+                       doValidation=FALSE, predCountyI=NULL, strictPrior=TRUE) {
   # remove observation at the given county if necessary for cross-validation
   if(!is.null(predCountyI))
     logit.est[predCountyI] = NA
@@ -40,8 +40,12 @@ mercer_u1m2 = function(logit.est, var.est, graph.path, plotPriorPost=FALSE, prev
   # our model includes an intercept, iid space and ICAR component
   # use BYM2 hyperpriors based on INLA rw1 and bym2 recommendations (this is 
   # probability scale rather than full real line, so shrink sigma slightly)
+  if(!strictPrior)
+    hyperList = list(param=c(1, 0.01), prior="pc.prec")
+  else
+    hyperList = list(param=c(.15, 0.01), prior="pc.prec")
   formula = y ~ f(idx, model="bym2", graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
-                  hyper=list(prec=list(param=c(1, 0.01), prior="pc.prec"), 
+                  hyper=list(prec=hyperList, 
                              phi=list(param=c(0.5, 0.5), prior="pc")))
   
   if(doValidation) {

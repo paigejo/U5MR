@@ -23,7 +23,6 @@ makeSpdeCommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarV
             next
         }
         
-        
         for(i4 in 1:length(includeClustEffectVec)) {
           includeClustEffect = includeClustEffectVec[i4]
           
