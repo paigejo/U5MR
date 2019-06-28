@@ -1085,6 +1085,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     
     ## collect parameter means, sds, and quantiles
     # for fixed effects
+    print(paste0("Parameter summaries generating: iteration ", i, "/", nsim))
     interceptQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.fixed[[1]])
     interceptQuants = c(quant10=interceptQuants[1], quant50=interceptQuants[2], quant90=interceptQuants[3])
     interceptMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.fixed[[1]])
@@ -1099,6 +1100,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     }
     
     # for hyperparameters
+    print(paste0("Hyperparameter summaries generating: iteration ", i, "/", nsim))
     rangeQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
     rangeQuants = c(quant10=rangeQuants[1], quant50=rangeQuants[2], quant90=rangeQuants[3])
     sdQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
@@ -1127,13 +1129,16 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
       nuggetSDSummary = c(est=nuggetSDMoments[1], sd=sqrt(nuggetSDMoments[2] - nuggetSDMoments[1]^2), var=nuggetSDMoments[2] - nuggetSDMoments[1]^2, nuggetSDQuants, width=nuggetSDQuants[3] - nuggetSDQuants[1])
     }
     
-    list(scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
-         scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
-         scoresCountyInexact=scoresCountyInexact, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
-         scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
-         interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
-         rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
-         nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary)
+    res = list(scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
+               scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
+               scoresCountyInexact=scoresCountyInexact, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+               scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
+               interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
+               rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
+               nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary)
+    
+    print(paste0("Completed iteration ", i, "/", nsim))
+    res
   }
   
   # compute Bias & MSE & mean(Var) & 80\% coverage for each simulation
