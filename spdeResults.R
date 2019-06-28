@@ -1116,6 +1116,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     nuggetVarSummary = NULL
     nuggetSDSummary = NULL
     if(includeClustEffect) {
+      print(paste0("Cluster hyperparameters summaries generating: iteration ", i, "/", nsim))
       nuggetPrecQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[3]])
       nuggetVarQuants = 1/nuggetPrecQuants
       nuggetVarQuants = c(quant10=nuggetVarQuants[3], quant50=nuggetVarQuants[2], quant90=nuggetVarQuants[1])
@@ -1129,6 +1130,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
       nuggetSDSummary = c(est=nuggetSDMoments[1], sd=sqrt(nuggetSDMoments[2] - nuggetSDMoments[1]^2), var=nuggetSDMoments[2] - nuggetSDMoments[1]^2, nuggetSDQuants, width=nuggetSDQuants[3] - nuggetSDQuants[1])
     }
     
+    print(paste0("Combining results: iteration ", i, "/", nsim))
     res = list(scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
                scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
                scoresCountyInexact=scoresCountyInexact, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
