@@ -1229,7 +1229,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     # parallel version
     
     results = foreach(i = 1:nsim, .combine=combineResults, .verbose=TRUE, .multicombine=TRUE, .export=ls()) %dopar% {
-      mainFunction(i, FALSE)
+      mainFunction(i, TRUE)
     }
     
     # # separate results into the different aggregation levels
