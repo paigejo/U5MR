@@ -1125,9 +1125,10 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
       nuggetSDMarg = inla.tmarginal(function(x) {1/sqrt(x)}, fit$mod$marginals.hyperpar[[3]])
       nuggetVarMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetVarMarg)
       nuggetSDMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetSDMarg)
-      
+      print(paste0("test1: iteration ", i, "/", nsim))
       nuggetVarSummary = c(est=nuggetVarMoments[1], sd=sqrt(nuggetVarMoments[2] - nuggetVarMoments[1]^2), var=nuggetVarMoments[2] - nuggetVarMoments[1]^2, nuggetVarQuants, width=nuggetVarQuants[3] - nuggetVarQuants[1])
       nuggetSDSummary = c(est=nuggetSDMoments[1], sd=sqrt(nuggetSDMoments[2] - nuggetSDMoments[1]^2), var=nuggetSDMoments[2] - nuggetSDMoments[1]^2, nuggetSDQuants, width=nuggetSDQuants[3] - nuggetSDQuants[1])
+      print(paste0("test2: iteration ", i, "/", nsim))
     }
     
     print(paste0("Combining results: iteration ", i, "/", nsim))
