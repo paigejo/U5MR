@@ -651,7 +651,7 @@ resultsSPDEHelper2 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     rangeQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
     sdQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
     varQuants = sdQuants^2
-    varMarg = inla.tmarginal(function(x) {x^2}, fit$mod$marginals.hyperpar[[2]])
+    varMarg = my.tmarginal(function(x) {x^2}, fit$mod$marginals.hyperpar[[2]])
     rangeMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[1]])
     rangeSummary = c(rangeMoments[1], sqrt(rangeMoments[2] - rangeMoments[1]^2), rangeMoments[2] - rangeMoments[1]^2, rangeQuants, rangeQuants[3] - rangeQuants[1])
     sdMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[2]])
@@ -664,8 +664,8 @@ resultsSPDEHelper2 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
       nuggetPrecQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[3]])
       nuggetVarQuants = 1/nuggetPrecQuants
       nuggetSDQuants = sqrt(nuggetVarQuants)
-      nuggetVarMarg = inla.tmarginal(function(x) {1/x}, fit$mod$marginals.hyperpar[[3]])
-      nuggetSDMarg = inla.tmarginal(function(x) {1/sqrt(x)}, fit$mod$marginals.hyperpar[[3]])
+      nuggetVarMarg = my.tmarginal(function(x) {1/x}, fit$mod$marginals.hyperpar[[3]])
+      nuggetSDMarg = my.tmarginal(function(x) {1/sqrt(x)}, fit$mod$marginals.hyperpar[[3]])
       nuggetVarMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetVarMarg)
       nuggetSDMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetSDMarg)
       
@@ -1101,12 +1101,12 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     
     # for hyperparameters
     print(paste0("Hyperparameter summaries generating: iteration ", i, "/", nsim))
-    rangeQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
+    rangeQuants = my.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
     rangeQuants = c(quant10=rangeQuants[1], quant50=rangeQuants[2], quant90=rangeQuants[3])
     sdQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
     sdQuants = c(quant10=sdQuants[1], quant50=sdQuants[2], quant90=sdQuants[3])
     varQuants = sdQuants^2
-    varMarg = inla.tmarginal(function(x) {x^2}, fit$mod$marginals.hyperpar[[2]])
+    varMarg = my.tmarginal(function(x) {x^2}, fit$mod$marginals.hyperpar[[2]])
     rangeMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[1]])
     rangeSummary = c(est=rangeMoments[1], sd=sqrt(rangeMoments[2] - rangeMoments[1]^2), var=rangeMoments[2] - rangeMoments[1]^2, rangeQuants, width=rangeQuants[3] - rangeQuants[1])
     sdMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[2]])
@@ -1117,7 +1117,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     nuggetSDSummary = NULL
     if(includeClustEffect) {
       print(paste0("Cluster hyperparameters summaries generating: iteration ", i, "/", nsim))
-      nuggetPrecQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[3]])
+      nuggetPrecQuants = my.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[3]])
       print(paste0("test1: iteration ", i, "/", nsim))
       nuggetVarQuants = 1/nuggetPrecQuants
       print(paste0("test2: iteration ", i, "/", nsim))
@@ -1125,9 +1125,9 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
       print(paste0("test3: iteration ", i, "/", nsim))
       nuggetSDQuants = sqrt(nuggetVarQuants)
       print(paste0("test4: iteration ", i, "/", nsim))
-      nuggetVarMarg = inla.tmarginal(function(x) {1/x}, fit$mod$marginals.hyperpar[[3]])
+      nuggetVarMarg = my.tmarginal(function(x) {1/x}, fit$mod$marginals.hyperpar[[3]])
       print(paste0("test5: iteration ", i, "/", nsim))
-      nuggetSDMarg = inla.tmarginal(function(x) {1/sqrt(x)}, fit$mod$marginals.hyperpar[[3]])
+      nuggetSDMarg = my.tmarginal(function(x) {1/sqrt(x)}, fit$mod$marginals.hyperpar[[3]])
       print(paste0("test6: iteration ", i, "/", nsim))
       nuggetVarMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetVarMarg)
       print(paste0("test7: iteration ", i, "/", nsim))
@@ -1424,7 +1424,7 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
     sdQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
     sdQuants = c(quant10=sdQuants[1], quant50=sdQuants[2], quant90=sdQuants[3])
     varQuants = sdQuants^2
-    varMarg = inla.tmarginal(function(x) {x^2}, fit$mod$marginals.hyperpar[[2]])
+    varMarg = my.tmarginal(function(x) {x^2}, fit$mod$marginals.hyperpar[[2]])
     rangeMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[1]])
     rangeSummary = c(est=rangeMoments[1], sd=sqrt(rangeMoments[2] - rangeMoments[1]^2), var=rangeMoments[2] - rangeMoments[1]^2, rangeQuants, width=rangeQuants[3] - rangeQuants[1])
     sdMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[2]])
@@ -1438,8 +1438,8 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
       nuggetVarQuants = 1/nuggetPrecQuants
       nuggetVarQuants = c(quant10=nuggetVarQuants[3], quant50=nuggetVarQuants[2], quant90=nuggetVarQuants[1])
       nuggetSDQuants = sqrt(nuggetVarQuants)
-      nuggetVarMarg = inla.tmarginal(function(x) {1/x}, fit$mod$marginals.hyperpar[[3]])
-      nuggetSDMarg = inla.tmarginal(function(x) {1/sqrt(x)}, fit$mod$marginals.hyperpar[[3]])
+      nuggetVarMarg = my.tmarginal(function(x) {1/x}, fit$mod$marginals.hyperpar[[3]])
+      nuggetSDMarg = my.tmarginal(function(x) {1/sqrt(x)}, fit$mod$marginals.hyperpar[[3]])
       nuggetVarMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetVarMarg)
       nuggetSDMoments = inla.emarginal(function(x) {c(x, x^2)}, nuggetSDMarg)
       
@@ -1630,3 +1630,79 @@ getTruthByCounty = function(eaDat, counties=as.character(unique(ed$admin1))) {
   sortI = match(counties, theseCounties)
   list(counties=counties, rate=rate[sortI], n=nByCounty)
 }
+
+# same as inla.tmarginal, except can fit splines to the marginals on log scale, which may 
+# be necessary for highly peaked distributions near 0
+my.tmarginal = function (fun, marginal, n = 2048L, h.diff = .Machine$double.eps^(1/3), 
+                         method = c("quantile", "linear"), logX=TRUE) 
+{
+  ff = match.fun(fun)
+  is.mat = is.matrix(marginal)
+  m = inla.smarginal(marginal)
+  r = range(m$x)
+  method = match.arg(method)
+  if (INLA:::inla.strcasecmp(method, "quantile")) {
+    x = my.qmarginal((1:n)/(n + 1), marginal, logX=logX)
+  }
+  else if (INLA:::inla.strcasecmp(method, "linear")) {
+    x = seq(r[1], r[2], length = n)
+  }
+  else {
+    stop("unknown method")
+  }
+  xx = ff(x)
+  fd = INLA:::inla.deriv.func(ff)
+  log.dens = inla.dmarginal(x, marginal, log = FALSE)/abs(fd(x))
+  if (xx[1] > xx[n]) {
+    xx[1:n] = xx[n:1]
+    log.dens[1:n] = log.dens[n:1]
+  }
+  if (is.mat) {
+    ret = cbind(x = xx, y = log.dens)
+  }
+  else {
+    ret = list(x = xx, y = log.dens)
+  }
+  if (FALSE) {
+    class(ret) = "inla.marginal"
+    attr(ret, "inla.tag") = paste(attr(marginal, "inla.tag"), 
+                                  "transformed")
+  }
+  return(ret)
+}
+
+# same as inla.qmarginal, except can fit splines to the marginals on log scale, which may 
+# be necessary for highly peaked distributions near 0
+my.qmarginal = function(p, marginal, len = 2048L, logX=TRUE) 
+{
+  f = INLA:::inla.sfmarginal(inla.smarginal(marginal))
+  xx = seq(f$range[1], f$range[2], length = len)
+  
+  d = cumsum(exp(f$fun(xx)))
+  d = d/d[length(d)]
+  eps = .Machine$double.eps * 1000
+  for (val in c(0, 1)) {
+    is.val = which(abs(d - val) <= eps)
+    if (length(is.val) > 1) {
+      is.val = is.val[-1]
+      d = d[-is.val]
+      xx = xx[-is.val]
+    }
+  }
+  
+  if(logX) {
+    fq = splinefun(d, log(xx), method = "hyman")
+    n = length(p)
+    pp = pmin(pmax(p, rep(0, n)), rep(1, n))
+    return(exp(fq(pp)))
+  }
+  else {
+    fq = splinefun(d, xx, method = "hyman")
+    n = length(p)
+    pp = pmin(pmax(p, rep(0, n)), rep(1, n))
+    return(fq(pp))
+  }
+}
+
+
+
