@@ -935,7 +935,10 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
   }
   
   # now make a function for generating the results that can work either in parallel or serial
-  mainFunction = function(i) {
+  mainFunction = function(i, doSink=FALSE) {
+    if(doSink)
+      sink("log.txt", append=TRUE)
+    
     print(paste0("iteration ", i, "/", nsim))
     
     # get the simulated sample
@@ -1145,6 +1148,8 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
                nuggetVarSummary=nuggetVarSummary, nuggetSDSummary=nuggetSDSummary)
     
+    if(doSink)
+      sink()
     print(paste0("Completed iteration ", i, "/", nsim))
     res
   }
@@ -1239,16 +1244,15 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     
     surveyResults = list()
     for(i in 1:nsim) {
-      surveyResults = c(surveyResults, list(mainFunction(i)))
+      surveyResults = c(surveyResults, list(mainFunction(i, FALSE)))
     }
     results = combineResults(surveyResults)
   } else {
     # parallel version
-    sink("log.txt", append=TRUE)
+    
     results = foreach(i = 1:nsim, .combine=combineResults, .verbose=TRUE, .multicombine=TRUE, .export=ls()) %dopar% {
-      mainFunction(i)
+      mainFunction(i, TRUE)
     }
-    sink()
     
     # # separate results into the different aggregation levels
     # scoresEaExact=results$scoresEaExact
