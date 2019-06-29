@@ -1239,14 +1239,14 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     
     surveyResults = list()
     for(i in 1:nsim) {
-      surveyResults = c(surveyResults, list(mainFunction(i, FALSE)))
+      surveyResults = c(surveyResults, list(mainFunction(i)))
     }
     results = combineResults(surveyResults)
   } else {
     # parallel version
     sink("log.txt", append=TRUE)
     results = foreach(i = 1:nsim, .combine=combineResults, .verbose=TRUE, .multicombine=TRUE, .export=ls()) %dopar% {
-      mainFunction(i, TRUE)
+      mainFunction(i)
     }
     sink()
     
