@@ -648,8 +648,8 @@ resultsSPDEHelper2 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     }
     
     # for hyperparameters
-    rangeQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
-    sdQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
+    rangeQuants = my.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
+    sdQuants = my.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
     varQuants = sdQuants^2
     varMarg = my.tmarginal(function(x) {x^2}, fit$mod$marginals.hyperpar[[2]])
     rangeMoments = inla.emarginal(function(x) {c(x, x^2)}, fit$mod$marginals.hyperpar[[1]])
@@ -661,7 +661,7 @@ resultsSPDEHelper2 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     nuggetVarSummary = NULL
     nuggetSDSummary = NULL
     if(includeClustEffect) {
-      nuggetPrecQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[3]])
+      nuggetPrecQuants = my.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[3]])
       nuggetVarQuants = 1/nuggetPrecQuants
       nuggetSDQuants = sqrt(nuggetVarQuants)
       nuggetVarMarg = my.tmarginal(function(x) {1/x}, fit$mod$marginals.hyperpar[[3]])
@@ -1103,7 +1103,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     print(paste0("Hyperparameter summaries generating: iteration ", i, "/", nsim))
     rangeQuants = my.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
     rangeQuants = c(quant10=rangeQuants[1], quant50=rangeQuants[2], quant90=rangeQuants[3])
-    sdQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
+    sdQuants = my.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
     sdQuants = c(quant10=sdQuants[1], quant50=sdQuants[2], quant90=sdQuants[3])
     varQuants = sdQuants^2
     varMarg = my.tmarginal(function(x) {x^2}, fit$mod$marginals.hyperpar[[2]])
@@ -1419,9 +1419,9 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
     }
     
     # for hyperparameters
-    rangeQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
+    rangeQuants = my.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[1]])
     rangeQuants = c(quant10=rangeQuants[1], quant50=rangeQuants[2], quant90=rangeQuants[3])
-    sdQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
+    sdQuants = my.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[2]])
     sdQuants = c(quant10=sdQuants[1], quant50=sdQuants[2], quant90=sdQuants[3])
     varQuants = sdQuants^2
     varMarg = my.tmarginal(function(x) {x^2}, fit$mod$marginals.hyperpar[[2]])
@@ -1434,7 +1434,7 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
     nuggetVarSummary = NULL
     nuggetSDSummary = NULL
     if(includeClustEffect) {
-      nuggetPrecQuants = inla.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[3]])
+      nuggetPrecQuants = my.qmarginal(c(0.1, 0.5, 0.9), fit$mod$marginals.hyperpar[[3]])
       nuggetVarQuants = 1/nuggetPrecQuants
       nuggetVarQuants = c(quant10=nuggetVarQuants[3], quant50=nuggetVarQuants[2], quant90=nuggetVarQuants[1])
       nuggetSDQuants = sqrt(nuggetVarQuants)
