@@ -50,28 +50,28 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
       formula = y ~ urban +
         f(idx, model="bym2",
           graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
-          hyper=list(prec=hyperList, phi=list(param=c(0.5, 0.5), prior="pc"))) +
+          hyper=list(prec=hyperList, phi=list(param=c(0.5, 2/3), prior="pc"))) +
         f(idxEps, model = "iid",
           hyper = list(prec = clusterList))
     } else {
       formula = y ~ urban + 
         f(idx, model="bym2",
           graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
-          hyper=list(prec=hyperList, phi=list(param=c(0.5, 0.5), prior="pc")))
+          hyper=list(prec=hyperList, phi=list(param=c(0.5, 2/3), prior="pc")))
     }
   } else {
     if(includeCluster) {
       formula = y ~ f(idx, model="bym2",
                       graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
                       hyper=list(prec=hyperList, 
-                                 phi=list(param=c(0.5, 0.5), prior="pc"))) +
+                                 phi=list(param=c(0.5, 2/3), prior="pc"))) +
         f(idxEps, model = "iid",
           hyper = list(prec = clusterList))
     } else {
       formula = y ~ 
         f(idx, model="bym2",
           graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
-          hyper=list(prec=clusterList, phi=list(param=c(0.5, 0.5), prior="pc")))
+          hyper=list(prec=clusterList, phi=list(param=c(0.5, 2/3), prior="pc")))
     }
   }
   
@@ -354,6 +354,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
     # sample the hyperparameters, using the marginals to improve the sampling
     out = inla.hyperpar.sample(1000, result, improve.marginals=TRUE)
     transformFunction = function(x) {c(1/x[1], 1/x[1]*x[2], 1/x[1]*(1-x[2]), 1/x[3])}
+    browser()
     if(!includeCluster)
       transformFunction = function(x) {c(1/x[1], 1/x[1]*x[2], 1/x[1]*(1-x[2]))}
     transformedOut = apply(out, 1, transformFunction)

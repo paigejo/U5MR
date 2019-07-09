@@ -46,7 +46,7 @@ mercer_u1m2 = function(logit.est, var.est, graph.path, plotPriorPost=FALSE, prev
     hyperList = list(param=c(.15, 0.01), prior="pc.prec")
   formula = y ~ f(idx, model="bym2", graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
                   hyper=list(prec=hyperList, 
-                             phi=list(param=c(0.5, 0.5), prior="pc")))
+                             phi=list(param=c(0.5, 2/3), prior="pc")))
   
   if(doValidation) {
     control.inla = list(strategy="laplace", int.strategy="grid", diff.logdens=4, npoints=21) 

@@ -37,7 +37,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
                                         " ($\\times 10^{-3}$)", " ($\\times 10^{-2}$)", " ($\\times 10^{-2}$)"), 
                              colDigits=c(1, 1, 1, 1, 0, 1), counties=sort(unique(poppc$admin1)), 
                              loadTempProgress=FALSE, includeBVarResults=FALSE, continuousSPDEonly=TRUE, 
-                             strictPriors=TRUE) {
+                             strictPriors=TRUE, doFancyTables=FALSE) {
   
   # match the arguments with their correct values
   resultType = match.arg(resultType)
@@ -1063,6 +1063,8 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   }
   else {
     # in this case, we have already computed the results so just load them into the environment
+    print("Loading results...")
+    temp = doFancyTables
     if(loadResults)
       load(paste0("scores", runId, ".RData"))
     else if(loadTempProgress) {
@@ -1071,6 +1073,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       loadTempProgress = temp
     }
     
+    doFancyTables = temp
     allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 ucA", "BYM2 uCA", "BYM2 uCA'", "BYM2 UcA", "BYM2 UCA", "BYM2 UCA'", 
                  "BYM2 uca", "BYM2 uCa", "BYM2 uCa'", "BYM2 Uca", "BYM2 UCa", "BYM2 UCa'", 
                  "SPDE uc", "SPDE uC", "SPDE Uc", "SPDE UC")
@@ -1307,11 +1310,91 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   #   tab = tab[!rowI,]
   # }
   
-  print(do.call("xtable", c(list(tab), xtable.args)), 
-        include.colnames=TRUE,
-        hline.after=0, 
-        math.style.exponents=TRUE, 
-        sanitize.text.function=function(x){x})
+  # remove redundant rows of BYM2 model
+  modelTypes = word(models, 1)
+  modelTypes[modelTypes == "Smoothed"] = "Smoothed Direct"
+  uniqueModelTypes = unique(modelTypes)
+  modelTypeGroups = lapply(uniqueModelTypes, function(x) {(1:length(modelTypes))[modelTypes == x]})
+  modelVariations = word(models, 2)
+  modelVariations[is.na(modelVariations)] = ""
+  modelVariations[modelVariations == "Direct"] = ""
+  if("BYM2 ucA" %in% models)
+    models[models == "BYM2 ucA"] = "BYM2 uc"
+  if("BYM2 uCA" %in% models)
+    models[models == "BYM2 uCA"] = "BYM2 uC"
+  if("BYM2 uCA'" %in% models)
+    models[models == "BYM2 uCA'"] = "BYM2 uC'"
+  if("BYM2 uca" %in% models) {
+    tab = tab[models != "BYM2 uca",]
+    models = models[models != "BYM2 uca"]
+  }
+  if("BYM2 uCa" %in% models) {
+    tab = tab[models != "BYM2 uCa",]
+    models = models[models != "BYM2 uCa"]
+  }
+  if("BYM2 uCa'" %in% models) {
+    tab = tab[models != "BYM2 uCa'",]
+    models = models[models != "BYM2 uCa'"]
+  }
+  rownames(tab) = models
+  
+  # recalculate model types and variations
+  modelTypes = word(models, 1)
+  modelTypes[modelTypes == "Smoothed"] = "Smoothed Direct"
+  uniqueModelTypes = unique(modelTypes)
+  modelTypeGroups = lapply(uniqueModelTypes, function(x) {(1:length(modelTypes))[modelTypes == x]})
+  modelVariations = word(models, 2)
+  modelVariations[is.na(modelVariations)] = ""
+  modelVariations[modelVariations == "Direct"] = ""
+  
+  if(!doFancyTables)
+    print(do.call("xtable", c(list(tab), xtable.args)), 
+          include.colnames=TRUE,
+          hline.after=0, 
+          math.style.exponents=TRUE, 
+          sanitize.text.function=function(x){x})
+  
+  if(doFancyTables) {
+    require(stringr)
+    require(dplyr)
+    require(kableExtra)
+    
+    options(knitr.table.format = "latex")
+    
+    # bold the best entries of each column, italicize worst entries of each column
+    centers = c(rep(0, 4), 80, 0)
+    columnBest = apply(cbind(abs(tab[,1]), tab[,2:4], abs(tab[,5]-80), tab[,6]), 2, min)
+    columnWorst = apply(cbind(abs(tab[,1]), tab[,2:4], abs(tab[,5]-80), tab[,6]), 2, max)
+    dat = data.table(tab)
+    test = dat %>% mutate(Bias = cell_spec(tab[,1], "latex", bold=abs(tab[,1] - centers[1]) <= columnBest[1], italic = abs(tab[,1] - centers[1]) >= columnWorst[1], 
+                                           monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+                          Var = cell_spec(tab[,2], "latex", bold=abs(tab[,2] - centers[2]) <= columnBest[1], italic = abs(tab[,2] - centers[2]) >= columnWorst[2], 
+                                          monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+                          MSE = cell_spec(tab[,3], "latex", bold=abs(tab[,3] - centers[3]) <= columnBest[3], italic = abs(tab[,3] - centers[3]) >= columnWorst[3], 
+                                          monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+                          CRPS = cell_spec(tab[,4], "latex", bold=abs(tab[,4] - centers[4]) <= columnBest[4], italic = abs(tab[,4] - centers[4]) >= columnWorst[4], 
+                                           monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+                          CVG = cell_spec(tab[,5], "latex", bold=abs(tab[,5] - centers[5]) <= columnBest[5], italic = abs(tab[,5] - centers[5]) >= columnWorst[5], 
+                                          monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+                          Width = cell_spec(tab[,6], "latex", bold=abs(tab[,6] - centers[6]) <= columnBest[6], italic = abs(tab[,6] - centers[6]) >= columnWorst[6], 
+                                            monospace=FALSE, underline=FALSE, strikeout=FALSE)) %>%
+      select(Bias, Var, MSE, CRPS, CVG, Width)
+    
+    # revert the column names to their true values, set the model variations to be the values in the first column
+    colnames(test) = colnames(tab)
+    test = cbind(" "=modelVariations, test)
+    rownames(test)=NULL
+    
+    # group the rows by the type of model
+    fullTab = test %>%
+      kable("latex", escape = F, booktabs = T) %>% kable_styling()
+    for(i in 1:length(uniqueModelTypes)) {
+      startR = min(modelTypeGroups[[i]])
+      endR = max(modelTypeGroups[[i]])
+      fullTab = fullTab %>% pack_rows(uniqueModelTypes[i], startR, endR, latex_gap_space = "2em")
+    }
+    print(fullTab)
+  }
   
   ## append parameter tables from each smoothing model if necessary
   anySmoothingModels = as.numeric("Naive" %in% models) + as.numeric("Direct" %in% models)
@@ -1324,11 +1407,11 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       parTab = rbind(parTab, mercerPar)
       parRowNames = c(parRowNames, rep("Smoothed Direct", nrow(mercerPar)))
     }
-    if("BYM2 ucA" %in% models || "BYM2 uca" %in% models) {
+    if("BYM2 ucA" %in% models || "BYM2 uca" %in% models || "BYM2 uc" %in% models) {
       parTab = rbind(parTab, designResNoUrbClust[[length(designResNoUrbClust)]])
       parRowNames = c(parRowNames, rep("BYM2 uc", nrow(designResNoUrbClust[[length(designResNoUrbClust)]])))
     }
-    if("BYM2 uCA" %in% models || "BYM2 uCa'" %in% models || "BYM2 uCa" %in% models || "BYM2 uCa'" %in% models) {
+    if("BYM2 uCA" %in% models || "BYM2 uCA'" %in% models || "BYM2 uCa" %in% models || "BYM2 uCa'" %in% models  || "BYM2 uC" %in% models || "BYM2 uC'" %in% models) {
       parTab = rbind(parTab, designResNoUrb[[length(designResNoUrb)]])
       parRowNames = c(parRowNames, rep("BYM2 uC", nrow(designResNoUrb[[length(designResNoUrb)]])))
     }
@@ -1477,7 +1560,49 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       if(grepl("\\d", lastCharacter))
         rownames(parTab)[i] = substr(rownames(parTab)[i], 1, nchar(rownames(parTab)[i])-1)
     }
-    print(xtable(parTab, digits=2, display=c("s", rep("fg", ncol(parTab)))))
+    
+    if(!doFancyTables)
+      print(xtable(parTab, digits=2, display=c("s", rep("fg", ncol(parTab)))))
+    
+    if(doFancyTables) {
+      # now make the fancy table using kableExtra by grouping the rows by models and model variations
+      # fancyParTable = xtable2kable(xtable(parTab, digits=2, display=c("s", rep("fg", ncol(parTab)))))
+      # fancyParTable = xtable2kable(xtable(parTab, digits=2, display=c("s", rep("e", ncol(parTab)))))
+      
+      # determine the model type and model variation groupings
+      SmoothDirectI = (1:nrow(parTab))[grepl("Smoothed Direct", rownames(parTab))]
+      BYM2I = (1:nrow(parTab))[grepl("BYM2", rownames(parTab))]
+      BYM2I = setdiff(BYM2I, SmoothDirectI)
+      SPDEI = (1:nrow(parTab))[grepl("SPDE", rownames(parTab))]
+      modelTypes = rep("Smoothed Direct", nrow(parTab))
+      modelTypes[BYM2I] = "BYM2"
+      modelTypes[SPDEI] = "SPDE"
+      uniqueModelTypes = unique(modelTypes)
+      modelTypeGroups = lapply(uniqueModelTypes, function(x) {(1:length(modelTypes))[modelTypes == x]})
+      modelVariations = rep("", nrow(parTab))
+      modelVariations[BYM2I] = word(rownames(parTab)[BYM2I], 2)
+      modelVariations[SPDEI] = word(rownames(parTab)[SPDEI], 2)
+      
+      # determine the parameter names
+      require("tm")
+      parNames = trimws(removeWords(rownames(parTab), c(uniqueModelTypes, unique(modelVariations))))
+      
+      # round intercept, phi, and range parameters to 3, 3, and 0 digits respectively
+      parTab[parNames == "Intercept",] = round(parTab[parNames == "Intercept",], digits=3)
+      parTab[parNames == "Phi",] = round(parTab[parNames == "Phi",], digits=3)
+      parTab[parNames == "Range",] = round(parTab[parNames == "Range",], digits=0)
+      
+      # add the grouping variables and parameter names as new columns
+      parTab = cbind(" "=modelTypes, " "=modelVariations, " "=parNames, parTab)
+      rownames(parTab) = NULL
+      
+      # group the rows by model type and model variation
+      row_group_label_fonts <-list(list(bold = T, italic = T), list(bold = F, italic = F))
+      print(kable(parTab, "latex", booktabs = T, escape=FALSE, format.args=list(drop0trailing=TRUE, scientific=FALSE)) %>%
+        kable_styling() %>%
+        collapse_rows(1:2, row_group_label_position ='stack', latex_hline ='custom', custom_latex_hline = 1:2, 
+                      row_group_label_fonts = row_group_label_fonts))
+    }
   }
   
   runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
@@ -2468,12 +2593,16 @@ getTruth = function(resultType = c("county", "region", "EA", "pixel"), eaDat) {
 }
 
 # takes all precomputed scoring rules from compareModels2 listed in compareModelCommandArgs.RData, and outputs results
-runCompareModelsAllLocal = function() {
+runCompareModelsAllLocal = function(indices=NULL, strictPriors=TRUE, doFancyTables=TRUE) {
   load("compareModelCommandArgs.RData")
-  for(i in 1:length(compareModelCommandArgs)) {
+  if(is.null(indices))
+    indices = 1:length(compareModelCommandArgs)
+  for(i in indices) {
     # get the arguments for the run, and specify that we want to load the precomputed results
     argList = compareModelCommandArgs[[i]]
     argList$loadResults = TRUE
+    argList$strictPriors = strictPriors
+    argList$doFancyTables = doFancyTables
     
     # get all elements from the list
     tausq = argList$tausq
@@ -2492,6 +2621,7 @@ runCompareModelsAllLocal = function() {
     # generate an informative id string to label the table we are about to print with
     testText = ifelse(test, "Test", "")
     bigText = ifelse(big, "Big", "")
+    strictPriorText = ifelse(strictPriors, "strictPrior", "")
     runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
                    "HHoldVar0urbanOverSamplefrac0", strictPriorText, testText, bigText, sampling, 
                    "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)

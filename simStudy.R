@@ -25,8 +25,8 @@ simEAs = function(kenyaPop, numEAs=96251, totalKenyaPop=43.0 * 10^6, seed=123) {
 }
 
 # for kmres=2.5: nx=350, ny=430
-makeUrbanMap = function(popGrid=NULL, kmres=2.5, savePlot=FALSE, fileName="figures/urbanMap.png", nx=850, ny=1050, 
-                        width=500, height=500, lonLim=kenyaLonRange, latLim=kenyaLatRange) {
+makeUrbanMap = function(popGrid=NULL, kmres=2.5, savePlot=FALSE, fileName=ifelse(whiteRural, "figures/UrbanMapWhiteRural.png", "figures/urbanMap.png"), 
+                        nx=850, ny=1050, width=500, height=500, lonLim=kenyaLonRange, latLim=kenyaLatRange, whiteRural=TRUE) {
   # get prediction locations from population grid
   if(is.null(popGrid)) {
     if(kmres == 5)
@@ -47,8 +47,12 @@ makeUrbanMap = function(popGrid=NULL, kmres=2.5, savePlot=FALSE, fileName="figur
   plot(popGrid$lon, popGrid$lat, xlab="Longitude", ylab="Latitude", main=TeX("Urbanicity"), xlim=lonLim, ylim=latLim, asp=1, type="n")
   # quilt.plot(popGrid$lon, popGrid$lat, urban, col=c("green", "blue"), nx=850, ny=1050, add.legend = FALSE, 
   #            xlab="Longitude", ylab="Latitude", main=TeX("Urbanicity"), xlim=lonLim, ylim=latLim, asp=1)
-  quilt.plot(popGrid$lon, popGrid$lat, urban, col=c("green", "blue"), nx=850, ny=1050, add.legend = FALSE, add=TRUE)
-  legend("bottomleft", c("urban", "rural"), col=c("blue", "green"), pch=19)
+  if(whiteRural)
+    quilt.plot(popGrid$lon, popGrid$lat, urban, col=c(rgb(0, 0, 0, 0), "blue"), nx=850, ny=1050, add.legend = FALSE, add=TRUE)
+  else {
+    quilt.plot(popGrid$lon, popGrid$lat, urban, col=c("green", "blue"), nx=850, ny=1050, add.legend = FALSE, add=TRUE)
+    legend("bottomleft", c("urban", "rural"), col=c("blue", "green"), pch=19)
+  }
   # world(add=TRUE)
   plotMapDat(adm1)
   if(savePlot) {

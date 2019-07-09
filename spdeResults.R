@@ -9,8 +9,9 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
                        includeClustEffect=TRUE, int.strategy="eb", 
                        genRegionLevel=TRUE, keepPixelPreds=TRUE, kmres=5, 
                        genEALevel=TRUE, urbanEffect=TRUE, tausq=0, 
-                       saveResults=!test, margVar=.15^2, gamma=-1, 
-                       beta0=-1.75, loadProgress=FALSE, continuousOnly=TRUE, strictPrior=TRUE) {
+                       saveResults=!test && !is.null(maxDataSets), margVar=.15^2, gamma=-1, 
+                       beta0=-1.75, loadProgress=FALSE, continuousOnly=TRUE, strictPrior=TRUE, 
+                       maxDataSets=NULL) {
   # Load data
   # load("simDataMulti.RData") # overSampDat, SRSDat
   # load a different 1 of these depending on whether a cluster effect should be included 
@@ -35,9 +36,11 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
   clustSRS = SRSDat$clustDat
   clustOverSamp = overSampDat$clustDat
   
-  if(test) {
-    clustSRS = lapply(1:nTest, function(i) {clustSRS[[i]]})
-    clustOverSamp = lapply(1:nTest, function(i) {clustOverSamp[[i]]})
+  if(test)
+    maxDataSets = nTest
+  if(!is.null(maxDataSets)) {
+    clustSRS = lapply(1:maxDataSets, function(i) {clustSRS[[i]]})
+    clustOverSamp = lapply(1:maxDataSets, function(i) {clustOverSamp[[i]]})
   }
   
   # SRS results are correct, so load those and recompute overSamp results
