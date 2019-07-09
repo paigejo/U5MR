@@ -6,7 +6,7 @@
 
 # same as runBYM, except fits the BYM2 reparameterized model (iid component in the BYM2 is that the county level)
 runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluster=TRUE, maxDataSets=NULL, 
-                   aggregateByPopulation=FALSE, margVar=0.15^2, gamma=-1, plotPriorPost=FALSE, strictPrior=TRUE) {
+                   aggregateByPopulation=FALSE, margVar=0.15^2, gamma=-1, plotPriorPost=FALSE, strictPrior=FALSE) {
   
   # load and relevant data
   if(!test)

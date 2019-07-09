@@ -7,7 +7,7 @@ library(INLA)
 
 # load a different 1 of these depending on whether a cluster effect should be included 
 # in the simulation of the data or not (tausq is the cluster effect variance)
-getMercer = function(tausq=.1^2, test=FALSE, margVar=0.15^2, gamma=-1, strictPrior=TRUE) {
+getMercer = function(tausq=.1^2, test=FALSE, margVar=0.15^2, gamma=-1, strictPrior=FALSE) {
   if(!test)
     load(paste0("resultsDirectNaiveBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
            "HHoldVar0urbanOverSamplefrac0.RData"))
