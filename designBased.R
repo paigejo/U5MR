@@ -193,11 +193,11 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
     transformedOut = apply(out, 1, transformFunction)
     
     # now calculate the summary statistics of the transformed BYM2 hyperparameters
-    sampCountySRSDatPar[(2 + includeUrban):length(parNames), i] = rowMeans(transformedOut)
-    sampCountySRSDatSD[(2 + includeUrban):length(parNames), i] = apply(transformedOut, 1, sd)
-    sampCountySRSDat10[(2 + includeUrban):length(parNames), i] = apply(transformedOut, 1, quantile, probs=.1)
-    sampCountySRSDat50[(2 + includeUrban):length(parNames), i] = apply(transformedOut, 1, quantile, probs=.5)
-    sampCountySRSDat90[(2 + includeUrban):length(parNames), i] = apply(transformedOut, 1, quantile, probs=.9)
+    sampCountySRSDatPar[(2 + includeUrbanRural):length(parNames), i] = rowMeans(transformedOut)
+    sampCountySRSDatSD[(2 + includeUrbanRural):length(parNames), i] = apply(transformedOut, 1, sd)
+    sampCountySRSDat10[(2 + includeUrbanRural):length(parNames), i] = apply(transformedOut, 1, quantile, probs=.1)
+    sampCountySRSDat50[(2 + includeUrbanRural):length(parNames), i] = apply(transformedOut, 1, quantile, probs=.5)
+    sampCountySRSDat90[(2 + includeUrbanRural):length(parNames), i] = apply(transformedOut, 1, quantile, probs=.9)
     
     # Simulate from posterior
     if(includeUrbanRural) {
@@ -347,11 +347,11 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
     transformedOut = apply(out, 1, transformFunction)
     
     # now calculate the summary statistics of the transformed BYM2 hyperparameters
-    sampCountyOverSampDatPar[(2 + includeUrban):length(parNames), i] = rowMeans(transformedOut)
-    sampCountyOverSampDatSD[(2 + includeUrban):length(parNames), i] = apply(transformedOut, 1, sd)
-    sampCountyOverSampDat10[(2 + includeUrban):length(parNames), i] = apply(transformedOut, 1, quantile, probs=.1)
-    sampCountyOverSampDat50[(2 + includeUrban):length(parNames), i] = apply(transformedOut, 1, quantile, probs=.5)
-    sampCountyOverSampDat90[(2 + includeUrban):length(parNames), i] = apply(transformedOut, 1, quantile, probs=.9)
+    sampCountyOverSampDatPar[(2 + includeUrbanRural):length(parNames), i] = rowMeans(transformedOut)
+    sampCountyOverSampDatSD[(2 + includeUrbanRural):length(parNames), i] = apply(transformedOut, 1, sd)
+    sampCountyOverSampDat10[(2 + includeUrbanRural):length(parNames), i] = apply(transformedOut, 1, quantile, probs=.1)
+    sampCountyOverSampDat50[(2 + includeUrbanRural):length(parNames), i] = apply(transformedOut, 1, quantile, probs=.5)
+    sampCountyOverSampDat90[(2 + includeUrbanRural):length(parNames), i] = apply(transformedOut, 1, quantile, probs=.9)
     
     # Simulate from posterior
     if(includeUrbanRural) {
