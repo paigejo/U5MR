@@ -1201,7 +1201,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   stackDat = inla.stack.data(stack.full, spde=prior)
   allQuantiles = c(0.5, (1-significance) / 2, 1 - (1-significance) / 2)
   if(!strictPrior)
-    clusterList = list(param=c(3, 0.01), prior="pc.prec")
+    clusterList = list(param=c(1, 0.01), prior="pc.prec")
   else
     clusterList = list(param=c(.15, 0.01), prior="pc.prec")
   if(clusterEffect) {
