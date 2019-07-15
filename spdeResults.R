@@ -90,9 +90,10 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
                                     genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds, 
                                     genEALevel=genEALevel, urbanEffect=urbanEffect, kmres=kmres, 
                                     continuousOnly=continuousOnly, strictPrior=strictPrior)
-  
+  print(paste0("Saving final results under: ", fileName))
   if(saveResults)
     save(spdeSRS, spdeOverSamp, file=fileName)
+  print(paste0("Finished saving final results under: ", fileName))
   
   list(spdeSRS=spdeSRS, spdeOverSamp=spdeOverSamp)
 }
@@ -1371,8 +1372,7 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
                       int.strategy=int.strategy, genRegionLevel=TRUE, counties=sort(unique(kenyaEAs$admin1)), 
                       keepPixelPreds=keepPixelPreds, genEALevel=TRUE, regions=sort(unique(kenyaEAs$region)), 
                       urbanEffect=urbanEffect, eaIndices=1:nrow(clustDat), 
-                      eaDat=eaDat, truthByCounty=TRUE, truthByRegion=TRUE, 
-                      truthByPixel=TRUE, nSamplePixel=nSamplePixel, 
+                      eaDat=eaDat, nSamplePixel=nSamplePixel, 
                       significance=significance, onlyInexact=TRUE, allPixels=TRUE, 
                       newMesh=TRUE, previousResult=previousResult, predCountyI=predCountyI)
   

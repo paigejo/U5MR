@@ -1299,9 +1299,12 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   }
   
   # round the columns of tab and modify the column names to include the scale
+  unroundedTab = tab
   for(i in 1:ncol(tab)) {
     tab[,i] = as.numeric(round(tab[,i] * colScale[i], digits=colDigits[i]))
     colnames(tab)[i] = paste0(colnames(tab)[i], colUnits[i])
+    unroundedTab[,i] = as.numeric(unroundedTab[,i] * colScale[i])
+    colnames(unroundedTab)[i] = paste0(colnames(unroundedTab)[i], colUnits[i])
   }
   
   # remove "Direct Bin." model, since direct estimates already account for Binomial variation
@@ -1311,6 +1314,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   # }
   
   # remove redundant rows of BYM2 model
+  require(stringr)
   modelTypes = word(models, 1)
   modelTypes[modelTypes == "Smoothed"] = "Smoothed Direct"
   uniqueModelTypes = unique(modelTypes)
@@ -1326,17 +1330,21 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     models[models == "BYM2 uCA'"] = "BYM2 uC'"
   if("BYM2 uca" %in% models) {
     tab = tab[models != "BYM2 uca",]
+    unroundedTab = unroundedTab[models != "BYM2 uca",]
     models = models[models != "BYM2 uca"]
   }
   if("BYM2 uCa" %in% models) {
     tab = tab[models != "BYM2 uCa",]
+    unroundedTab = unroundedTab[models != "BYM2 uCa",]
     models = models[models != "BYM2 uCa"]
   }
   if("BYM2 uCa'" %in% models) {
     tab = tab[models != "BYM2 uCa'",]
+    unroundedTab = unroundedTab[models != "BYM2 uCa'",]
     models = models[models != "BYM2 uCa'"]
   }
   rownames(tab) = models
+  rownames(unroundedTab) = models
   
   # recalculate model types and variations
   modelTypes = word(models, 1)
@@ -1399,9 +1407,8 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   ## append parameter tables from each smoothing model if necessary
   anySmoothingModels = as.numeric("Naive" %in% models) + as.numeric("Direct" %in% models)
   anySmoothingModels = length(models) > anySmoothingModels
-  
+  parTab = c()
   if(anySmoothingModels) {
-    parTab = c()
     parRowNames = c()
     if("Smoothed Direct" %in% models) {
       parTab = rbind(parTab, mercerPar)
@@ -1652,7 +1659,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     dev.off()
   }
   
-  tab
+  list(tab=tab, parTab=parTab, unroundedTab=unroundedTab)
 }
 
 # This model produces an xtable summarizing the scoring rules aggregated at the given level of interest
@@ -2632,6 +2639,206 @@ runCompareModelsAllLocal = function(indices=NULL, strictPriors=TRUE, doFancyTabl
   }
 }
 
+# plot the scoring rules for each analysis and population model for a fixed type of survey design (the survey design being SRS or urban oversampled)
+plotCompareModelsAllLocal = function(strictPriors=FALSE) {
+  # map the population type to a type of point plotted:
+  ## constant risk: 1
+  ## constant plus spatial: 2
+  ## constant plus spatial plus urban: 0
+  ## all effects: 5
+  pch = c(1, 2, 0, 5)
+  
+  load("compareModelCommandArgs.RData")
+  indices = 1:length(compareModelCommandArgs)
+  
+  plotHelper = function(scoreI, goalVal=NULL, rangeIncludes=c()) {
+    fullTableSRS1 = c() # constant risk
+    fullTableSRS2 = c() # constant plus spatial effect
+    fullTableSRS3 = c() # all but cluster effect
+    fullTableSRS4 = c() # all effects
+    fullTableBigSRS1 = c() # constant risk
+    fullTableBigSRS2 = c() # constant plus spatial effect
+    fullTableBigSRS3 = c() # all but cluster effect
+    fullTableBigSRS4 = c() # all effects
+    fullTable1 = c() # constant risk
+    fullTable2 = c() # constant plus spatial effect
+    fullTable3 = c() # all but cluster effect
+    fullTable4 = c() # all effects
+    fullTableBig1 = c() # constant risk
+    fullTableBig2 = c() # constant plus spatial effect
+    fullTableBig3 = c() # all but cluster effect
+    fullTableBig4 = c() # all effects
+    for(i in indices) {
+      # get the arguments for the run, and specify that we want to load the precomputed results
+      argList = compareModelCommandArgs[[i]]
+      argList$loadResults = TRUE
+      argList$strictPriors = strictPriors
+      
+      # get all elements from the list
+      tausq = argList$tausq
+      gamma = argList$gamma
+      margVar = argList$margVar
+      test = argList$test
+      resultType = argList$resultType
+      sampling = argList$sampling
+      recomputeTruth = argList$recomputeTruth
+      modelsI = argList$modelsI
+      produceFigures = argList$produceFigures
+      big = argList$big
+      maxDataSets = argList$maxDataSets 
+      nsim = argList$nsim
+      
+      # generate an informative id string to label the table we are about to print with
+      testText = ifelse(test, "Test", "")
+      bigText = ifelse(big, "Big", "")
+      strictPriorText = ifelse(strictPriors, "strictPrior", "")
+      runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                     "HHoldVar0urbanOverSamplefrac0", strictPriorText, testText, bigText, sampling, 
+                     "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
+      print(runId)
+      
+      # get the precomputed scoring rule results
+      out = do.call("runCompareModels2", argList)
+      theseScores = out$unroundedTab
+      
+      # append scores to the score table for the relevant population
+      if(big && sampling == "oversamp") {
+        if(margVar == 0 && gamma == 0 && tausq == 0)
+          fullTableBig1 = cbind(fullTableBig1, theseScores[,scoreI])
+        else if(gamma == 0 && tausq == 0)
+          fullTableBig2 = cbind(fullTableBig2, theseScores[,scoreI])
+        else if(tausq == 0)
+          fullTableBig3 = cbind(fullTableBig3, theseScores[,scoreI])
+        else
+          fullTableBig4 = cbind(fullTableBig4, theseScores[,scoreI])
+      } else if(!big && sampling == "oversamp") {
+        if(margVar == 0 && gamma == 0 && tausq == 0)
+          fullTable1 = cbind(fullTable1, theseScores[,scoreI])
+        else if(gamma == 0 && tausq == 0)
+          fullTable2 = cbind(fullTable2, theseScores[,scoreI])
+        else if(tausq == 0)
+          fullTable3 = cbind(fullTable3, theseScores[,scoreI])
+        else
+          fullTable4 = cbind(fullTable4, theseScores[,scoreI])
+      }
+      else if(big && sampling == "SRS") {
+        if(margVar == 0 && gamma == 0 && tausq == 0)
+          fullTableBigSRS1 = cbind(fullTableBigSRS1, theseScores[,scoreI])
+        else if(gamma == 0 && tausq == 0)
+          fullTableBigSRS2 = cbind(fullTableBigSRS2, theseScores[,scoreI])
+        else if(tausq == 0)
+          fullTableBigSRS3 = cbind(fullTableBigSRS3, theseScores[,scoreI])
+        else
+          fullTableBigSRS4 = cbind(fullTableBigSRS4, theseScores[,scoreI])
+      } else if(!big && sampling == "SRS") {
+        if(margVar == 0 && gamma == 0 && tausq == 0)
+          fullTableSRS1 = cbind(fullTableSRS1, theseScores[,scoreI])
+        else if(gamma == 0 && tausq == 0)
+          fullTableSRS2 = cbind(fullTableSRS2, theseScores[,scoreI])
+        else if(tausq == 0)
+          fullTableSRS3 = cbind(fullTableSRS3, theseScores[,scoreI])
+        else
+          fullTableSRS4 = cbind(fullTableSRS4, theseScores[,scoreI])
+      }
+    }
+    
+    # overwrite the scoring rules for the non-smoothing models with the big scoring rules
+    modelNames = rownames(fullTable1)
+    nonSmoothingI = (modelNames == "Naive") | (modelNames == "Direct")
+    fullTable1[nonSmoothingI,] = fullTableBig1
+    fullTable2[nonSmoothingI,] = fullTableBig2
+    fullTable3[nonSmoothingI,] = fullTableBig3
+    fullTable4[nonSmoothingI,] = fullTableBig4
+    fullTableSRS1[nonSmoothingI,] = fullTableBigSRS1
+    fullTableSRS2[nonSmoothingI,] = fullTableBigSRS2
+    fullTableSRS3[nonSmoothingI,] = fullTableBigSRS3
+    fullTableSRS4[nonSmoothingI,] = fullTableBigSRS4
+    
+    ## Generate the plot
+    scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, rangeIncludes))
+    scoringRuleName = colnames(theseScores)[scoreI]
+    
+    # plot the urban oversampled values
+    tempModelNames = sort(factor(modelNames, labels=modelNames))
+    # centers = seq(from=1, to=16, by=1)
+    delta = .35
+    centers = rev(c(1:4, (5:13) + 1 * delta, 14 + 2 * delta, (15:16) + 3 * delta) * (16 / (16 + 3 * delta)))
+    stripchart(fullTable1 ~ tempModelNames, cex=0, las=2, xlim=scoreRange, main="", 
+               at=centers, xlab="")
+    unabbreviatedTitle = gsub('\\\\%', "\\%", scoringRuleName)
+    unabbreviatedTitle = gsub('Var', "Variance", unabbreviatedTitle)
+    unabbreviatedTitle = gsub('Cvg', "Coverage", unabbreviatedTitle)
+    title(TeX(unabbreviatedTitle), line=4)
+    axis(3, las=2)
+    
+    if(!is.null(goalVal)) {
+      segments(x0=goalVal, y0=centers[1]+.5, x1=goalVal, y1=centers[16]-.5, lty=2, col="black")
+    }
+    
+    stripchart(fullTable1 ~ tempModelNames, col="blue", pch=pch[1], add=TRUE, 
+               at=jitter(centers, amount = .15))
+    stripchart(fullTable2 ~ tempModelNames, col="blue", pch=pch[2], add=TRUE, 
+               at=jitter(centers, amount = .15))
+    stripchart(fullTable3 ~ tempModelNames, col="blue", pch=pch[3], add=TRUE, 
+               at=jitter(centers, amount = .15))
+    stripchart(fullTable4 ~ tempModelNames, col="blue", pch=pch[4], add=TRUE, 
+               at=jitter(centers, amount = .15))
+    
+    # plot the SRS values
+    stripchart(fullTable1 ~ tempModelNames, col="green", pch=pch[1], add=TRUE, 
+               at=jitter(centers, amount = .15))
+    stripchart(fullTableSRS2 ~ tempModelNames, col="green", pch=pch[2], add=TRUE, 
+               at=jitter(centers, amount = .15))
+    stripchart(fullTableSRS3 ~ tempModelNames, col="green", pch=pch[3], add=TRUE, 
+               at=jitter(centers, amount = .15))
+    stripchart(fullTableSRS4 ~ tempModelNames, col="green", pch=pch[4], add=TRUE, 
+               at=jitter(centers, amount = .15))
+  }
+  
+  # generate plots for each scoring rule (1-6: bias, variance, mse, crps, coverage, width)
+  strictText = ifelse(strictPriors, "strictPrior", "")
+  pdf(paste0("figures/biasPlot", strictText, ".pdf"), width=6, height=5)
+  par(mar=c(4.1, 8.1, 5.1, 8.1), xpd=TRUE)
+  plotHelper(1, goalVal=0, rangeIncludes=0)
+  legend("right", c("suc SRS", "suc DHS", "Suc SRS", "Suc DHS", "SUc SRS", "SUc DHS", "SUC SRS", "SUC DHS"), 
+         pch=rep(pch, each=2), col=rep(c("green", "blue"), length(pch)), horiz=FALSE, inset=c(-0.5,0))
+  dev.off()
+  
+  pdf(paste0("figures/varPlot", strictText, ".pdf"), width=6, height=5)
+  par(mar=c(4.1, 8.1, 5.1, 8.1), xpd=TRUE)
+  plotHelper(2, goalVal=0, rangeIncludes=0)
+  legend("right", c("suc SRS", "suc DHS", "Suc SRS", "Suc DHS", "SUc SRS", "SUc DHS", "SUC SRS", "SUC DHS"), 
+         pch=rep(pch, each=2), col=rep(c("green", "blue"), length(pch)), horiz=FALSE, inset=c(-0.5,0))
+  dev.off()
+  
+  pdf(paste0("figures/msePlot", strictText, ".pdf"), width=6, height=5)
+  par(mar=c(4.1, 8.1, 5.1, 8.1), xpd=TRUE)
+  plotHelper(3, goalVal=0, rangeIncludes=0)
+  legend("right", c("suc SRS", "suc DHS", "Suc SRS", "Suc DHS", "SUc SRS", "SUc DHS", "SUC SRS", "SUC DHS"), 
+         pch=rep(pch, each=2), col=rep(c("green", "blue"), length(pch)), horiz=FALSE, inset=c(-0.5,0))
+  dev.off()
+  
+  pdf(paste0("figures/crpsPlot", strictText, ".pdf"), width=6, height=5)
+  par(mar=c(4.1, 8.1, 5.1, 8.1), xpd=TRUE)
+  plotHelper(4, goalVal=0, rangeIncludes=0)
+  legend("right", c("suc SRS", "suc DHS", "Suc SRS", "Suc DHS", "SUc SRS", "SUc DHS", "SUC SRS", "SUC DHS"), 
+         pch=rep(pch, each=2), col=rep(c("green", "blue"), length(pch)), horiz=FALSE, inset=c(-0.5,0))
+  dev.off()
+  
+  pdf(paste0("figures/coveragePlot", strictText, ".pdf"), width=6, height=5)
+  par(mar=c(4.1, 8.1, 5.1, 8.1), xpd=TRUE)
+  plotHelper(5, goalVal=80, rangeIncludes=100)
+  legend("right", c("suc SRS", "suc DHS", "Suc SRS", "Suc DHS", "SUc SRS", "SUc DHS", "SUC SRS", "SUC DHS"), 
+         pch=rep(pch, each=2), col=rep(c("green", "blue"), length(pch)), horiz=FALSE, inset=c(-0.5,0))
+  dev.off()
+  
+  pdf(paste0("figures/widthPlot", strictText, ".pdf"), width=6, height=5)
+  par(mar=c(4.1, 8.1, 5.1, 8.1), xpd=TRUE)
+  plotHelper(6, goalVal=0, rangeIncludes=0)
+  legend("right", c("suc SRS", "suc DHS", "Suc SRS", "Suc DHS", "SUc SRS", "SUc DHS", "SUC SRS", "SUC DHS"), 
+         pch=rep(pch, each=2), col=rep(c("green", "blue"), length(pch)), horiz=FALSE, inset=c(-0.5,0))
+  dev.off()
+}
 
 
 
