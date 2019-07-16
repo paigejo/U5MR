@@ -993,32 +993,32 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       if("BYM2 uca" %in% models) {
         my.scoresbymNoUrbClustPopAgg = getScores(thisTruth, numChildren, designResNoUrbClustPopAgg[[1]]$mean[,i], (designResNoUrbClustPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoUrbClustPopAgg <- rbind(scoresBYMNoUrbClustPopAgg,
-                                     cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbClustPopAgg))
+                                           cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbClustPopAgg))
       }
       if("BYM2 uCa" %in% models) {
         my.scoresbymNoUrbPopAgg = getScores(thisTruth, numChildren, designResNoUrbPopAgg[[1]]$mean[,i], (designResNoUrbPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoUrbPopAgg <- rbind(scoresBYMNoUrbPopAgg,
-                                cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbPopAgg))
+                                      cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbPopAgg))
       }
       if("BYM2 uCa'" %in% models) {
         my.scoresbymNoUrbModPopAgg = getScores(thisTruth, numChildren, designResNoUrbModPopAgg[[1]]$mean[,i], (designResNoUrbModPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoUrbModPopAgg <- rbind(scoresBYMNoUrbModPopAgg,
-                                   cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbModPopAgg))
+                                         cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoUrbModPopAgg))
       }
       if("BYM2 Uca" %in% models) {
         my.scoresbymNoClustPopAgg = getScores(thisTruth, numChildren, designResNoClustPopAgg[[1]]$mean[,i], (designResNoClustPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMNoClustPopAgg <- rbind(scoresBYMNoClustPopAgg,
-                                  cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoClustPopAgg))
+                                        cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymNoClustPopAgg))
       }
       if("BYM2 UCa" %in% models) {
         my.scoresbymPopAgg = getScores(thisTruth, numChildren, designResPopAgg[[1]]$mean[,i], (designResPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMPopAgg <- rbind(scoresBYMPopAgg,
-                           cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymPopAgg))
+                                 cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymPopAgg))
       }
       if("BYM2 UCa'" %in% models) {
         my.scoresbymModPopAgg = getScores(thisTruth, numChildren, designResModPopAgg[[1]]$mean[,i], (designResModPopAgg[[1]]$stddev[,i])^2, nsim=nsim)
         scoresBYMModPopAgg <- rbind(scoresBYMModPopAgg,
-                              cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymModPopAgg))
+                                    cbind(data.frame(dataset=i, region=allres[[resultType]]), my.scoresbymModPopAgg))
       }
       if("SPDE uC" %in% models) {
         # stop("determine if the spde code should compute all of these directly")
@@ -1606,14 +1606,14 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       # group the rows by model type and model variation
       row_group_label_fonts <-list(list(bold = T, italic = T), list(bold = F, italic = F))
       print(kable(parTab, "latex", booktabs = T, escape=FALSE, format.args=list(drop0trailing=TRUE, scientific=FALSE)) %>%
-        kable_styling() %>%
-        collapse_rows(1:2, row_group_label_position ='stack', latex_hline ='custom', custom_latex_hline = 1:2, 
-                      row_group_label_fonts = row_group_label_fonts))
+              kable_styling() %>%
+              collapse_rows(1:2, row_group_label_position ='stack', latex_hline ='custom', custom_latex_hline = 1:2, 
+                            row_group_label_fonts = row_group_label_fonts))
     }
   }
   
   runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
-                "HHoldVar0urbanOverSamplefrac0", strictPriorText, testText, bigText, sampling, 
+                 "HHoldVar0urbanOverSamplefrac0", strictPriorText, testText, bigText, sampling, 
                  "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
   if(saveResults) {
     # first collect all the results. Save everything except for the postprocessing arguments: 
@@ -2647,11 +2647,14 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
   ## constant plus spatial plus urban: 0
   ## all effects: 5
   pch = c(1, 2, 0, 5)
+  cols = rainbow(4)
   
   load("compareModelCommandArgs.RData")
   indices = 1:length(compareModelCommandArgs)
   
-  plotHelper = function(scoreI, goalVal=NULL, rangeIncludes=c()) {
+  plotHelper = function(scoreI, goalVal=NULL, rangeIncludes=c(), scoreName="", filterRows=c(1:3, 4, 6, 10, 12, 13:16)) {
+    plotNameRoot = paste0(tolower(scoreName), "Plot")
+    
     fullTableSRS1 = c() # constant risk
     fullTableSRS2 = c() # constant plus spatial effect
     fullTableSRS3 = c() # all but cluster effect
@@ -2754,90 +2757,138 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     fullTableSRS3[nonSmoothingI,] = fullTableBigSRS3
     fullTableSRS4[nonSmoothingI,] = fullTableBigSRS4
     
-    ## Generate the plot
-    scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, rangeIncludes))
+    # filter out only the desired models
+    fullTable1 = fullTable1[filterRows,]
+    fullTable2 = fullTable2[filterRows,]
+    fullTable3 = fullTable3[filterRows,]
+    fullTable4 = fullTable4[filterRows,]
+    fullTableSRS1 = fullTableSRS1[filterRows,]
+    fullTableSRS2 = fullTableSRS2[filterRows,]
+    fullTableSRS3 = fullTableSRS3[filterRows,]
+    fullTableSRS4 = fullTableSRS4[filterRows,]
+    modelNames = names(fullTable1)
+    
+    # remove unnecessary symbols from model names
+    modelNames = gsub("'", "", modelNames)
+    modelNames[grepl("BYM2", modelNames)] = gsub("a", "", modelNames[grepl("BYM2", modelNames)])
+    
+    # get the model variation and the model type
+    require(stringr)
+    modelTypes = word(modelNames, 1)
+    modelTypes[modelTypes == "Smoothed"] = "Smoothed Direct"
+    uniqueModelTypes = unique(modelTypes)
+    modelTypeGroups = lapply(uniqueModelTypes, function(x) {(1:length(modelTypes))[modelTypes == x]})
+    modelVariations = word(modelNames, 2)
+    modelVariations[is.na(modelVariations)] = ""
+    modelVariations[modelVariations == "Direct"] = ""
+    
+    # separate the text that will be diagonal, vertical, and horizontal
+    diagonalText = c(modelTypes[1:3], rep("", length(modelTypes) - 3))
+    variationText = modelVariations
+    categoryText = c("BYM2", "SPDE")
+    
+    ## Generate the plots
+    scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, rangeIncludes))
     scoringRuleName = colnames(theseScores)[scoreI]
     
     # plot the urban oversampled values
     tempModelNames = sort(factor(modelNames, labels=modelNames))
     # centers = seq(from=1, to=16, by=1)
-    delta = .35
-    centers = rev(c(1:4, (5:13) + 1 * delta, 14 + 2 * delta, (15:16) + 3 * delta) * (16 / (16 + 3 * delta)))
-    stripchart(fullTable1 ~ tempModelNames, cex=0, las=2, xlim=scoreRange, main="", 
-               at=centers, xlab="")
+    delta = .3
+    # centers = rev(c(1:4, (5:13) + 1 * delta, 14 + 2 * delta, (15:16) + 3 * delta) * (16 / (16 + 3 * delta)))
+    centers = rev(c(1:4 + .5 * delta, (5:8) + 1.5 * delta, 9 + 2.5 * delta, (10:11) + 3.5 * delta) * (11 / (11 + 4 * delta))) # would need a different one for a different filterRows
+    centers = centers[1] + centers[length(centers)] - centers
     unabbreviatedTitle = gsub('\\\\%', "\\%", scoringRuleName)
     unabbreviatedTitle = gsub('Var', "Variance", unabbreviatedTitle)
     unabbreviatedTitle = gsub('Cvg', "Coverage", unabbreviatedTitle)
-    title(TeX(unabbreviatedTitle), line=4)
-    axis(3, las=2)
+    unabbreviatedTitle = gsub("\\(", "(urban oversampled, ", unabbreviatedTitle)
+    strictText = ifelse(strictPriors, "strictPrior", "")
+    
+    pdf(paste0("figures/", plotNameRoot, strictText, "DHS.pdf"), width=6, height=5)
+    # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
+    par(mar=c(6.1, 4.1, 3.1, 5.3), xpd=TRUE)
+    stripchart(fullTable1 ~ tempModelNames, cex=0, las=2, ylim=scoreRange, main="", 
+               at=rev(centers), ylab="", axes=FALSE, vertical=TRUE)
+    
+    title(TeX(unabbreviatedTitle))
+    box()
+    # axis(3, las=2)
+    axis(2, las=2)
+    axis(1, srt=60, at=centers, labels=rep("", length(centers)))
+    # text(par("usr")[1] - 1, centers, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
+    yShift = diff(par("usr")[3:4]) / 15
+    # text(centers +  delta, par("usr")[3] - yShift, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
+    text(centers +  delta, par("usr")[3] - yShift, labels = diagonalText, srt = 45, pos = 2, xpd = TRUE)
+    text(centers + 1.5 * delta, par("usr")[3] - 1.25 * yShift, labels = variationText, pos = 2, xpd = TRUE)
+    spdeCenter = mean(centers[(length(centers) - 3):length(centers)])
+    bym2Center = mean(centers[(length(centers) - 7):(length(centers) - 4)])
+    text(c(bym2Center, spdeCenter) + 2.75 * delta, par("usr")[3] - yShift * 2.75, labels = categoryText, pos = 2, xpd = TRUE)
     
     if(!is.null(goalVal)) {
-      segments(x0=goalVal, y0=centers[1]+.5, x1=goalVal, y1=centers[16]-.5, lty=2, col="black")
+      segments(y0=goalVal, x0=par("usr")[1], y1=goalVal, x1=par("usr")[2], lty=2, col="black")
     }
     
-    stripchart(fullTable1 ~ tempModelNames, col="blue", pch=pch[1], add=TRUE, 
-               at=jitter(centers, amount = .15))
-    stripchart(fullTable2 ~ tempModelNames, col="blue", pch=pch[2], add=TRUE, 
-               at=jitter(centers, amount = .15))
-    stripchart(fullTable3 ~ tempModelNames, col="blue", pch=pch[3], add=TRUE, 
-               at=jitter(centers, amount = .15))
-    stripchart(fullTable4 ~ tempModelNames, col="blue", pch=pch[4], add=TRUE, 
-               at=jitter(centers, amount = .15))
+    stripchart(fullTable1 ~ tempModelNames, col=cols[1], pch=pch[1], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE)
+    stripchart(fullTable2 ~ tempModelNames, col=cols[2], pch=pch[2], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE)
+    stripchart(fullTable3 ~ tempModelNames, col=cols[3], pch=pch[3], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE)
+    stripchart(fullTable4 ~ tempModelNames, col=cols[4], pch=pch[4], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE)
+    
+    legend("right", c("suc", "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.215,0))
+    dev.off()
     
     # plot the SRS values
-    stripchart(fullTable1 ~ tempModelNames, col="green", pch=pch[1], add=TRUE, 
-               at=jitter(centers, amount = .15))
-    stripchart(fullTableSRS2 ~ tempModelNames, col="green", pch=pch[2], add=TRUE, 
-               at=jitter(centers, amount = .15))
-    stripchart(fullTableSRS3 ~ tempModelNames, col="green", pch=pch[3], add=TRUE, 
-               at=jitter(centers, amount = .15))
-    stripchart(fullTableSRS4 ~ tempModelNames, col="green", pch=pch[4], add=TRUE, 
-               at=jitter(centers, amount = .15))
+    pdf(paste0("figures/", plotNameRoot, strictText, "SRS.pdf"), width=6, height=5)
+    # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
+    par(mar=c(6.1, 4.1, 3.1, 5.3), xpd=TRUE)
+    
+    scoreRange = range(c(fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, rangeIncludes))
+    stripchart(fullTable1 ~ tempModelNames, cex=0, las=2, ylim=scoreRange, main="", 
+               at=rev(centers), ylab="", axes=FALSE, vertical=TRUE)
+    
+    unabbreviatedTitle = gsub("\\(urban oversampled, ", "(SRS, ", unabbreviatedTitle)
+    # title(TeX(paste0(unabbreviatedTitle)), line=4)
+    title(TeX(unabbreviatedTitle))
+    box()
+    # axis(3, las=2)
+    axis(2, las=2)
+    axis(1, srt=60, at=centers, labels=rep("", length(centers)))
+    # text(par("usr")[1] - 1, centers, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
+    yShift = diff(par("usr")[3:4]) / 15
+    # text(centers +  delta, par("usr")[3] - yShift, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
+    text(centers +  delta, par("usr")[3] - yShift, labels = diagonalText, srt = 45, pos = 2, xpd = TRUE)
+    text(centers + 1.5 * delta, par("usr")[3] - 1.25 * yShift, labels = variationText, pos = 2, xpd = TRUE)
+    spdeCenter = mean(centers[(length(centers) - 3):length(centers)])
+    bym2Center = mean(centers[(length(centers) - 7):(length(centers) - 4)])
+    text(c(bym2Center, spdeCenter) + 2.75 * delta, par("usr")[3] - yShift * 2.75, labels = categoryText, pos = 2, xpd = TRUE)
+    
+    if(!is.null(goalVal)) {
+      segments(y0=goalVal, x0=par("usr")[1], y1=goalVal, x1=par("usr")[2], lty=2, col="black")
+    }
+    
+    stripchart(fullTable1 ~ tempModelNames, col=cols[1], pch=pch[1], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE)
+    stripchart(fullTableSRS2 ~ tempModelNames, col=cols[2], pch=pch[2], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE)
+    stripchart(fullTableSRS3 ~ tempModelNames, col=cols[3], pch=pch[3], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE)
+    stripchart(fullTableSRS4 ~ tempModelNames, col=cols[4], pch=pch[4], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE)
+    
+    legend("right", c("suc", "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.215,0))
+    dev.off()
   }
   
   # generate plots for each scoring rule (1-6: bias, variance, mse, crps, coverage, width)
-  strictText = ifelse(strictPriors, "strictPrior", "")
-  pdf(paste0("figures/biasPlot", strictText, ".pdf"), width=6, height=5)
-  par(mar=c(4.1, 8.1, 5.1, 8.1), xpd=TRUE)
-  plotHelper(1, goalVal=0, rangeIncludes=0)
-  legend("right", c("suc SRS", "suc DHS", "Suc SRS", "Suc DHS", "SUc SRS", "SUc DHS", "SUC SRS", "SUC DHS"), 
-         pch=rep(pch, each=2), col=rep(c("green", "blue"), length(pch)), horiz=FALSE, inset=c(-0.5,0))
-  dev.off()
-  
-  pdf(paste0("figures/varPlot", strictText, ".pdf"), width=6, height=5)
-  par(mar=c(4.1, 8.1, 5.1, 8.1), xpd=TRUE)
-  plotHelper(2, goalVal=0, rangeIncludes=0)
-  legend("right", c("suc SRS", "suc DHS", "Suc SRS", "Suc DHS", "SUc SRS", "SUc DHS", "SUC SRS", "SUC DHS"), 
-         pch=rep(pch, each=2), col=rep(c("green", "blue"), length(pch)), horiz=FALSE, inset=c(-0.5,0))
-  dev.off()
-  
-  pdf(paste0("figures/msePlot", strictText, ".pdf"), width=6, height=5)
-  par(mar=c(4.1, 8.1, 5.1, 8.1), xpd=TRUE)
-  plotHelper(3, goalVal=0, rangeIncludes=0)
-  legend("right", c("suc SRS", "suc DHS", "Suc SRS", "Suc DHS", "SUc SRS", "SUc DHS", "SUC SRS", "SUC DHS"), 
-         pch=rep(pch, each=2), col=rep(c("green", "blue"), length(pch)), horiz=FALSE, inset=c(-0.5,0))
-  dev.off()
-  
-  pdf(paste0("figures/crpsPlot", strictText, ".pdf"), width=6, height=5)
-  par(mar=c(4.1, 8.1, 5.1, 8.1), xpd=TRUE)
-  plotHelper(4, goalVal=0, rangeIncludes=0)
-  legend("right", c("suc SRS", "suc DHS", "Suc SRS", "Suc DHS", "SUc SRS", "SUc DHS", "SUC SRS", "SUC DHS"), 
-         pch=rep(pch, each=2), col=rep(c("green", "blue"), length(pch)), horiz=FALSE, inset=c(-0.5,0))
-  dev.off()
-  
-  pdf(paste0("figures/coveragePlot", strictText, ".pdf"), width=6, height=5)
-  par(mar=c(4.1, 8.1, 5.1, 8.1), xpd=TRUE)
-  plotHelper(5, goalVal=80, rangeIncludes=100)
-  legend("right", c("suc SRS", "suc DHS", "Suc SRS", "Suc DHS", "SUc SRS", "SUc DHS", "SUC SRS", "SUC DHS"), 
-         pch=rep(pch, each=2), col=rep(c("green", "blue"), length(pch)), horiz=FALSE, inset=c(-0.5,0))
-  dev.off()
-  
-  pdf(paste0("figures/widthPlot", strictText, ".pdf"), width=6, height=5)
-  par(mar=c(4.1, 8.1, 5.1, 8.1), xpd=TRUE)
-  plotHelper(6, goalVal=0, rangeIncludes=0)
-  legend("right", c("suc SRS", "suc DHS", "Suc SRS", "Suc DHS", "SUc SRS", "SUc DHS", "SUC SRS", "SUC DHS"), 
-         pch=rep(pch, each=2), col=rep(c("green", "blue"), length(pch)), horiz=FALSE, inset=c(-0.5,0))
-  dev.off()
+  plotHelper(1, goalVal=0, rangeIncludes=0, scoreName="Bias")
+  plotHelper(2, goalVal=0, rangeIncludes=0, scoreName="Var")
+  plotHelper(3, goalVal=0, rangeIncludes=0, scoreName="MSE")
+  plotHelper(4, goalVal=0, rangeIncludes=0, scoreName="CRPS")
+  plotHelper(5, goalVal=80, rangeIncludes=100, scoreName="Cvg")
+  plotHelper(6, goalVal=0, rangeIncludes=0, scoreName="Width")
 }
 
 

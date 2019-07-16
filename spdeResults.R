@@ -9,7 +9,7 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
                        includeClustEffect=TRUE, int.strategy="eb", 
                        genRegionLevel=TRUE, keepPixelPreds=TRUE, kmres=5, 
                        genEALevel=TRUE, urbanEffect=TRUE, tausq=0, 
-                       saveResults=!test && !is.null(maxDataSets), margVar=.15^2, gamma=-1, 
+                       saveResults=!test && is.null(maxDataSets), margVar=.15^2, gamma=-1, 
                        beta0=-1.75, loadProgress=FALSE, continuousOnly=TRUE, strictPrior=FALSE, 
                        maxDataSets=NULL) {
   # Load data

@@ -33,9 +33,12 @@ expit <- function(x) {
 #       distributions from the logit scale
 # NOTE: Discrete, count level credible intervals are estimated based on the input probMat along with coverage and CRPS
 getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL, probMat=NULL, significance=.8, nsim=10, 
-                     do1row=TRUE, includeBVarResults=FALSE) {
+                     do1row=TRUE, includeBVarResults=FALSE, getRelativeBias=FALSE) {
   # first calculate bias (the same with and without binomial variation). Since on empirical proportion scale, set n to 1
   thisBias = bias(truth, logitEst, logit=FALSE, logitVar, n=1)
+  
+  if(getRelativeBias)
+    thisRelativeBias = relativeBias(truth, logitEst, logit=FALSE, logitVar, n=1)
   
   # calculate average predictive variance on the logit scale
   # thisLogitVar = mean(logitVar)
@@ -110,18 +113,35 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
   }
   
   # return the results
-  if(do1row) {
-    results = matrix(c(thisBias, thisVar, thisMSE, thisCRPSNoBinom, thisCRPSBinom, thisCoverageNoBinom, thisCoverageBinom, 
-                       thisWidthNoBinom, thisWidthBinom), nrow=1)
-    colnames(results) = c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")
-    
-    as.data.frame(results)
-  } else {
-    results = matrix(c(thisBias, thisVar, thisMSE, thisCRPSNoBinom, thisCoverageNoBinom, thisWidthNoBinom, 
-                       thisBias, thisVar, thisMSE, thisCRPSBinom, thisCoverageBinom, thisWidthBinom), 
-                     nrow=2, byrow = TRUE)
-    colnames(results) = c("bias", "var", "mse", "crps", "coverage", "length")
-    as.data.frame(results)
+  if(!getRelativeBias) {
+    if(do1row) {
+      results = matrix(c(thisBias, thisVar, thisMSE, thisCRPSNoBinom, thisCRPSBinom, thisCoverageNoBinom, thisCoverageBinom, 
+                         thisWidthNoBinom, thisWidthBinom), nrow=1)
+      colnames(results) = c("bias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")
+      
+      as.data.frame(results)
+    } else {
+      results = matrix(c(thisBias, thisVar, thisMSE, thisCRPSNoBinom, thisCoverageNoBinom, thisWidthNoBinom, 
+                         thisBias, thisVar, thisMSE, thisCRPSBinom, thisCoverageBinom, thisWidthBinom), 
+                       nrow=2, byrow = TRUE)
+      colnames(results) = c("bias", "var", "mse", "crps", "coverage", "length")
+      as.data.frame(results)
+    }
+  }
+  else {
+    if(do1row) {
+      results = matrix(c(thisBias, thisRelativeBias, thisVar, thisMSE, thisCRPSNoBinom, thisCRPSBinom, thisCoverageNoBinom, thisCoverageBinom, 
+                         thisWidthNoBinom, thisWidthBinom), nrow=1)
+      colnames(results) = c("bias", "relativeBias", "var", "mse", "crps", "crpsB", "coverage", "coverageB", "length", "lengthB")
+      
+      as.data.frame(results)
+    } else {
+      results = matrix(c(thisBias, thisRelativeBias, thisVar, thisMSE, thisCRPSNoBinom, thisCoverageNoBinom, thisWidthNoBinom, 
+                         thisBias, thisRelativeBias, thisVar, thisMSE, thisCRPSBinom, thisCoverageBinom, thisWidthBinom), 
+                       nrow=2, byrow = TRUE)
+      colnames(results) = c("bias", "relativeBias", "var", "mse", "crps", "coverage", "length")
+      as.data.frame(results)
+    }
   }
 }
 
@@ -152,7 +172,7 @@ getScores = function(truth, numChildren, logitEst, logitVar, est=NULL, var=NULL,
 # marginals: list of INLA marginals on the logit probability scale
 # NOTE: Discrete, count level credible intervals are estimated based on the input probMat along with coverage and CRPS
 getScoresSPDE = function(truth, numChildren, logitEst, est=NULL, var=NULL, probMat=NULL, significance=.8, nsim=10, 
-                         bVar, pmfs=NULL, logitVar=NULL, logitL=NULL, logitU=NULL) {
+                         bVar, pmfs=NULL, logitVar=NULL, logitL=NULL, logitU=NULL, getRelativeBias=FALSE) {
   
   # calculate predictive estimates at the proportion scale
   if(!is.null(pmfs)) {
@@ -178,6 +198,9 @@ getScoresSPDE = function(truth, numChildren, logitEst, est=NULL, var=NULL, probM
   thisMSE = out$MSE
   thisVar = out$var
   thisBias = out$bias
+  
+  # get relative bias (relative to the truth)
+  thisRelativeBias = relativeBias(truth, logitEst, logit=FALSE, logitVar, n=1)
   
   # if CIs are included, but binomial variation is not, calculate credible intervals based on them
   if(!(any(is.null(logitL)) || any(is.null(logitU))) && !bVar) {
@@ -206,9 +229,14 @@ getScoresSPDE = function(truth, numChildren, logitEst, est=NULL, var=NULL, probM
                         nsim=nsim, pmfs=pmfs)
   
   # return the results
-  results = matrix(c(thisBias, thisVar, thisMSE, thisCRPS, thisCoverage, thisWidth), 
-                     nrow=1, byrow = TRUE)
-  colnames(results) = c("bias", "var", "mse", "crps", "coverage", "length")
+  if(!getRelativeBias) {
+    results = matrix(c(thisBias, thisVar, thisMSE, thisCRPS, thisCoverage, thisWidth), nrow=1, byrow = TRUE)
+    colnames(results) = c("bias", "var", "mse", "crps", "coverage", "length")
+  }
+  else {
+    results = matrix(c(thisBias, thisRelativeBias, thisVar, thisMSE, thisCRPS, thisCoverage, thisWidth), nrow=1, byrow = TRUE)
+    colnames(results) = c("bias", "relativeBias", "var", "mse", "crps", "coverage", "length")
+  }
   as.data.frame(results)
 }
 
@@ -554,6 +582,37 @@ bias <- function(truth, my.est, logit=TRUE, my.var=NULL, n=1, weights=NULL){
       my.est = logitNormMean(cbind(my.est, sqrt(my.var)))
   }
   res <- my.est - truth
+  
+  if(!logit) {
+    if(!is.null(weights))
+      return(n * sum(res * weights))
+    else
+      return(mean(n * res))
+  }
+  
+  if(is.null(weights))
+    mean(res)
+  else
+    sum(res * weights)
+}
+
+# logit: if TRUE use the raw estimates, otherwise assume estimates are on the logit scale
+relativeBias <- function(truth, my.est, logit=TRUE, my.var=NULL, n=1, weights=NULL){
+  if(!is.null(weights))
+    weights = weights / sum(weights)
+  
+  if(!logit) {
+    # this is the bias of the median prediction, not the mean
+    # truth = expit(truth)
+    # my.est = expit(my.est)
+    
+    # debias the estimate if necessary
+    if(is.null(my.var))
+      warning("logit variance not included for bias calculation, so assuming estimate does not need to be debiased")
+    else
+      my.est = logitNormMean(cbind(my.est, sqrt(my.var)))
+  }
+  res <- (my.est - truth) / truth
   
   if(!logit) {
     if(!is.null(weights))
