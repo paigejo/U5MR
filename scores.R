@@ -527,7 +527,7 @@ mse <- function(truth, my.est, logit=TRUE, my.var=NULL, nsim=10, n=1, weights=NU
   }
   
   if(!is.null(weights)) {
-    MSE = sum(res * weights)
+    MSE = sum(res^2 * weights)
     if(decompose) {
       bias=sum(res * weights)
       thisVar = (res - sum(res*weights))^2

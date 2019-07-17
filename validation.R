@@ -340,6 +340,7 @@ printValidationResults = function(resultNameRoot="Ed") {
   colnames(tab) = gsub("SPDE ", "", colnames(tab), fixed=TRUE)
   colnames(tab) = gsub("BYM2 ", "", colnames(tab), fixed=TRUE)
   colnames(tab) = gsub("Smoothed Direct", " ", colnames(tab), fixed=TRUE)
+  tab = tab[c(2:11, 1), ]
   temp = xtable2kable(xtable(tab), 
                       include.colnames=TRUE,
                       hline.after=0, 
@@ -347,29 +348,45 @@ printValidationResults = function(resultNameRoot="Ed") {
                       sanitize.text.function=function(x){x})
   print(add_header_above(kable_styling(temp), c(" " = 1, "Smoothed Direct" = 1, "BYM2"=4, "SPDE"=4)))
   
-  # bold the best entries of each column, italicize worst entries of each column
-  centers = c(rep(0, 10))
-  rowBest = apply(abs(sweep(tab, 1, centers, "-")), 2, min)
-  rowWorst = apply(abs(sweep(tab, 1, centers, "-")), 2, max)
+  # bold the best entries of each row, italicize worst entries of each row
+  centers = c(rep(0, nrow(tab)))
+  rowBest = apply(abs(sweep(tab, 1, centers, "-")), 1, min, na.rm=TRUE)
+  rowWorst = apply(abs(sweep(tab, 1, centers, "-")), 1, max, na.rm=TRUE)
   dat = data.table(tab)
-  test = dat %>% mutate(Bias = cell_spec(tab[,1], "latex", bold=abs(tab[,1] - centers[1]) <= columnBest[1], italic = abs(tab[,1] - centers[1]) >= columnWorst[1], 
-                                         monospace=FALSE, underline=FALSE, strikeout=FALSE), 
-                        Var = cell_spec(tab[,2], "latex", bold=abs(tab[,2] - centers[2]) <= columnBest[1], italic = abs(tab[,2] - centers[2]) >= columnWorst[2], 
-                                        monospace=FALSE, underline=FALSE, strikeout=FALSE), 
-                        MSE = cell_spec(tab[,3], "latex", bold=abs(tab[,3] - centers[3]) <= columnBest[3], italic = abs(tab[,3] - centers[3]) >= columnWorst[3], 
-                                        monospace=FALSE, underline=FALSE, strikeout=FALSE), 
-                        CRPS = cell_spec(tab[,4], "latex", bold=abs(tab[,4] - centers[4]) <= columnBest[4], italic = abs(tab[,4] - centers[4]) >= columnWorst[4], 
-                                         monospace=FALSE, underline=FALSE, strikeout=FALSE), 
-                        CVG = cell_spec(tab[,5], "latex", bold=abs(tab[,5] - centers[5]) <= columnBest[5], italic = abs(tab[,5] - centers[5]) >= columnWorst[5], 
-                                        monospace=FALSE, underline=FALSE, strikeout=FALSE), 
-                        Width = cell_spec(tab[,6], "latex", bold=abs(tab[,6] - centers[6]) <= columnBest[6], italic = abs(tab[,6] - centers[6]) >= columnWorst[6], 
-                                          monospace=FALSE, underline=FALSE, strikeout=FALSE)) %>%
-    select(Bias, Var, MSE, CRPS, CVG, Width)
+  # test = dat %>% mutate(Bias = cell_spec(tab[,1], "latex", bold=abs(tab[,1] - centers[1]) <= columnBest[1], italic = abs(tab[,1] - centers[1]) >= columnWorst[1], 
+  #                                        monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+  #                       Var = cell_spec(tab[,2], "latex", bold=abs(tab[,2] - centers[2]) <= columnBest[1], italic = abs(tab[,2] - centers[2]) >= columnWorst[2], 
+  #                                       monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+  #                       MSE = cell_spec(tab[,3], "latex", bold=abs(tab[,3] - centers[3]) <= columnBest[3], italic = abs(tab[,3] - centers[3]) >= columnWorst[3], 
+  #                                       monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+  #                       CRPS = cell_spec(tab[,4], "latex", bold=abs(tab[,4] - centers[4]) <= columnBest[4], italic = abs(tab[,4] - centers[4]) >= columnWorst[4], 
+  #                                        monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+  #                       CVG = cell_spec(tab[,5], "latex", bold=abs(tab[,5] - centers[5]) <= columnBest[5], italic = abs(tab[,5] - centers[5]) >= columnWorst[5], 
+  #                                       monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+  #                       Width = cell_spec(tab[,6], "latex", bold=abs(tab[,6] - centers[6]) <= columnBest[6], italic = abs(tab[,6] - centers[6]) >= columnWorst[6], 
+  #                                         monospace=FALSE, underline=FALSE, strikeout=FALSE)) %>%
+  #   select(Bias, Var, MSE, CRPS, CVG, Width)
+  boldFun = function(i) {
+    vals = tab[i,]
+    isNA = is.na(vals)
+    out = rep(FALSE, length(vals))
+    out[!isNA] = abs(tab[i,!isNA] - centers[i]) <= rowBest[i]
+    out
+  }
+  italicFun = function(i) {
+    vals = tab[i,]
+    isNA = is.na(vals)
+    out = rep(FALSE, length(vals))
+    out[!isNA] = abs(tab[i,!isNA] - centers[i]) >= rowWorst[i]
+    out
+  }
+  test = t(sapply(1:nrow(tab), function(i) {cell_spec(tab[i,], "latex", bold=boldFun(i), italic=italicFun(i), 
+                                             monospace=FALSE, underline=FALSE, strikeout=FALSE)}))
   
   # revert the column names to their true values
   colnames(test) = colnames(tab)
   scoreVariations = c("Avg", "Urban", "Rural")
-  scoreVariations = c(rep(scoreVariations, each=3), "Avg", "Avg")
+  scoreVariations = c(rep(scoreVariations, 3), "Avg", "Avg")
   test = cbind(" "=scoreVariations, test)
   rownames(test)=NULL
   
@@ -380,8 +397,8 @@ printValidationResults = function(resultNameRoot="Ed") {
   scoreTypeGroups = c(rep(uniqueScoreTypes[1:3], each=3), uniqueScoreTypes[4:5])
   
   for(i in 1:length(uniqueScoreTypes)) {
-    startR = min(scoreTypeGroups == uniqueScoreTypes[i])
-    endR = max(scoreTypeGroups == uniqueScoreTypes[i])
+    startR = match(TRUE, scoreTypeGroups == uniqueScoreTypes[i])
+    endR = nrow(tab) - match(TRUE, rev(scoreTypeGroups == uniqueScoreTypes[i])) + 1
     fullTab = fullTab %>% pack_rows(uniqueScoreTypes[i], startR, endR, latex_gap_space = "2em")
   }
   print(fullTab)

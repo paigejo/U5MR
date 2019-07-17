@@ -37,7 +37,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
                                         " ($\\times 10^{-3}$)", " ($\\times 10^{-2}$)", " ($\\times 10^{-2}$)"), 
                              colDigits=c(1, 1, 1, 1, 0, 1), counties=sort(unique(poppc$admin1)), 
                              loadTempProgress=FALSE, includeBVarResults=FALSE, continuousSPDEonly=TRUE, 
-                             strictPriors=TRUE, doFancyTables=FALSE) {
+                             strictPriors=FALSE, doFancyTables=FALSE) {
   
   # match the arguments with their correct values
   resultType = match.arg(resultType)
