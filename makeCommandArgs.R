@@ -179,15 +179,15 @@ makeBYM2CommandArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarV
 }
 
 makeCompareModelArgs = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margVarVec=c(0, 0.15^2), 
-                                resultTypeVec=c("county", "pixel", "EA"), testVec=c(FALSE), 
+                                resultTypeVec=c("county"), testVec=c(FALSE), 
                                 samplingVec=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsIList=list(1:2, 1:19), 
                                 produceFigures=FALSE, bigVec=c(FALSE, TRUE), printIEvery=50, 
                                 maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=FALSE, 
-                                xtable.args=list(digits=c(0, 1, 1, 1, 1, 0, 1), display=rep("f", 7), auto=TRUE), 
+                                xtable.args=list(digits=c(0, 2, 2, 2, 2, 1, 2), display=rep("f", 7), auto=TRUE), 
                                 tableFormat=c("2", "1"), colScale=c(10^4, 10^5, 100^2, 10^3, 100, 100), 
                                 colUnits=c(" ($\\times 10^{-4}$)", " ($\\times 10^{-5}$)", " ($\\times 10^{-4}$)", 
                                            " ($\\times 10^{-3}$)", " ($\\times 10^{-2}$)", " ($\\times 10^{-2}$)"), 
-                                colDigits=c(1, 1, 1, 1, 0, 1)) {
+                                colDigits=c(2, 2, 2, 2, 1, 2)) {
   
   compareModelCommandArgs = list()
   i = 1

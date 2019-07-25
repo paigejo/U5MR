@@ -31,13 +31,13 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
                              sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:19, 
                              produceFigures=FALSE, big=FALSE, printIEvery=50, 
                              maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=TRUE, 
-                             xtable.args=list(digits=c(0, 1, 1, 1, 1, 0, 1), display=rep("f", 7), auto=TRUE), 
+                             xtable.args=list(digits=c(0, 2, 2, 2, 2, 1, 2), display=rep("f", 7), auto=TRUE), 
                              tableFormat=c("2", "1"), colScale=c(10^4, 10^5, 10^5, 10^3, 100, 100), 
                              colUnits=c(" ($\\times 10^{-4}$)", " ($\\times 10^{-5}$)", " ($\\times 10^{-5}$)", 
                                         " ($\\times 10^{-3}$)", " ($\\times 10^{-2}$)", " ($\\times 10^{-2}$)"), 
-                             colDigits=c(1, 1, 1, 1, 0, 1), counties=sort(unique(poppc$admin1)), 
+                             colDigits=c(2, 2, 2, 2, 1, 2), counties=sort(unique(poppc$admin1)), 
                              loadTempProgress=FALSE, includeBVarResults=FALSE, continuousSPDEonly=TRUE, 
-                             strictPriors=FALSE, doFancyTables=FALSE) {
+                             strictPriors=FALSE, doFancyTables=FALSE, printScoreTable=TRUE, printParTable=TRUE) {
   
   # match the arguments with their correct values
   resultType = match.arg(resultType)
@@ -1355,14 +1355,14 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   modelVariations[is.na(modelVariations)] = ""
   modelVariations[modelVariations == "Direct"] = ""
   
-  if(!doFancyTables)
+  if(!doFancyTables && printScoreTable)
     print(do.call("xtable", c(list(tab), xtable.args)), 
           include.colnames=TRUE,
           hline.after=0, 
           math.style.exponents=TRUE, 
           sanitize.text.function=function(x){x})
   
-  if(doFancyTables) {
+  if(doFancyTables && printScoreTable) {
     require(stringr)
     require(dplyr)
     require(kableExtra)
@@ -1376,7 +1376,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     dat = data.table(tab)
     test = dat %>% mutate(Bias = cell_spec(tab[,1], "latex", bold=abs(tab[,1] - centers[1]) <= columnBest[1], italic = abs(tab[,1] - centers[1]) >= columnWorst[1], 
                                            monospace=FALSE, underline=FALSE, strikeout=FALSE), 
-                          Var = cell_spec(tab[,2], "latex", bold=abs(tab[,2] - centers[2]) <= columnBest[1], italic = abs(tab[,2] - centers[2]) >= columnWorst[2], 
+                          Var = cell_spec(tab[,2], "latex", bold=abs(tab[,2] - centers[2]) <= columnBest[2], italic = abs(tab[,2] - centers[2]) >= columnWorst[2], 
                                           monospace=FALSE, underline=FALSE, strikeout=FALSE), 
                           MSE = cell_spec(tab[,3], "latex", bold=abs(tab[,3] - centers[3]) <= columnBest[3], italic = abs(tab[,3] - centers[3]) >= columnWorst[3], 
                                           monospace=FALSE, underline=FALSE, strikeout=FALSE), 
@@ -1401,7 +1401,8 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       endR = max(modelTypeGroups[[i]])
       fullTab = fullTab %>% pack_rows(uniqueModelTypes[i], startR, endR, latex_gap_space = "2em")
     }
-    print(fullTab)
+    if(printScoreTable)
+      print(fullTab)
   }
   
   ## append parameter tables from each smoothing model if necessary
@@ -1568,10 +1569,10 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         rownames(parTab)[i] = substr(rownames(parTab)[i], 1, nchar(rownames(parTab)[i])-1)
     }
     
-    if(!doFancyTables)
+    if(!doFancyTables && printParTable)
       print(xtable(parTab, digits=2, display=c("s", rep("fg", ncol(parTab)))))
     
-    if(doFancyTables) {
+    if(doFancyTables && printParTable) {
       # now make the fancy table using kableExtra by grouping the rows by models and model variations
       # fancyParTable = xtable2kable(xtable(parTab, digits=2, display=c("s", rep("fg", ncol(parTab)))))
       # fancyParTable = xtable2kable(xtable(parTab, digits=2, display=c("s", rep("e", ncol(parTab)))))
@@ -1598,6 +1599,13 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       parTab[parNames == "Intercept",] = round(parTab[parNames == "Intercept",], digits=3)
       parTab[parNames == "Phi",] = round(parTab[parNames == "Phi",], digits=3)
       parTab[parNames == "Range",] = round(parTab[parNames == "Range",], digits=0)
+      parTab[parNames == "Urban",] = round(parTab[parNames == "Urban",], digits=3)
+      
+      # round everything else to approximately three significant figures, paying special note 
+      # to the non-SD quantities, which should be rounded out to the same decimal
+      otherPar = (parNames != "Intercept") & (parNames != "Phi") & (parNames != "Range") & (parNames != "Urban")
+      parTab[otherPar,2] = signif(parTab[otherPar,2], digits=3)
+      parTab[otherPar,-2] = t(apply(parTab[otherPar,-2], 1, roundToFirstSigFigs, digits=3))
       
       # add the grouping variables and parameter names as new columns
       parTab = cbind(" "=modelTypes, " "=modelVariations, " "=parNames, parTab)
@@ -1605,10 +1613,11 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       
       # group the rows by model type and model variation
       row_group_label_fonts <-list(list(bold = T, italic = T), list(bold = F, italic = F))
-      print(kable(parTab, "latex", booktabs = T, escape=FALSE, format.args=list(drop0trailing=TRUE, scientific=FALSE)) %>%
-              kable_styling() %>%
+      print(kable(parTab, "latex", booktabs = T, escape=FALSE, format.args=list(drop0trailing=TRUE, scientific=FALSE), 
+                  longtable=TRUE, caption = "Longtable") %>%
               collapse_rows(1:2, row_group_label_position ='stack', latex_hline ='custom', custom_latex_hline = 1:2, 
-                            row_group_label_fonts = row_group_label_fonts))
+                            row_group_label_fonts = row_group_label_fonts) %>%
+              kable_styling(latex_options =c("repeat_header")))
     }
   }
   
@@ -2600,7 +2609,8 @@ getTruth = function(resultType = c("county", "region", "EA", "pixel"), eaDat) {
 }
 
 # takes all precomputed scoring rules from compareModels2 listed in compareModelCommandArgs.RData, and outputs results
-runCompareModelsAllLocal = function(indices=NULL, strictPriors=TRUE, doFancyTables=TRUE) {
+runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTables=TRUE, printScoreTable=TRUE, 
+                                    printParTable=TRUE, printBigResults=TRUE) {
   load("compareModelCommandArgs.RData")
   if(is.null(indices))
     indices = 1:length(compareModelCommandArgs)
@@ -2610,6 +2620,11 @@ runCompareModelsAllLocal = function(indices=NULL, strictPriors=TRUE, doFancyTabl
     argList$loadResults = TRUE
     argList$strictPriors = strictPriors
     argList$doFancyTables = doFancyTables
+    argList$printScoreTable = printScoreTable
+    argList$printParTable = printParTable
+    
+    if(!printBigResults && argList$big == TRUE)
+      next
     
     # get all elements from the list
     tausq = argList$tausq
@@ -2639,6 +2654,225 @@ runCompareModelsAllLocal = function(indices=NULL, strictPriors=TRUE, doFancyTabl
   }
 }
 
+runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRows=c(1:3, 4, 6, 10, 12, 13:16)) {
+  load("compareModelCommandArgs.RData")
+  if(is.null(indices))
+    indices = 1:length(compareModelCommandArgs)
+  
+  fullTableSRS1 = c() # constant risk
+  fullTableSRS2 = c() # constant plus spatial effect
+  fullTableSRS3 = c() # all but cluster effect
+  fullTableSRS4 = c() # all effects
+  fullTableBigSRS1 = c() # constant risk
+  fullTableBigSRS2 = c() # constant plus spatial effect
+  fullTableBigSRS3 = c() # all but cluster effect
+  fullTableBigSRS4 = c() # all effects
+  fullTable1 = c() # constant risk
+  fullTable2 = c() # constant plus spatial effect
+  fullTable3 = c() # all but cluster effect
+  fullTable4 = c() # all effects
+  fullTableBig1 = c() # constant risk
+  fullTableBig2 = c() # constant plus spatial effect
+  fullTableBig3 = c() # all but cluster effect
+  fullTableBig4 = c() # all effects
+  for(i in indices) {
+    # get the arguments for the run, and specify that we want to load the precomputed results
+    argList = compareModelCommandArgs[[i]]
+    argList$loadResults = TRUE
+    argList$strictPriors = strictPriors
+    argList$printScoreTable = FALSE
+    argList$printParTable = FALSE
+    
+    # get all elements from the list
+    tausq = argList$tausq
+    gamma = argList$gamma
+    margVar = argList$margVar
+    test = argList$test
+    resultType = argList$resultType
+    sampling = argList$sampling
+    recomputeTruth = argList$recomputeTruth
+    modelsI = argList$modelsI
+    produceFigures = argList$produceFigures
+    big = argList$big
+    maxDataSets = argList$maxDataSets 
+    nsim = argList$nsim
+    
+    # generate an informative id string to label the table we are about to print with
+    testText = ifelse(test, "Test", "")
+    bigText = ifelse(big, "Big", "")
+    strictPriorText = ifelse(strictPriors, "strictPrior", "")
+    runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                   "HHoldVar0urbanOverSamplefrac0", strictPriorText, testText, bigText, sampling, 
+                   "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
+    print(runId)
+    
+    # get the precomputed scoring rule results
+    out = do.call("runCompareModels2", argList)
+    theseScores = out$tab
+    
+    # write scores to the score table for the relevant population
+    if(big && sampling == "oversamp") {
+      if(margVar == 0 && gamma == 0 && tausq == 0)
+        fullTableBig1 = theseScores
+      else if(gamma == 0 && tausq == 0)
+        fullTableBig2 = theseScores
+      else if(tausq == 0)
+        fullTableBig3 = theseScores
+      else
+        fullTableBig4 = theseScores
+    } else if(!big && sampling == "oversamp") {
+      if(margVar == 0 && gamma == 0 && tausq == 0)
+        fullTable1 = theseScores
+      else if(gamma == 0 && tausq == 0)
+        fullTable2 = theseScores
+      else if(tausq == 0)
+        fullTable3 = theseScores
+      else
+        fullTable4 = theseScores
+    }
+    else if(big && sampling == "SRS") {
+      if(margVar == 0 && gamma == 0 && tausq == 0)
+        fullTableBigSRS1 = theseScores
+      else if(gamma == 0 && tausq == 0)
+        fullTableBigSRS2 = theseScores
+      else if(tausq == 0)
+        fullTableBigSRS3 = theseScores
+      else
+        fullTableBigSRS4 = theseScores
+    } else if(!big && sampling == "SRS") {
+      if(margVar == 0 && gamma == 0 && tausq == 0)
+        fullTableSRS1 = theseScores
+      else if(gamma == 0 && tausq == 0)
+        fullTableSRS2 = theseScores
+      else if(tausq == 0)
+        fullTableSRS3 = theseScores
+      else
+        fullTableSRS4 = theseScores
+    }
+  }
+  
+  # overwrite the scoring rules for the non-smoothing models with the big scoring rules
+  modelNames = rownames(fullTable1)
+  nonSmoothingI = (modelNames == "Naive") | (modelNames == "Direct")
+  fullTable1[nonSmoothingI,] = fullTableBig1
+  fullTable2[nonSmoothingI,] = fullTableBig2
+  fullTable3[nonSmoothingI,] = fullTableBig3
+  fullTable4[nonSmoothingI,] = fullTableBig4
+  fullTableSRS1[nonSmoothingI,] = fullTableBigSRS1
+  fullTableSRS2[nonSmoothingI,] = fullTableBigSRS2
+  fullTableSRS3[nonSmoothingI,] = fullTableBigSRS3
+  fullTableSRS4[nonSmoothingI,] = fullTableBigSRS4
+  
+  # filter out only the desired models
+  fullTable1 = fullTable1[filterRows,]
+  fullTable2 = fullTable2[filterRows,]
+  fullTable3 = fullTable3[filterRows,]
+  fullTable4 = fullTable4[filterRows,]
+  fullTableSRS1 = fullTableSRS1[filterRows,]
+  fullTableSRS2 = fullTableSRS2[filterRows,]
+  fullTableSRS3 = fullTableSRS3[filterRows,]
+  fullTableSRS4 = fullTableSRS4[filterRows,]
+  modelNames = rownames(fullTable1)
+  
+  # remove unnecessary symbols from model names
+  modelNames = gsub("'", "", modelNames)
+  modelNames[grepl("BYM2", modelNames)] = gsub("a", "", modelNames[grepl("BYM2", modelNames)])
+  
+  # given the table on the type of model, this function prints out the type of population and 
+  # design and a fancy latex version of the table
+  makeTable = function(fullTab, sampling=c("SRS", "DHS-like"), popI=1) {
+    # first print out label for the table so we know which one it is
+    sampling = match.arg(sampling)
+    
+    if(popI == 1)
+      popText = "suc"
+    if(popI == 2)
+      popText = "Suc"
+    if(popI == 3)
+      popText = "SUc"
+    if(popI == 4)
+      popText = "SUC"
+    
+    contextText = paste(popText, sampling)
+    print(paste0("Printing table for ", contextText))
+    
+     ## now generate the table
+    # get the model variation and the model type
+    require(stringr)
+    modelTypes = word(modelNames, 1)
+    modelTypes[modelTypes == "Smoothed"] = "Smoothed Direct"
+    uniqueModelTypes = unique(modelTypes)
+    modelTypeGroups = lapply(uniqueModelTypes, function(x) {(1:length(modelTypes))[modelTypes == x]})
+    modelVariations = word(modelNames, 2)
+    modelVariations[is.na(modelVariations)] = ""
+    modelVariations[modelVariations == "Direct"] = ""
+    
+    # separate the text that will be diagonal, vertical, and horizontal
+    diagonalText = c(modelTypes[1:3], rep("", length(modelTypes) - 3))
+    variationText = modelVariations
+    categoryText = c("BYM2", "SPDE")
+    
+    ## Generate the tables
+    require(stringr)
+    require(dplyr)
+    require(kableExtra)
+    
+    options(knitr.table.format = "latex")
+    
+    # bold the best entries of each column, italicize worst entries of each column
+    centers = c(rep(0, 4), 80, 0)
+    columnBest = apply(cbind(abs(fullTab[,1]), fullTab[,2:4], abs(fullTab[,5]-80), fullTab[,6]), 2, min)
+    columnWorst = apply(cbind(abs(fullTab[,1]), fullTab[,2:4], abs(fullTab[,5]-80), fullTab[,6]), 2, max)
+    dat = data.table(fullTab)
+    test = dat %>% mutate(Bias = cell_spec(fullTab[,1], "latex", bold=abs(fullTab[,1] - centers[1]) <= columnBest[1], italic = abs(fullTab[,1] - centers[1]) >= columnWorst[1], 
+                                           monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+                          Var = cell_spec(fullTab[,2], "latex", bold=abs(fullTab[,2] - centers[2]) <= columnBest[2], italic = abs(fullTab[,2] - centers[2]) >= columnWorst[2], 
+                                          monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+                          MSE = cell_spec(fullTab[,3], "latex", bold=abs(fullTab[,3] - centers[3]) <= columnBest[3], italic = abs(fullTab[,3] - centers[3]) >= columnWorst[3], 
+                                          monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+                          CRPS = cell_spec(fullTab[,4], "latex", bold=abs(fullTab[,4] - centers[4]) <= columnBest[4], italic = abs(fullTab[,4] - centers[4]) >= columnWorst[4], 
+                                           monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+                          CVG = cell_spec(fullTab[,5], "latex", bold=abs(fullTab[,5] - centers[5]) <= columnBest[5], italic = abs(fullTab[,5] - centers[5]) >= columnWorst[5], 
+                                          monospace=FALSE, underline=FALSE, strikeout=FALSE), 
+                          Width = cell_spec(fullTab[,6], "latex", bold=abs(fullTab[,6] - centers[6]) <= columnBest[6], italic = abs(fullTab[,6] - centers[6]) >= columnWorst[6], 
+                                            monospace=FALSE, underline=FALSE, strikeout=FALSE)) %>%
+      select(Bias, Var, MSE, CRPS, CVG, Width)
+    
+    # revert the column names to their true values, set the model variations to be the values in the first column
+    colnames(test) = colnames(fullTab)
+    test = cbind(" "=modelVariations, test)
+    rownames(test)=NULL
+    
+    # move the column units to be in their own row, include the scoring rule names as a header above the table
+    scoringRules = gsub(" \\(.*\\)","",colnames(fullTab))
+    scoringRules = gsub("\\%", '\\\\%', scoringRules)
+    columnUnits = str_extract(colnames(fullTab), "\\(.*\\)")
+    colnames(test) = c(" ", columnUnits)
+    numberColumns = rep(1, 7)
+    names(numberColumns) = c(" ", scoringRules)
+    
+    # group the rows by the type of model
+    fullTab = test %>%
+      kable("latex", escape = F, booktabs = T) %>% kable_styling()
+    for(i in 1:length(uniqueModelTypes)) {
+      startR = min(modelTypeGroups[[i]])
+      endR = max(modelTypeGroups[[i]])
+      fullTab = fullTab %>% pack_rows(uniqueModelTypes[i], startR, endR, escape=FALSE, bold=TRUE, italic=TRUE)
+    }
+    
+    print(add_header_above(fullTab, numberColumns, italic=FALSE, bold=TRUE, escape=FALSE, line=FALSE))
+  }
+  
+  makeTable(fullTable1, sampling="DHS-like", popI=1)
+  makeTable(fullTable2, sampling="DHS-like", popI=2)
+  makeTable(fullTable3, sampling="DHS-like", popI=3)
+  makeTable(fullTable4, sampling="DHS-like", popI=4)
+  makeTable(fullTableSRS1, sampling="SRS", popI=1)
+  makeTable(fullTableSRS2, sampling="SRS", popI=2)
+  makeTable(fullTableSRS3, sampling="SRS", popI=3)
+  makeTable(fullTableSRS4, sampling="SRS", popI=4)
+}
+
 # plot the scoring rules for each analysis and population model for a fixed type of survey design (the survey design being SRS or urban oversampled)
 plotCompareModelsAllLocal = function(strictPriors=FALSE) {
   # map the population type to a type of point plotted:
@@ -2652,7 +2886,8 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
   load("compareModelCommandArgs.RData")
   indices = 1:length(compareModelCommandArgs)
   
-  plotHelper = function(scoreI, goalVal=NULL, rangeIncludes=c(), scoreName="", filterRows=c(1:3, 4, 6, 10, 12, 13:16)) {
+  plotHelper = function(scoreI, goalVal=NULL, rangeIncludes=c(), scoreName="", filterRows=c(1:3, 4, 6, 10, 12, 13:16), 
+                        shareRange=FALSE, plotSRSLegend=FALSE, plotDHSLegend=TRUE) {
     plotNameRoot = paste0(tolower(scoreName), "Plot")
     
     fullTableSRS1 = c() # constant risk
@@ -2788,7 +3023,10 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     categoryText = c("BYM2", "SPDE")
     
     ## Generate the plots
-    scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, rangeIncludes))
+    if(!shareRange)
+      scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, rangeIncludes))
+    else
+      scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, rangeIncludes))
     scoringRuleName = colnames(theseScores)[scoreI]
     
     # plot the urban oversampled values
@@ -2837,7 +3075,16 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     stripchart(fullTable4 ~ tempModelNames, col=cols[4], pch=pch[4], add=TRUE, 
                at=jitter(centers, amount = .15), vertical=TRUE)
     
-    legend("right", c("suc", "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.215,0))
+    if(plotDHSLegend) {
+      pos = legend("right", c("suc", "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
+                   title="Population\nmodel", bty="n")
+      xleft <- pos$rect[["left"]]
+      ytop <- pos$rect[["top"]]
+      ybottom <- ytop - pos$rect[["h"]]
+      xright <- xleft + pos$rect[["w"]]
+      rect(xleft, ybottom + 0.25 * yShift, xright, ytop-1.35 * yShift)
+    }
+    
     dev.off()
     
     # plot the SRS values
@@ -2845,7 +3092,10 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
     par(mar=c(6.1, 4.1, 3.1, 5.3), xpd=TRUE)
     
-    scoreRange = range(c(fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, rangeIncludes))
+    if(!shareRange)
+      scoreRange = range(c(fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, rangeIncludes))
+    else
+      scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, rangeIncludes))
     stripchart(fullTable1 ~ tempModelNames, cex=0, las=2, ylim=scoreRange, main="", 
                at=rev(centers), ylab="", axes=FALSE, vertical=TRUE)
     
@@ -2878,17 +3128,26 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     stripchart(fullTableSRS4 ~ tempModelNames, col=cols[4], pch=pch[4], add=TRUE, 
                at=jitter(centers, amount = .15), vertical=TRUE)
     
-    legend("right", c("suc", "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.215,0))
+    if(plotSRSLegend) {
+      pos = legend("right", c("suc", "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
+                   title="Population\nmodel", bty="n")
+      xleft <- pos$rect[["left"]]
+      ytop <- pos$rect[["top"]]
+      ybottom <- ytop - pos$rect[["h"]]
+      xright <- xleft + pos$rect[["w"]]
+      rect(xleft, ybottom + 0.25 * yShift, xright, ytop-1.35 * yShift) 
+    }
+    
     dev.off()
   }
   
   # generate plots for each scoring rule (1-6: bias, variance, mse, crps, coverage, width)
-  plotHelper(1, goalVal=0, rangeIncludes=0, scoreName="Bias")
-  plotHelper(2, goalVal=0, rangeIncludes=0, scoreName="Var")
-  plotHelper(3, goalVal=0, rangeIncludes=0, scoreName="MSE")
-  plotHelper(4, goalVal=0, rangeIncludes=0, scoreName="CRPS")
-  plotHelper(5, goalVal=80, rangeIncludes=100, scoreName="Cvg")
-  plotHelper(6, goalVal=0, rangeIncludes=0, scoreName="Width")
+  plotHelper(3, goalVal=0, rangeIncludes=0, scoreName="MSE", plotDHSLegend=FALSE)
+  plotHelper(1, goalVal=0, rangeIncludes=0, scoreName="Bias", plotDHSLegend=TRUE)
+  plotHelper(2, goalVal=0, rangeIncludes=0, scoreName="Var", plotDHSLegend=FALSE)
+  plotHelper(4, goalVal=0, rangeIncludes=0, scoreName="CRPS", shareRange=TRUE, plotDHSLegend=FALSE)
+  plotHelper(5, goalVal=80, rangeIncludes=100, scoreName="Cvg", shareRange=TRUE, plotDHSLegend=TRUE)
+  plotHelper(6, goalVal=0, rangeIncludes=0, scoreName="Width", shareRange=TRUE, plotDHSLegend=FALSE)
 }
 
 

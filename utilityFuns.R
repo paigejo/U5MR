@@ -700,3 +700,22 @@ logLikGP = function(dat, SigmaU) {
   
   return(log.likGP)
 }
+
+# round a set of numbers to a certain number of digits passed the first significant digit 
+# out of all the numbers
+roundToFirstSigFigs = function(numbers, digits=3) {
+  # count the number of zeros after the decimal point
+  count0 <- function(x, tol = .Machine$double.eps ^ 0.5) { 
+    x <- abs(x)
+    y <- -log10(x - floor(x))
+    floor(y) - (y %% 1 < tol)
+  }
+  
+  # count the number of zeros pass the decimal point for each number, determine the number 
+  # of significant figures to round to for each number
+  zeros = count0(numbers)
+  minNumber = min(zeros)
+  extraZeros = zeros - minNumber
+  finalDigits = sapply(extraZeros, function(x) {max(c(0, digits-x))})
+  signif(numbers, finalDigits)
+}

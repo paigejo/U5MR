@@ -330,42 +330,33 @@ printValidationResults = function(resultNameRoot="Ed") {
   tab = tab[,-1] # filter out WAIC since it doesn't work for spatially correlated data
   colDigits=colDigits[-1]
   display=display[-1]
-  print(xtable(tab, digits=c(1,colDigits), display=display), 
-        include.colnames=TRUE,
-        hline.after=0, 
-        math.style.exponents=TRUE, 
-        sanitize.text.function=function(x){x}, 
-        scalebox=0.5)
+  colUnits = colUnits[-1]
+  # print(xtable(tab, digits=c(1,colDigits), display=display), 
+  #       include.colnames=TRUE,
+  #       hline.after=0, 
+  #       math.style.exponents=TRUE, 
+  #       sanitize.text.function=function(x){x}, 
+  #       scalebox=0.5)
   tab = t(tab)
   colnames(tab) = gsub("SPDE ", "", colnames(tab), fixed=TRUE)
   colnames(tab) = gsub("BYM2 ", "", colnames(tab), fixed=TRUE)
   colnames(tab) = gsub("Smoothed Direct", " ", colnames(tab), fixed=TRUE)
   tab = tab[c(2:11, 1), ]
-  temp = xtable2kable(xtable(tab), 
-                      include.colnames=TRUE,
-                      hline.after=0, 
-                      math.style.exponents=TRUE, 
-                      sanitize.text.function=function(x){x})
-  print(add_header_above(kable_styling(temp), c(" " = 1, "Smoothed Direct" = 1, "BYM2"=4, "SPDE"=4)))
+  colUnits = colUnits[c(2:11, 1)]
+  # temp = xtable2kable(xtable(tab), 
+  #                     include.colnames=TRUE,
+  #                     hline.after=0, 
+  #                     math.style.exponents=TRUE, 
+  #                     sanitize.text.function=function(x){x})
+  # print(add_header_above(kable_styling(temp), c(" " = 1, "Smoothed Direct" = 1, "BYM2"=4, "SPDE"=4)))
+  
+  # remove the smoothed direct results
+  tab = tab[,-1]
   
   # bold the best entries of each row, italicize worst entries of each row
   centers = c(rep(0, nrow(tab)))
   rowBest = apply(abs(sweep(tab, 1, centers, "-")), 1, min, na.rm=TRUE)
   rowWorst = apply(abs(sweep(tab, 1, centers, "-")), 1, max, na.rm=TRUE)
-  dat = data.table(tab)
-  # test = dat %>% mutate(Bias = cell_spec(tab[,1], "latex", bold=abs(tab[,1] - centers[1]) <= columnBest[1], italic = abs(tab[,1] - centers[1]) >= columnWorst[1], 
-  #                                        monospace=FALSE, underline=FALSE, strikeout=FALSE), 
-  #                       Var = cell_spec(tab[,2], "latex", bold=abs(tab[,2] - centers[2]) <= columnBest[1], italic = abs(tab[,2] - centers[2]) >= columnWorst[2], 
-  #                                       monospace=FALSE, underline=FALSE, strikeout=FALSE), 
-  #                       MSE = cell_spec(tab[,3], "latex", bold=abs(tab[,3] - centers[3]) <= columnBest[3], italic = abs(tab[,3] - centers[3]) >= columnWorst[3], 
-  #                                       monospace=FALSE, underline=FALSE, strikeout=FALSE), 
-  #                       CRPS = cell_spec(tab[,4], "latex", bold=abs(tab[,4] - centers[4]) <= columnBest[4], italic = abs(tab[,4] - centers[4]) >= columnWorst[4], 
-  #                                        monospace=FALSE, underline=FALSE, strikeout=FALSE), 
-  #                       CVG = cell_spec(tab[,5], "latex", bold=abs(tab[,5] - centers[5]) <= columnBest[5], italic = abs(tab[,5] - centers[5]) >= columnWorst[5], 
-  #                                       monospace=FALSE, underline=FALSE, strikeout=FALSE), 
-  #                       Width = cell_spec(tab[,6], "latex", bold=abs(tab[,6] - centers[6]) <= columnBest[6], italic = abs(tab[,6] - centers[6]) >= columnWorst[6], 
-  #                                         monospace=FALSE, underline=FALSE, strikeout=FALSE)) %>%
-  #   select(Bias, Var, MSE, CRPS, CVG, Width)
   boldFun = function(i) {
     vals = tab[i,]
     isNA = is.na(vals)
@@ -392,16 +383,21 @@ printValidationResults = function(resultNameRoot="Ed") {
   
   # group the rows by urbanicity
   fullTab = test %>%
-    kable("latex", escape = F, booktabs = T) %>% kable_styling()
+    kable("latex", escape = F, booktabs = T, format.args=list(drop0trailing=FALSE, scientific=FALSE), 
+          align=c("l", rep("r", ncol(test) - 1))) %>% kable_styling()
   uniqueScoreTypes = c("MSE", "Var", "Bias", "CRPS", "DIC")
+  uniqueColUnits = colUnits[c(1, 4, 7, 10:11)]
+  for(i in 1:length(uniqueScoreTypes)) {
+    uniqueScoreTypes[i] = paste0(uniqueScoreTypes[i], uniqueColUnits[i])
+  }
   scoreTypeGroups = c(rep(uniqueScoreTypes[1:3], each=3), uniqueScoreTypes[4:5])
   
   for(i in 1:length(uniqueScoreTypes)) {
     startR = match(TRUE, scoreTypeGroups == uniqueScoreTypes[i])
     endR = nrow(tab) - match(TRUE, rev(scoreTypeGroups == uniqueScoreTypes[i])) + 1
-    fullTab = fullTab %>% pack_rows(uniqueScoreTypes[i], startR, endR, latex_gap_space = "2em")
+    fullTab = fullTab %>% pack_rows(uniqueScoreTypes[i], startR, endR, latex_gap_space = "0.3em", escape=FALSE)
   }
-  print(fullTab)
+  print(add_header_above(fullTab, c(" " = 1, "BYM2"=4, "SPDE"=4), italic=TRUE, bold=TRUE, escape=FALSE))
   
   # print(xtable(tab, digits=digits, display=display), 
   #       include.colnames=TRUE,
@@ -409,6 +405,8 @@ printValidationResults = function(resultNameRoot="Ed") {
   #       math.style.exponents=TRUE, 
   #       sanitize.text.function=function(x){x}, 
   #       scalebox=0.5)
+  
+  print("")
   print("Leave out county results:")
   
   displayRow = "s"
@@ -451,23 +449,76 @@ printValidationResults = function(resultNameRoot="Ed") {
   #       math.style.exponents=TRUE, 
   #       sanitize.text.function=function(x){x}, 
   #       scalebox=0.5)
-  print(xtable(tab, digits=c(1,colDigits), display=display), 
-        include.colnames=TRUE,
-        hline.after=0, 
-        math.style.exponents=TRUE, 
-        sanitize.text.function=function(x){x}, 
-        scalebox=0.5)
+  # print(xtable(tab, digits=c(1,colDigits), display=display), 
+  #       include.colnames=TRUE,
+  #       hline.after=0, 
+  #       math.style.exponents=TRUE, 
+  #       sanitize.text.function=function(x){x}, 
+  #       scalebox=0.5)
   tab = t(tab)
   colnames(tab) = gsub("SPDE ", "", colnames(tab), fixed=TRUE)
   colnames(tab) = gsub("BYM2 ", "", colnames(tab), fixed=TRUE)
   colnames(tab) = gsub("Smoothed Direct", " ", colnames(tab), fixed=TRUE)
-  temp = xtable2kable(xtable(tab), 
-                      include.colnames=TRUE,
-                      hline.after=0, 
-                      math.style.exponents=TRUE, 
-                      sanitize.text.function=function(x){x})
-  add_header_above(kable_styling(temp), c(" " = 1, "Smoothed Direct" = 1, "BYM2"=4, "SPDE"=4))
+  # temp = xtable2kable(xtable(tab), 
+  #                     include.colnames=TRUE,
+  #                     hline.after=0, 
+  #                     math.style.exponents=TRUE, 
+  #                     sanitize.text.function=function(x){x})
+  # print(add_header_above(kable_styling(temp), c(" " = 1, "Smoothed Direct" = 1, "BYM2"=4, "SPDE"=4)))
   
+  # remove the smoothed direct results
+  tab = tab[,-1]
+  
+  # bold the best entries of each row, italicize worst entries of each row
+  centers = c(rep(0, nrow(tab)))
+  rowWorst = apply(abs(sweep(tab, 1, centers, "-")), 1, max, na.rm=TRUE)
+  rowBest = apply(abs(sweep(tab, 1, centers, "-")), 1, min, na.rm=TRUE)
+  temp = rowWorst[10]
+  rowWorst[10] = rowBest[10] # highest CPO is best, not the lowest
+  rowBest[10] = temp
+  boldFun = function(i) {
+    vals = tab[i,]
+    isNA = is.na(vals)
+    out = rep(FALSE, length(vals))
+    out[!isNA] = abs(tab[i,!isNA] - centers[i]) == rowBest[i]
+    out
+  }
+  italicFun = function(i) {
+    vals = tab[i,]
+    isNA = is.na(vals)
+    out = rep(FALSE, length(vals))
+    out[!isNA] = abs(tab[i,!isNA] - centers[i]) == rowWorst[i]
+    out
+  }
+  test = t(sapply(1:nrow(tab), function(i) {cell_spec(tab[i,], "latex", bold=boldFun(i), italic=italicFun(i), 
+                                                      monospace=FALSE, underline=FALSE, strikeout=FALSE)}))
+  
+  # revert the column names to their true values
+  colnames(test) = colnames(tab)
+  scoreVariations = c("Avg", "Urban", "Rural")
+  scoreVariations = c(rep(scoreVariations, 3), "Avg", "Avg")
+  test = cbind(" "=scoreVariations, test)
+  rownames(test)=NULL
+  
+  # group the rows by urbanicity
+  fullTab = test %>%
+    kable("latex", escape = F, booktabs = T, format.args=list(drop0trailing=FALSE, scientific=FALSE), 
+          align=c("l", rep("r", ncol(test) - 1))) %>% kable_styling()
+  uniqueScoreTypes = c("MSE", "Var", "Bias", "CPO", "CRPS")
+  uniqueColUnits = colUnits[c(1, 4, 7, 10:11)]
+  for(i in 1:length(uniqueScoreTypes)) {
+    uniqueScoreTypes[i] = paste0(uniqueScoreTypes[i], uniqueColUnits[i])
+  }
+  scoreTypeGroups = c(rep(uniqueScoreTypes[1:3], each=3), uniqueScoreTypes[4:5])
+  
+  for(i in 1:length(uniqueScoreTypes)) {
+    startR = match(TRUE, scoreTypeGroups == uniqueScoreTypes[i])
+    endR = nrow(tab) - match(TRUE, rev(scoreTypeGroups == uniqueScoreTypes[i])) + 1
+    fullTab = fullTab %>% pack_rows(uniqueScoreTypes[i], startR, endR, latex_gap_space = "0.3em", escape=FALSE)
+  }
+  print(add_header_above(fullTab, c(" " = 1, "BYM2"=4, "SPDE"=4), italic=TRUE, bold=TRUE, escape=FALSE))
+  
+  print("")
   print("Leave out cluster results:")
   colScale = colScaleCPO
   colDigits = digitsCPO
@@ -478,12 +529,47 @@ printValidationResults = function(resultNameRoot="Ed") {
     tab[,i] = as.numeric(round(unlist(tab[,i]) * colScale[i], digits=colDigits[i]))
     colnames(tab)[i] = paste0(colnames(tab)[i], colUnits[i])
   }
-  print(xtable(tab, digits=c(1,colDigits), display=display), 
-        include.colnames=TRUE,
-        hline.after=0, 
-        math.style.exponents=TRUE, 
-        sanitize.text.function=function(x){x}, 
-        scalebox=0.5)
+  # print(xtable(tab, digits=c(1,colDigits), display=display), 
+  #       include.colnames=TRUE,
+  #       hline.after=0, 
+  #       math.style.exponents=TRUE, 
+  #       sanitize.text.function=function(x){x}, 
+  #       scalebox=0.5)
+  
+  tab = t(tab)
+  
+  # bold the best entries of each row, italicize worst entries of each row
+  centers = c(rep(0, nrow(tab)))
+  rowWorst = apply(abs(sweep(tab, 1, centers, "-")), 1, min, na.rm=TRUE)
+  rowBest = apply(abs(sweep(tab, 1, centers, "-")), 1, max, na.rm=TRUE)
+  boldFun = function(i) {
+    vals = tab[i,]
+    isNA = is.na(vals)
+    out = rep(FALSE, length(vals))
+    out[!isNA] = abs(tab[i,!isNA] - centers[i]) == rowBest[i]
+    out
+  }
+  italicFun = function(i) {
+    vals = tab[i,]
+    isNA = is.na(vals)
+    out = rep(FALSE, length(vals))
+    out[!isNA] = abs(tab[i,!isNA] - centers[i]) == rowWorst[i]
+    out
+  }
+  test = t(sapply(1:nrow(tab), function(i) {cell_spec(tab[i,], "latex", bold=boldFun(i), italic=italicFun(i), 
+                                                      monospace=FALSE, underline=FALSE, strikeout=FALSE)}))
+  
+  # revert the column names to their true values
+  colnames(test) = word(colnames(tab), 2)
+  rownames(test)= "CPO"
+  
+  # construct the kable version of the table
+  fullTab = test %>%
+    kable("latex", escape = F, booktabs = T, format.args=list(drop0trailing=FALSE, scientific=FALSE), 
+          align=c("l", rep("r", ncol(test) - 1))) %>% kable_styling()
+  
+  # group the rows by urbanicity
+  print(add_header_above(fullTab, c(" "=1, "BYM2"=4, "SPDE"=4), italic=TRUE, bold=TRUE, escape=FALSE))
 }
 
 
