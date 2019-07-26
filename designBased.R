@@ -42,7 +42,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   else
     hyperList = list(param=c(.15, 0.01), prior="pc.prec")
   if(!strictPrior)
-    clusterList = list(param=c(3, 0.01), prior="pc.prec")
+    clusterList = list(param=c(1, 0.01), prior="pc.prec")
   else
     clusterList = list(param=c(.15, 0.01), prior="pc.prec")
   if(includeUrbanRural) {
@@ -866,7 +866,7 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
           graph="Kenyaadm1.graph", scale.model=TRUE, constr=TRUE, 
           hyper=list(prec=list(param=c(1, 0.01), prior="pc.prec"), phi=list(param=c(0.5, 2/3), prior="pc"))) +
         f(idxEps, model = "iid",
-          hyper = list(prec = list(prior = "pc.prec", param = c(3,0.01))))
+          hyper = list(prec = list(prior = "pc.prec", param = c(1,0.01))))
     } else {
       formula = y ~ urban + 
         f(idx, model="bym2",
@@ -880,7 +880,7 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
                       hyper=list(prec=list(param=c(1, 0.01), prior="pc.prec"), 
                                  phi=list(param=c(0.5, 2/3), prior="pc"))) +
         f(idxEps, model = "iid",
-          hyper = list(prec = list(prior = "pc.prec", param = c(3,0.01))))
+          hyper = list(prec = list(prior = "pc.prec", param = c(1,0.01))))
     } else {
       formula = y ~ 
         f(idx, model="bym2",
