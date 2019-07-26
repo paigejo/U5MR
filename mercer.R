@@ -27,7 +27,7 @@ mercer_u1m = function(logit.est, var.est, graph.path){
 
 # modified version of the Mercer et al. model using the BYM2 model with joint PC prior
 mercer_u1m2 = function(logit.est, var.est, graph.path, plotPriorPost=FALSE, previousResult=NULL, 
-                       doValidation=FALSE, predCountyI=NULL, strictPrior=TRUE) {
+                       doValidation=FALSE, predCountyI=NULL, strictPrior=FALSE) {
   # remove observation at the given county if necessary for cross-validation
   if(!is.null(predCountyI))
     logit.est[predCountyI] = NA

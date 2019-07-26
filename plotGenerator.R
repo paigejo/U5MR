@@ -118,6 +118,7 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
     parameters$resultsRegion = NULL
     parameters$resultsCluster = NULL
     parameters$pixelDraws = NULL
+    parameters$fit = NULL
     parameters = do.call("rbind", parameters)
     parameters = parameters[,-3]
     
@@ -1445,9 +1446,8 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
   dev.off()
 }
 
-printModelPredictionTables = function(dat=ed, varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", 
-                                      counties=sort(unique(poppc$County))) {
-  plotNameRootLower = tolower(plotNameRoot)
+printModelPredictionTables = function(dat=ed, resultNameRoot="Ed", counties=sort(unique(poppc$County)), 
+                                      nDigitsPredictions=3, nDigitsBYM2=1, nDigitsSPDE=2, byRow=FALSE) {
   resultNameRootLower = tolower(resultNameRoot)
   
   ##### Mercer et al. estimates
@@ -1483,7 +1483,7 @@ printModelPredictionTables = function(dat=ed, varName="SCR", plotNameRoot="Educa
   tab = cbind(tab, spdeResults$resultsCounty$pred, spdeResults$resultsCounty$lower, spdeResults$resultsCounty$upper)
   
   ##### now we construct the latex table
-  tab = format(tab, digits=3) # round to the nearest 1 child per 1000
+  tab = format(tab, digits=nDigitsPredictions) # round to the nearest 1 child per 1000
   tab = cbind(counties, tab)
   colnames(tab) = c("County", rep(c("Est", "Q10", "Q90"), 3))
   rownames(tab) = NULL
@@ -1523,7 +1523,7 @@ printModelPredictionTables = function(dat=ed, varName="SCR", plotNameRoot="Educa
   # print(paste0("Parameter summary table for BYM2 ", typeText, " model:"))
   # print(xtable(designRes$parameters, digits=3))
   parTable = designRes$parameters[,1:5]
-  parTable = format(as.matrix(parTable), digits=1)
+  parTable = format(as.matrix(parTable), digits=nDigitsBYM2, scientific=FALSE)
   
   # SPDE
   includeUrban = TRUE
@@ -1555,7 +1555,10 @@ printModelPredictionTables = function(dat=ed, varName="SCR", plotNameRoot="Educa
   allNames = rownames(parameters)
   # rownames(parameters) = unlist(sapply(allNames, strsplit, split="Summary"))
   
-  nonRangePar = format(parameters[-3,], digits=2)
+  if(byRow == FALSE)
+    nonRangePar = format(parameters[-3,], digits=nDigitsSPDE, scientific=FALSE)
+  else
+    nonRangePar = t(apply(parameters[-3,], 1, format, digits=2, scientific=FALSE))
   formattedParameters = rbind(nonRangePar[1:2,], format(parameters[3,], digits=0), nonRangePar[3:nrow(nonRangePar),])
   rownames(formattedParameters) = c("Intercept", "Urban", "Range", "Spatial Var", "Spatial SD", "Nugget Var", "Nugget SD")
   
