@@ -150,7 +150,7 @@ makeAllPlots(ed, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, m
              meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
              varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", plotUrbanMap=FALSE, makeScreenSplitPlot=TRUE)
 
-printModelPredictionTables(ed, varName="SCR", plotNameRoot="Education", resultNameRoot="Ed")
+printModelPredictionTables(ed, resultNameRoot="Ed")
 
 # plotModelPredictions(ed, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2, 
 #                      meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 
