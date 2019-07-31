@@ -1692,7 +1692,7 @@ validateBYM2Dat = function(directLogitEsts, directLogitVars, directVars, dat=ed,
   
   # fit the full model once, calculating certain validation scores and generating in sample predictions
   print("Fitting full model integrating over hyperparameter uncertainty")
-  modelFitFull = runBYM2Dat(dat=ed, includeUrbanRural=includeUrbanRural, includeCluster=includeCluster, saveResults=saveResults, fileNameRoot=fileNameRoot, 
+  modelFitFull = runBYM2Dat(dat=dat, includeUrbanRural=includeUrbanRural, includeCluster=includeCluster, saveResults=saveResults, fileNameRoot=fileNameRoot, 
                             doValidation=TRUE, doPredsAtPostMean=FALSE, getPosteriorDensity=FALSE, directLogitEsts=directLogitEsts)
   cpo = modelFitFull$mod$cpo$cpo
   cpoFailure = modelFitFull$mod$cpo$failure
