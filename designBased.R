@@ -847,7 +847,7 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   
   # remove data from the given county for validation if necessary
   if(!is.null(predCountyI))
-    dat$y[dat$admin1==counties[predCountyI]] = NA
+    dat$y[as.character(dat$admin1)==counties[predCountyI]] = NA
   
   includeUrban = includeUrbanRural
   

@@ -1534,7 +1534,7 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
       print(paste0("Fitting model with data from county ", i, "/", length(counties), " left out"))
     thisCountyName = counties[i]
     
-    thisCounty = clustDat$admin1 == thisCountyName
+    thisCounty = as.character(clustDat$admin1) == thisCountyName
     thisObsCounts = obsCounts
     thisObsCounts[thisCounty] = NA
     
