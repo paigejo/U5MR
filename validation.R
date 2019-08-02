@@ -33,7 +33,8 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   if(startFrom <= 1) {
     print("Validating BYM2 I model...")
     bym2I = validateBYM2Dat(directEstResults$logit.est, directEstResults$var.est, directEstResults$varProbScale, 
-                            dat, saveResults=TRUE, includeUrbanRural = FALSE, includeCluster = FALSE)$bym2Results
+                            dat, saveResults=TRUE, includeUrbanRural = FALSE, includeCluster = FALSE, 
+                            fileNameRoot=resultNameRoot)$bym2Results
   }
   else {
     print("Loading BYM2 I results...")
@@ -44,7 +45,8 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   if(startFrom <= 2) {
     print("Validating BYM2 II model...")
     bym2II = validateBYM2Dat(directEstResults$logit.est, directEstResults$var.est, directEstResults$varProbScale, 
-                             dat, saveResults=TRUE, includeUrbanRural = FALSE, includeCluster = TRUE)
+                             dat, saveResults=TRUE, includeUrbanRural = FALSE, includeCluster = TRUE, 
+                             fileNameRoot=resultNameRoot)
   }
   else {
     print("Loading BYM2 II results...")
@@ -55,7 +57,8 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   if(startFrom <= 3) {
     print("Validating BYM2 III model...")
     bym2III = validateBYM2Dat(directEstResults$logit.est, directEstResults$var.est, directEstResults$varProbScale, 
-                              dat, saveResults=TRUE, includeUrbanRural = TRUE, includeCluster = FALSE)
+                              dat, saveResults=TRUE, includeUrbanRural = TRUE, includeCluster = FALSE, 
+                              fileNameRoot=resultNameRoot)
   }
   else {
     print("Loading BYM2 III results...")
@@ -66,7 +69,8 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   if(startFrom <= 4) {
     print("Validating BYM2 IV model...")
     bym2IV = validateBYM2Dat(directEstResults$logit.est, directEstResults$var.est, directEstResults$varProbScale, 
-                             dat, saveResults=TRUE, includeUrbanRural = TRUE, includeCluster = TRUE)
+                             dat, saveResults=TRUE, includeUrbanRural = TRUE, includeCluster = TRUE, 
+                             fileNameRoot=resultNameRoot)
   }
   else {
     print("Loading BYM2 IV results...")
@@ -79,7 +83,7 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
     print("Validating SPDE I model...")
     spdeI = validateSPDEDat(clustDat = dat, directLogitEsts=directEstResults$logit.est, directLogitVars=directEstResults$var.est, 
                             directVars=directEstResults$varProbScale, includeClustEffect = FALSE, urbanEffect = FALSE, saveResults=TRUE, 
-                            loadPreviousFit=loadPreviousSPDEFits)
+                            loadPreviousFit=loadPreviousSPDEFits, fileNameRoot=resultNameRoot)
   }
   else {
     print("Loading SPDE I results...")
@@ -93,7 +97,7 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
     print("Validating SPDE II model...")
     spdeII = validateSPDEDat(clustDat = dat, directLogitEsts=directEstResults$logit.est, directLogitVars=directEstResults$var.est, 
                              directVars=directEstResults$varProbScale, includeClustEffect = TRUE, urbanEffect = FALSE, saveResults = TRUE, 
-                             loadPreviousFit=loadPreviousSPDEFits)
+                             loadPreviousFit=loadPreviousSPDEFits, fileNameRoot=resultNameRoot)
   }
   else {
     print("Loading SPDE II results...")
@@ -107,7 +111,7 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
     print("Validating SPDE III model...")
     spdeIII = validateSPDEDat(clustDat = dat, directLogitEsts=directEstResults$logit.est, directLogitVars=directEstResults$var.est, 
                               directVars=directEstResults$varProbScale, includeClustEffect = FALSE, urbanEffect = TRUE, saveResults = TRUE, 
-                              loadPreviousFit=loadPreviousSPDEFits)
+                              loadPreviousFit=loadPreviousSPDEFits, fileNameRoot=resultNameRoot)
   }
   else {
     print("Loading SPDE III results...")
@@ -121,7 +125,7 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
     print("Validating SPDE IV model...")
     spdeIV = validateSPDEDat(clustDat = dat, directLogitEsts=directEstResults$logit.est, directLogitVars=directEstResults$var.est, 
                              directVars=directEstResults$varProbScale, includeClustEffect = TRUE, urbanEffect = TRUE, saveResults = TRUE, 
-                             loadPreviousFit=loadPreviousSPDEFits)
+                             loadPreviousFit=loadPreviousSPDEFits, fileNameRoot=resultNameRoot)
   }
   else {
     print("Loading SPDE IV results...")
