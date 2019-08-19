@@ -42,7 +42,7 @@ makeUrbanMap = function(popGrid=NULL, kmres=2.5, savePlot=FALSE, fileName=ifelse
   
   if(savePlot) {
     png(file=fileName, width=width, height=height)
-    par(oma=c( 0,0,0,0), mar=c(5.1, 4.1, 4.1, 4.1))
+    par(oma=c( 0,0,0,0), mar=c(5.1, 5.1, 4.1, 4.1), lab.cex=2.0, cex.lab=1.5, cex.axis=1.5, cex.main=2)
   }
   plot(popGrid$lon, popGrid$lat, xlab="Longitude", ylab="Latitude", main=TeX("Urbanicity"), xlim=lonLim, ylim=latLim, asp=1, type="n")
   # quilt.plot(popGrid$lon, popGrid$lat, urban, col=c("green", "blue"), nx=850, ny=1050, add.legend = FALSE, 

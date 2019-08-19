@@ -7,7 +7,7 @@
 # ...: arguments to polygon function
 plotMapDat = function(mapDat = adm0, plotVar=NULL, varCounties=sort(as.character(unique(mort$admin1))), zlim=NULL, project=FALSE, cols=tim.colors(), 
                       legend.mar=7, new=FALSE, plotArgs=NULL, main=NULL, xlim=NULL, xlab=NULL, scaleFun = function(x) {x}, scaleFunInverse = function(x) {x}, 
-                      ylim=NULL, ylab=NULL, n.ticks=5, min.n=5, ticks=NULL, tickLabels=NULL, asp=1, ...) {
+                      ylim=NULL, ylab=NULL, n.ticks=5, min.n=5, ticks=NULL, tickLabels=NULL, asp=1, legend.width=1.2, ...) {
   # do setup for ploting data by county if necessary
   if(!is.null(plotVar)) {
     if(is.null(zlim)) {
@@ -104,7 +104,7 @@ plotMapDat = function(mapDat = adm0, plotVar=NULL, varCounties=sort(as.character
     # par( oma=c( 0,0,0,3))
     image.plot(zlim=zlim, nlevel=length(cols), legend.only=TRUE, horizontal=FALSE,
                col=cols, add = TRUE, axis.args=list(at=ticks, labels=tickLabels), 
-               legend.mar=legend.mar)
+               legend.mar=legend.mar, legend.width=legend.width)
     
     # image.plot(zlim=zlim, nlevel=length(cols), legend.only=TRUE, horizontal=FALSE, 
     #            col=cols, add = TRUE)

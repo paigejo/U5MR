@@ -1096,7 +1096,8 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          predictionType=c("mean", "median"), eaDat=NULL, nSamplePixel=10, 
                          clusterEffect=FALSE, significance=.8, 
                          onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE, doValidation=FALSE, 
-                         previousResult=NULL, predCountyI=NULL, continuousOnly=FALSE, strictPrior=FALSE) {
+                         previousResult=NULL, predCountyI=NULL, continuousOnly=FALSE, strictPrior=FALSE, 
+                         integrateOutCluster=FALSE) {
   
   if(!is.null(predCountyI) && !onlyInexact)
     stop("If generating predictions for a fixed county (i.e. predCountyI is not NULL) then onlyInexact currently must be set to TRUE")
@@ -1273,6 +1274,14 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     # make sure to separate enumeration area and pixel level predictions
     eaMat = expit(predMat[eaIndices, ])
     predMat = predMat[pixelIndices, ]
+  }
+  
+  if(integrateOutCluster) {
+    # In this case, we shift each pixel level prediction by the the amount that will remove the 
+    # bias induced by not accounting for the cluster effect (we integrate out the cluster effect 
+    # for each simulated pixel value)
+    
+    predMat = matrix(logit(logitNormMean(cbind(c(predMat), rep(sqrt(clusterVars), each=nrow(predMat))))), nrow=nrow(predMat))
   }
   
   pops = popGrid$popOrig

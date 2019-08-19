@@ -11,7 +11,7 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
                        genEALevel=TRUE, urbanEffect=TRUE, tausq=0, 
                        saveResults=!test && is.null(maxDataSets), margVar=.15^2, gamma=-1, 
                        beta0=-1.75, loadProgress=FALSE, continuousOnly=TRUE, strictPrior=FALSE, 
-                       maxDataSets=NULL) {
+                       maxDataSets=NULL, integrateOutCluster=TRUE) {
   # Load data
   # load("simDataMulti.RData") # overSampDat, SRSDat
   # load a different 1 of these depending on whether a cluster effect should be included 
@@ -59,12 +59,15 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
   
   strictPriorText = ifelse(strictPrior, "strictPrior", "")
   testText = ifelse(test, "Test", "")
+  integrateClusterText = ifelse(integrateOutCluster, "IntClust", "")
   fileName = paste0("resultsSPDEBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
                     round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
-                    "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, strictPriorText, testText, ".RData")
+                    "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, strictPriorText, 
+                    testText, integrateOutCluster, ".RData")
   fileNameTemp = paste0("resultsSPDEBetaTemp", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
                     round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
-                    "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, strictPriorText, testText, ".RData")
+                    "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, strictPriorText, 
+                    testText, integrateOutCluster, ".RData")
   
   if(!loadProgress) {
     print("Generating SRS results")
@@ -72,7 +75,8 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
                                  includeClustEffect=includeClustEffect, int.strategy=int.strategy,
                                  genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds,
                                  genEALevel=genEALevel, urbanEffect=urbanEffect, kmres=kmres, 
-                                 continuousOnly=continuousOnly, strictPrior=strictPrior)
+                                 continuousOnly=continuousOnly, strictPrior=strictPrior, 
+                                 integrateOutCluster=integrateOutCluster)
     
     # save our progress as we go
     if(saveResults)
@@ -89,7 +93,8 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
                                     includeClustEffect=includeClustEffect, int.strategy=int.strategy, 
                                     genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds, 
                                     genEALevel=genEALevel, urbanEffect=urbanEffect, kmres=kmres, 
-                                    continuousOnly=continuousOnly, strictPrior=strictPrior)
+                                    continuousOnly=continuousOnly, strictPrior=strictPrior, 
+                                    integrateOutCluster=integrateOutCluster)
   print(paste0("Saving final results under: ", fileName))
   if(saveResults)
     save(spdeSRS, spdeOverSamp, file=fileName)
@@ -829,7 +834,8 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                               genRegionLevel=TRUE, keepPixelPreds=TRUE, genEALevel=TRUE, 
                               urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
                               predictionType=c("mean", "median"), parClust=cl, calcCrps=TRUE, 
-                              significance=.8, continuousOnly=FALSE, strictPrior=TRUE) {
+                              significance=.8, continuousOnly=FALSE, strictPrior=TRUE, 
+                              integrateOutCluster=FALSE) {
   
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
@@ -962,7 +968,8 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                         keepPixelPreds=keepPixelPreds, genEALevel=genEALevel, 
                         urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
                         eaDat=eaDat, nSamplePixel=nSamplePixel, significance=significance, 
-                        continuousOnly=continuousOnly, strictPrior=strictPrior)
+                        continuousOnly=continuousOnly, strictPrior=strictPrior, 
+                        integrateOutCluster=integrateOutCluster)
     print(paste0("Fit completed: iteration ", i, "/", nsim))
     countyPreds = fit$countyPreds
     regionPreds = fit$regionPreds
@@ -1612,8 +1619,18 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
   # save and return results
   fileName = paste0("resultsSPDE", fileNameRoot, "ValidationAll", "_includeClustEffect", includeClustEffect, 
                     "_urbanEffect", urbanEffect, ".RData")
-  if(saveResults)
+  fileNameCompact = paste0("resultsSPDE", fileNameRoot, "ValidationAll", "_includeClustEffect", includeClustEffect, 
+                           "_urbanEffect", urbanEffect, "compact.RData")
+  if(saveResults) {
     save(spdeResults, file=fileName)
+    
+    # also save a compact version, without the full model fit
+    temp = spdeResults
+    spdeResults$fullModelFit = NULL
+    save(spdeResults, file=fileNameCompact)
+    
+    spdeResults = temp
+  }
   
   spdeResults
 }

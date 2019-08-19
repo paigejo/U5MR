@@ -63,7 +63,31 @@ generateExampleResults = function(dat=ed, resultNameRoot="Ed") {
                    var.est.mercer=(tmpResults$summary.linear.predictor$sd)^2)
   mercerResults = res
   
-  save(mercerResults, file=paste0("resultsMercer", resultNameRoot, ".RData"))
+  ## collect parameter estimates
+  fixedParameters = tmpResults$summary.fixed
+  
+  # BYM2 hyperparameter phi
+  hyperparameters = tmpResults$summary.hyperpar
+  
+  ## transformed hyperparameters
+  # sample the hyperparameters, using the marginals to improve the sampling
+  out = inla.hyperpar.sample(1000, tmpResults, improve.marginals=TRUE)
+  transformFunction = function(x) {c(x[2], 1/x[1], 1/x[1]*x[2], 1/x[1]*(1-x[2]), sqrt(1/x[1]), sqrt(1/x[1]*x[2]), sqrt(1/x[1]*(1-x[2])))}
+  transformedOut = apply(out, 1, transformFunction)
+  
+  # now calculate the summary statistics of the transformed BYM2 hyperparameters
+  parNames = c("BYM2 Phi", "BYM2 Tot. Var", "BYM2 Spatial Var", "BYM2 iid Var", "BYM2 Tot. SD", "BYM2 Spatial SD", "BYM2 iid SD")
+  rownames(transformedOut) = parNames
+  mercerParEst = rowMeans(transformedOut)
+  mercerParSD = apply(transformedOut, 1, sd)
+  mercerPar10 = apply(transformedOut, 1, quantile, probs=.1)
+  mercerPar50 = apply(transformedOut, 1, quantile, probs=.5)
+  mercerPar90 = apply(transformedOut, 1, quantile, probs=.9)
+  mercerParResults = cbind(mercerParEst, mercerParSD, mercerPar10, mercerPar50, mercerPar90)
+  mercerParResults = rbind(Intercept=as.numeric(tmpResults$summary.fixed[1:5]), mercerParResults)
+  colnames(mercerParResults) = c("Est", "SD", "Q10", "Q50", "Q90")
+  
+  save(mercerResults, mercerParResults, file=paste0("resultsMercer", resultNameRoot, ".RData"))
   
   ##### run BYM models
   source("designBased.R")

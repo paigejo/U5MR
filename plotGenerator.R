@@ -7,11 +7,11 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
                         sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
                         meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
                         meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
-                        varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", meanCols=makeRedBlueDivergingColors(64), 
+                        varName="SEP", plotNameRoot="Education", resultNameRoot="Ed", meanCols=makeRedBlueDivergingColors(64), 
                         sdCols=makeBlueYellowSequentialColors(64), popCols=makeBlueSequentialColors(64), 
                         ncols=29, relativeCols=makeRedGreenDivergingColors(ncols), urbCols=makeGreenBlueSequentialColors(ncols), 
                         plotUrbanMap=FALSE, kenyaLatRange=c(-4.6, 5), kenyaLonRange=c(33.5, 42.0), 
-                        makeScreenSplitPlot=FALSE) {
+                        makeScreenSplitPlot=FALSE, sharedPredictionScale=TRUE) {
   plotNameRootLower = tolower(plotNameRoot)
   resultNameRootLower = tolower(resultNameRoot)
   
@@ -30,6 +30,15 @@ makeAllPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, me
                        meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
                        varName, plotNameRoot, resultNameRoot, meanCols, sdCols, popCols, ncols, 
                        relativeCols, urbCols, plotUrbanMap, kenyaLatRange, kenyaLonRange)
+  
+  plotModelPredictionsPart2(dat, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2, 
+                            meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 
+                            sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
+                            meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
+                            meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
+                            varName, plotNameRoot, resultNameRoot, meanCols, sdCols, popCols, ncols, 
+                            relativeCols, urbCols, plotUrbanMap, kenyaLatRange, kenyaLonRange, 
+                            sharedPredictionScale=sharedPredictionScale)
   
   makePairPlots(dat, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2, 
                 meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 
@@ -141,7 +150,7 @@ plotDataVisualizations = function(dat=ed, meanRange, meanRange2, meanTicks, mean
                                   sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
                                   meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
                                   meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
-                                  varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", meanCols=makeRedBlueDivergingColors(64), 
+                                  varName="SEP", plotNameRoot="Education", resultNameRoot="Ed", meanCols=makeRedBlueDivergingColors(64), 
                                   sdCols=makeBlueYellowSequentialColors(64), popCols=makeBlueSequentialColors(64), 
                                   ncols=29, relativeCols=makeRedGreenDivergingColors(ncols), urbCols=makeGreenBlueSequentialColors(ncols), 
                                   plotUrbanMap=FALSE, kenyaLatRange=c(-4.6, 5), kenyaLonRange=c(33.5, 42.0)) {
@@ -169,8 +178,10 @@ plotDataVisualizations = function(dat=ed, meanRange, meanRange2, meanTicks, mean
   
   png(file=paste0("figures/", resultNameRoot, "/empirical", plotNameRoot, ".png"), width=500, height=500)
   par(oma=c( 0,0,0,2), mar=c(5.1, 4.1, 4.1, 6))
+  # plot(cbind(dat$lon, dat$lat), type="n", ylim=kenyaLatRange, xlim=kenyaLonRange, 
+  #      xlab="Longitude", ylab="Latitude", main=paste0("Empirical ", varName), asp=1)
   plot(cbind(dat$lon, dat$lat), type="n", ylim=kenyaLatRange, xlim=kenyaLonRange, 
-       xlab="Longitude", ylab="Latitude", main=paste0("Empirical ", varName), asp=1)
+       xlab="Longitude", ylab="Latitude", main="", asp=1)
   quilt.plot(dat$lon, dat$lat, dat$y / dat$n, nx=150, ny=150, col=meanCols, add=TRUE)
   # world(add=TRUE)
   plotMapDat(adm1)
@@ -197,7 +208,8 @@ plotDataVisualizations = function(dat=ed, meanRange, meanRange2, meanTicks, mean
   par(oma=c( 0,0,0,0), mar=c(5.1, 4.1, 4.1, 4.1))
   totals = aggregate(dat$n, list(dat$admin1), FUN=sum)
   counts = aggregate(dat$y, list(dat$admin1), FUN=sum)
-  plotMapDat(adm1, plotVar=counts$x / totals$x, new = TRUE, main=paste0("Empirical ", varName), cols=meanCols, xlim=kenyaLonRange, ylim=kenyaLatRange)
+  # plotMapDat(adm1, plotVar=counts$x / totals$x, new = TRUE, main=paste0("Empirical ", varName), cols=meanCols, xlim=kenyaLonRange, ylim=kenyaLatRange)
+  plotMapDat(adm1, plotVar=counts$x / totals$x, new = TRUE, main="", cols=meanCols, xlim=kenyaLonRange, ylim=kenyaLatRange)
   dev.off()
   
   png(file=paste0("figures/", resultNameRoot, "/denominatorsDiscrete", plotNameRoot, ".png"), width=500, height=500)
@@ -234,7 +246,7 @@ plotDataVisualizations = function(dat=ed, meanRange, meanRange2, meanTicks, mean
   totalPop = 43*10^6 # from DHS 2014 survey final report page 2
   thisPop = totalPop * thisPop / sum(thisPop) / 5^2 # population density per km^2
   png(file=paste0("figures/populationDensity.png"), width=550, height=500)
-  par(oma=c( 0,0,0,5), mar=c(5.1, 4.1, 4.1, 4))
+  par(oma=c( 0,0,0,5), mar=c(5.1, 5.1, 4.1, 4), lab.cex=2.0, cex.lab=1.5, cex.axis=1.5, cex.main=2)
   plot(cbind(popGrid$lon, popGrid$lat), type="n", main=TeX("Population density (people/$km^2$)"), ylim=kenyaLatRange, 
        xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
   popRange = log(c(1, max(thisPop)))
@@ -253,7 +265,8 @@ plotDataVisualizations = function(dat=ed, meanRange, meanRange2, meanTicks, mean
   test = aggregate(thisPop*5^2, list(popGrid$admin1), FUN=sum)
   zlim = range(test$x)
   ticks = c(100000, 500000, 1000000, 2000000, 3000000, 4000000)
-  plotMapDat(adm1, plotVar=test$x, new = TRUE, main=paste0("Integrated population density"), 
+  par(mar=c(5.1, 5.1, 4.1, 4), lab.cex=2.0, cex.lab=1.5, cex.axis=1.5, cex.main=2)
+  plotMapDat(adm1, plotVar=test$x, new = TRUE, main=TeX("Integrated population density"), 
              col=popCols, zlim=log(zlim), scaleFun=log, scaleFunInverse=exp, ticks = ticks, xlim=kenyaLonRange, ylim=kenyaLatRange)
   dev.off()
   
@@ -276,7 +289,7 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
                                 sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
                                 meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
                                 meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
-                                varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", meanCols=makeRedBlueDivergingColors(64), 
+                                varName="SEP", plotNameRoot="Education", resultNameRoot="Ed", meanCols=makeRedBlueDivergingColors(64), 
                                 sdCols=makeBlueYellowSequentialColors(64), popCols=makeBlueSequentialColors(64), 
                                 ncols=29, relativeCols=makeRedGreenDivergingColors(ncols), urbCols=makeGreenBlueSequentialColors(ncols), 
                                 plotUrbanMap=FALSE, kenyaLatRange=c(-4.6, 5), kenyaLonRange=c(33.5, 42.0)) {
@@ -1444,10 +1457,235 @@ plotModelPredictions = function(dat=ed, meanRange, meanRange2, meanTicks, meanTi
                cols=cols, zlim=zlim, xlim=kenyaLonRange, ylim=kenyaLatRange)
   }
   dev.off()
+  
+  ##### Plot 8.5: all estimates and all standard deviations
+  print("plotting all estimates together...")
+  
+  png(file=paste0("figures/", resultNameRoot, "/predsAll", plotNameRoot, ".png"), width=2800, height=1200)
+  par(mfrow=c(2,5), lab.cex=2.0, cex.lab=2.5, cex.axis=2.0, cex.main=2.5, oma=c( 0,1,0,5), mar=c(5.1, 6.1, 5.1, 5))
+  
+  out = load(paste0("resultsDirectNaive", resultNameRoot, ".RData" ))
+  
+  includeUrban = TRUE
+  includeCluster = TRUE
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  
+  nameRoot = paste0('bym2', resultNameRoot, 'UrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
+  out = load(paste0(nameRoot, '.RData'))
+  
+  urbanText = ifelse(includeUrban, "", "noUrb")
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  both = includeUrban && includeCluster
+  debiasedText = "Debiased"
+  # typeTextBYM = "UC"
+  typeTextBYM = "UC"
+  
+  includeUrban = TRUE
+  includeCluster = TRUE
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  
+  nameRoot = paste0("SPDE", resultNameRootLower, "_includeClustEffect", includeCluster, 
+                    "_urbanEffect", includeUrban)
+  out = load(paste0("results", nameRoot, '.RData'))
+  
+  urbanText = ifelse(includeUrban, "", "noUrb")
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  both = includeUrban && includeCluster
+  notBothText = ifelse(both, "", " ")
+  # typeTextSPDE = "UC"
+  typeTextSPDE = "UC"
+  
+  plotMapDat(adm1, plotVar=naiveResults$est, new = TRUE, main=paste0("Naive ", varName, " estimates"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=directEstResults$est, new = TRUE, main=paste0("Direct ", varName, " estimates"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=mercerResults$est.mercer, new = TRUE, main=paste0("Smoothed direct ", varName, " estimates"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", typeTextBYM, " ", varName, " estimates"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", typeTextSPDE, " ", varName, " estimates"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  
+  plotMapDat(adm1, plotVar=sqrt(naiveResults$var.est), new = TRUE, main=paste0("Naive logit predictive SDs"), cols=sdCols, zlim=log(sdRangeND), scaleFun=log, scaleFunInverse=exp, ticks=sdTicksND, tickLabels=sdTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=sqrt(directEstResults$var.est), new = TRUE, main=paste0("Direct logit predictive SDs"), cols=sdCols, zlim=log(sdRangeND), scaleFun=log, scaleFunInverse=exp, ticks=sdTicksND, tickLabels=sdTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=sqrt(mercerResults$var.est.mercer), new = TRUE, main=paste0("Smoothed direct logit predictive SDs"), cols=sdCols, zlim=log(sdRangeND), scaleFun=log, scaleFunInverse=exp, ticks=sdTicksND, tickLabels=sdTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 ", typeTextBYM, " logit predictive SDs"), cols=sdCols, zlim=log(sdRangeND), scaleFun=log, scaleFunInverse=exp, ticks=sdTicksND, tickLabels=sdTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE ", typeTextSPDE, " logit predictive SDs"), cols=sdCols, zlim=log(sdRangeND), scaleFun=log, scaleFunInverse=exp, ticks=sdTicksND, tickLabels=sdTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  
+  dev.off()
+  
+  ##### Plot 8.5.5: all 10th and 90th quantiles
+  print("plotting all quantiles together...")
+  
+  png(file=paste0("figures/", resultNameRoot, "/predsAllQuantiles", plotNameRoot, ".png"), width=2800, height=1200)
+  par(mfrow=c(2,5), lab.cex=2.0, cex.lab=2.5, cex.axis=2.0, cex.main=2.5, oma=c( 0,1,0,5), mar=c(5.1, 6.1, 5.1, 5))
+  
+  out = load(paste0("resultsDirectNaive", resultNameRoot, ".RData" ))
+  
+  includeUrban = TRUE
+  includeCluster = TRUE
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  
+  nameRoot = paste0('bym2', resultNameRoot, 'UrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
+  out = load(paste0(nameRoot, '.RData'))
+  
+  urbanText = ifelse(includeUrban, "", "noUrb")
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  both = includeUrban && includeCluster
+  debiasedText = "Debiased"
+  # typeTextBYM = "UC"
+  typeTextBYM = "UC"
+  
+  includeUrban = TRUE
+  includeCluster = TRUE
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  
+  nameRoot = paste0("SPDE", resultNameRootLower, "_includeClustEffect", includeCluster, 
+                    "_urbanEffect", includeUrban)
+  out = load(paste0("results", nameRoot, '.RData'))
+  
+  urbanText = ifelse(includeUrban, "", "noUrb")
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  both = includeUrban && includeCluster
+  notBothText = ifelse(both, "", " ")
+  # typeTextSPDE = "UC"
+  typeTextSPDE = "UC"
+  
+  plotMapDat(adm1, plotVar=expit(naiveResults$lower), new = TRUE, main=paste0("Naive 90th percentile"), cols=meanCols, zlim=log(meanRangeND), scaleFun=log, scaleFunInverse=exp, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(directEstResults$lower), new = TRUE, main=paste0("Direct 90th percentile"), cols=meanCols, zlim=log(meanRangeND), scaleFun=log, scaleFunInverse=exp, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(mercerResults$upper.mercer), new = TRUE, main=paste0("Smoothed direct 90th percentile"), cols=meanCols, zlim=log(meanRangeND), scaleFun=log, scaleFunInverse=exp, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 ", typeTextBYM, " 90th percentile"), cols=meanCols, zlim=log(meanRangeND), scaleFun=log, scaleFunInverse=exp, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE ", typeTextSPDE, " 90th percentile"), cols=meanCols, zlim=log(meanRangeND), scaleFun=log, scaleFunInverse=exp, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  
+  plotMapDat(adm1, plotVar=expit(naiveResults$upper), new = TRUE, main=paste0("Naive 10th percentile"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(directEstResults$upper), new = TRUE, main=paste0("Direct 10th percentile"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(mercerResults$lower.mercer), new = TRUE, main=paste0("Smoothed direct 10th percentile"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 ", typeTextBYM, " 10th percentile"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE ", typeTextSPDE, " 10th percentile"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  
+  dev.off()
+}
+
+plotModelPredictionsPart2 = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2, 
+                                     meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 
+                                     sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
+                                     meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
+                                     meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
+                                     varName="SEP", plotNameRoot="Education", resultNameRoot="Ed", meanCols=makeRedBlueDivergingColors(64), 
+                                     sdCols=makeBlueYellowSequentialColors(64), popCols=makeBlueSequentialColors(64), 
+                                     ncols=29, relativeCols=makeRedGreenDivergingColors(ncols), urbCols=makeGreenBlueSequentialColors(ncols), 
+                                     plotUrbanMap=FALSE, kenyaLatRange=c(-4.6, 5), kenyaLonRange=c(33.5, 42.0), 
+                                     sharedPredictionScale=TRUE) {
+  plotNameRootLower = tolower(plotNameRoot)
+  resultNameRootLower = tolower(resultNameRoot)
+  
+  ##### Plot 8.5: all estimates and all standard deviations
+  print("plotting all estimates together...")
+  
+  png(file=paste0("figures/", resultNameRoot, "/predsAll", plotNameRoot, ".png"), width=2800, height=1200)
+  par(mfrow=c(2,5), lab.cex=2.0, cex.lab=2.5, cex.axis=2.0, cex.main=3.25, oma=c( 0,1,0,5), mar=c(5.1, 6.1, 5.1, 5))
+  
+  out = load(paste0("resultsDirectNaive", resultNameRoot, ".RData" ))
+  
+  includeUrban = TRUE
+  includeCluster = TRUE
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  
+  nameRoot = paste0('bym2', resultNameRoot, 'UrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
+  out = load(paste0(nameRoot, '.RData'))
+  
+  urbanText = ifelse(includeUrban, "", "noUrb")
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  both = includeUrban && includeCluster
+  debiasedText = "Debiased"
+  # typeTextBYM = "UC"
+  typeTextBYM = "UC"
+  
+  includeUrban = TRUE
+  includeCluster = TRUE
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  
+  nameRoot = paste0("SPDE", resultNameRootLower, "_includeClustEffect", includeCluster, 
+                    "_urbanEffect", includeUrban)
+  out = load(paste0("results", nameRoot, '.RData'))
+  
+  urbanText = ifelse(includeUrban, "", "noUrb")
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  both = includeUrban && includeCluster
+  notBothText = ifelse(both, "", " ")
+  # typeTextSPDE = "UC"
+  typeTextSPDE = "UC"
+  
+  thisMeanRange = range(c(naiveResults$est, directEstResults$est, mercerResults$est.mercer, expit(designRes$predictions$mean), spdeResults$resultsCounty$pred))
+  if(sharedPredictionScale) {
+    meanTicks = meanTicksND
+    thisMeanRange = meanRangeND
+    meanTickLabels = meanTickLabelsND
+  }
+  
+  plotMapDat(adm1, plotVar=naiveResults$est, new = TRUE, main=paste0("Naive ", varName, " estimates"), cols=meanCols, zlim=logit(thisMeanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=directEstResults$est, new = TRUE, main=paste0("Direct ", varName, " estimates"), cols=meanCols, zlim=logit(thisMeanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=mercerResults$est.mercer, new = TRUE, main=paste0("Smoothed direct ", varName, " estimates"), cols=meanCols, zlim=logit(thisMeanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(designRes$predictions$mean), new = TRUE, main=paste0("BYM2 ", typeTextBYM, " ", varName, " estimates"), cols=meanCols, zlim=logit(thisMeanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$pred, new = TRUE, main=paste0("SPDE ", typeTextSPDE, " ", varName, " estimates"), cols=meanCols, zlim=logit(thisMeanRange), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicks, tickLabels=meanTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  
+  plotMapDat(adm1, plotVar=sqrt(naiveResults$var.est), new = TRUE, main=paste0("Naive logit predictive SDs"), cols=sdCols, zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=sqrt(directEstResults$var.est), new = TRUE, main=paste0("Direct logit predictive SDs"), cols=sdCols, zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=sqrt(mercerResults$var.est.mercer), new = TRUE, main=paste0("Smoothed direct logit predictive SDs"), cols=sdCols, zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=designRes$predictions$stddev, new = TRUE, main=paste0("BYM2 ", typeTextBYM, " logit predictive SDs"), cols=sdCols, zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$sds, new = TRUE, main=paste0("SPDE ", typeTextSPDE, " logit predictive SDs"), cols=sdCols, zlim=log(sdRange), scaleFun=log, scaleFunInverse=exp, ticks=sdTicks, tickLabels=sdTickLabels, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  
+  dev.off()
+  
+  ##### Plot 8.5.5: all 10th and 90th quantiles
+  print("plotting all quantiles together...")
+  
+  png(file=paste0("figures/", resultNameRoot, "/predsAllQuantiles", plotNameRoot, ".png"), width=2800, height=1200)
+  par(mfrow=c(2,5), lab.cex=2.0, cex.lab=2.5, cex.axis=2.0, cex.main=3.25, oma=c( 0,1,0,5), mar=c(5.1, 6.1, 5.1, 5))
+  
+  out = load(paste0("resultsDirectNaive", resultNameRoot, ".RData" ))
+  
+  includeUrban = TRUE
+  includeCluster = TRUE
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  
+  nameRoot = paste0('bym2', resultNameRoot, 'UrbRur',includeUrban, 'Cluster', includeCluster, "debiased")
+  out = load(paste0(nameRoot, '.RData'))
+  
+  urbanText = ifelse(includeUrban, "", "noUrb")
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  both = includeUrban && includeCluster
+  debiasedText = "Debiased"
+  # typeTextBYM = "UC"
+  typeTextBYM = "UC"
+  
+  includeUrban = TRUE
+  includeCluster = TRUE
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  
+  nameRoot = paste0("SPDE", resultNameRootLower, "_includeClustEffect", includeCluster, 
+                    "_urbanEffect", includeUrban)
+  out = load(paste0("results", nameRoot, '.RData'))
+  
+  urbanText = ifelse(includeUrban, "", "noUrb")
+  clusterText = ifelse(includeCluster, "", "NoClust")
+  both = includeUrban && includeCluster
+  notBothText = ifelse(both, "", " ")
+  # typeTextSPDE = "UC"
+  typeTextSPDE = "UC"
+  
+  plotMapDat(adm1, plotVar=expit(naiveResults$lower), new = TRUE, main=paste0("Naive 90th percentile"), cols=meanCols, zlim=log(meanRangeND), scaleFun=log, scaleFunInverse=exp, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(directEstResults$lower), new = TRUE, main=paste0("Direct 90th percentile"), cols=meanCols, zlim=log(meanRangeND), scaleFun=log, scaleFunInverse=exp, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(mercerResults$upper.mercer), new = TRUE, main=paste0("Smoothed direct 90th percentile"), cols=meanCols, zlim=log(meanRangeND), scaleFun=log, scaleFunInverse=exp, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(designRes$predictions$Q90), new = TRUE, main=paste0("BYM2 ", typeTextBYM, " 90th percentile"), cols=meanCols, zlim=log(meanRangeND), scaleFun=log, scaleFunInverse=exp, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$upper, new = TRUE, main=paste0("SPDE ", typeTextSPDE, " 90th percentile"), cols=meanCols, zlim=log(meanRangeND), scaleFun=log, scaleFunInverse=exp, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  
+  plotMapDat(adm1, plotVar=expit(naiveResults$upper), new = TRUE, main=paste0("Naive 10th percentile"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(directEstResults$upper), new = TRUE, main=paste0("Direct 10th percentile"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(mercerResults$lower.mercer), new = TRUE, main=paste0("Smoothed direct 10th percentile"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=expit(designRes$predictions$Q10), new = TRUE, main=paste0("BYM2 ", typeTextBYM, " 10th percentile"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  plotMapDat(adm1, plotVar=spdeResults$resultsCounty$lower, new = TRUE, main=paste0("SPDE ", typeTextSPDE, " 10th percentile"), cols=meanCols, zlim=logit(meanRangeND), scaleFun=logit, scaleFunInverse=expit, ticks=meanTicksND, tickLabels=meanTickLabelsND, xlim=kenyaLonRange, ylim=kenyaLatRange, legend.width=5)
+  
+  dev.off()
 }
 
 printModelPredictionTables = function(dat=ed, resultNameRoot="Ed", counties=sort(unique(poppc$County)), 
-                                      nDigitsPredictions=3, nDigitsBYM2=1, nDigitsSPDE=2, byRow=FALSE) {
+                                      nDigitsPredictions=3, nDigitsSmoothedDirect=2, nDigitsBYM2=1, nDigitsSPDE=2, byRow=FALSE) {
   resultNameRootLower = tolower(resultNameRoot)
   
   ##### Mercer et al. estimates
@@ -1492,13 +1730,17 @@ printModelPredictionTables = function(dat=ed, resultNameRoot="Ed", counties=sort
   fullTab = tab %>%
     kable("latex", escape = F, booktabs = TRUE, format.args=list(drop0trailing=FALSE, scientific=FALSE), 
           align=c("l", rep("r", ncol(tab) - 1)), longtable=TRUE, caption = "Longtable") %>% 
-    kable_styling(latex_options =c("repeat_header"))
+    kable_styling(latex_options =c("repeat_header", "scale_down"))
   numberColumns = c(" "=1, "Smoothed Direct"=3, "BYM2 UC"=3, "SPDE UC"=3)
   print(add_header_above(fullTab, numberColumns, italic=TRUE, bold=TRUE, escape=FALSE, line=TRUE))
   
   ##### now construct the parameter tables
   ##### now print the parameter estimates:
   print("printing parameter estimates...")
+  
+  # smoothed direct
+  out = load(paste0("resultsMercer", resultNameRoot, ".RData" ))
+  parTable = format(mercerParResults, digits=nDigitsSmoothedDirect, scientific=FALSE)
   
   # BYM2
   includeUrban = TRUE
@@ -1522,8 +1764,9 @@ printModelPredictionTables = function(dat=ed, resultNameRoot="Ed", counties=sort
   
   # print(paste0("Parameter summary table for BYM2 ", typeText, " model:"))
   # print(xtable(designRes$parameters, digits=3))
-  parTable = designRes$parameters[,1:5]
-  parTable = format(as.matrix(parTable), digits=nDigitsBYM2, scientific=FALSE)
+  colnames(designRes$parameters[,1:5]) = colnames(parTable)
+  parTable = rbind(parTable, 
+                   format(as.matrix(designRes$parameters[,1:5]), digits=nDigitsBYM2, scientific=FALSE))
   
   # SPDE
   includeUrban = TRUE
@@ -1576,8 +1819,9 @@ printModelPredictionTables = function(dat=ed, resultNameRoot="Ed", counties=sort
                   align=c("l", rep("r", ncol(parTable) - 1))) %>% 
     kable_styling()
   fullTab = fullTab %>% 
-    pack_rows("BYM2 UC", 1, 11, escape=FALSE, bold=TRUE, italic=TRUE) %>% 
-    pack_rows("SPDE UC", 12, nrow(parTable), escape=FALSE, bold=TRUE, italic=TRUE)
+    pack_rows("Smoothed Direct", 1, 8, escape=FALSE, bold=TRUE, italic=TRUE) %>% 
+    pack_rows("BYM2 UC", 9, 19, escape=FALSE, bold=TRUE, italic=TRUE) %>% 
+    pack_rows("SPDE UC", 20, nrow(parTable), escape=FALSE, bold=TRUE, italic=TRUE)
   print(fullTab)
 }
 
@@ -1821,7 +2065,7 @@ makePairPlots = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, m
                          sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
                          meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
                          meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
-                         varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", meanCols=makeRedBlueDivergingColors(64), 
+                         varName="SEP", plotNameRoot="Education", resultNameRoot="Ed", meanCols=makeRedBlueDivergingColors(64), 
                          sdCols=makeBlueYellowSequentialColors(64), popCols=makeBlueSequentialColors(64), 
                          ncols=29, relativeCols=makeRedGreenDivergingColors(ncols), urbCols=makeGreenBlueSequentialColors(ncols), 
                          plotUrbanMap=FALSE, kenyaLatRange=c(-4.6, 5), kenyaLonRange=c(33.5, 42.0), makeScreenSplitPlot=FALSE) {
@@ -2870,7 +3114,7 @@ makeJonPlot = function(dat=ed, meanRange, meanRange2, meanTicks, meanTicks2, mea
                        sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
                        meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
                        meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
-                       varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", meanCols=makeRedBlueDivergingColors(64), 
+                       varName="SEP", plotNameRoot="Education", resultNameRoot="Ed", meanCols=makeRedBlueDivergingColors(64), 
                        sdCols=makeBlueYellowSequentialColors(64), popCols=makeBlueSequentialColors(64), 
                        ncols=29, relativeCols=makeRedGreenDivergingColors(ncols), urbCols=makeGreenBlueSequentialColors(ncols), 
                        plotUrbanMap=FALSE, kenyaLatRange=c(-4.6, 5), kenyaLonRange=c(33.5, 42.0), makeScreenSplitPlot=FALSE) {

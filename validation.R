@@ -129,8 +129,10 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   }
   else {
     print("Loading SPDE IV results...")
+    # fileName = paste0("resultsSPDE", resultNameRoot, "ValidationAll", "_includeClustEffect", TRUE, 
+    #                   "_urbanEffect", TRUE, ".RData")
     fileName = paste0("resultsSPDE", resultNameRoot, "ValidationAll", "_includeClustEffect", TRUE, 
-                      "_urbanEffect", TRUE, ".RData")
+                      "_urbanEffect", TRUE, "compact.RData")
     load(fileName)
     spdeIV = spdeResults
   }
@@ -304,16 +306,20 @@ printValidationResults = function(resultNameRoot="Ed") {
   displayBias = rep("f", 3)
   displayCRPS = "f"
   display = c(displayRow, displayIC, displayMSE, displayVar, displayBias, displayCRPS)
+  scalingPower = c(MSE=2, Var=3, Bias=3)
+  if(resultNameRoot == "Mort") {
+    scalingPower = c(MSE=4, Var=4, Bias=4)
+  }
   colScaleIC = rep(1, 2)
-  colScaleMSE = rep(10^2, 3)
-  colScaleVar = rep(10^3, 3)
-  colScaleBias = rep(10^3, 3)
+  colScaleMSE = rep(10^scalingPower[1], 3)
+  colScaleVar = rep(10^scalingPower[2], 3)
+  colScaleBias = rep(10^scalingPower[3], 3)
   colScaleCRPS = 1
   colScale = c(colScaleIC, colScaleMSE, colScaleVar, colScaleBias, colScaleCRPS)
   colUnitsIC = rep("", 2)
-  colUnitsMSE = rep(" ($\\times 10^{-2}$)", 3)
-  colUnitsVar = rep(" ($\\times 10^{-3}$)", 3)
-  colUnitsBias = rep(" ($\\times 10^{-3}$)", 3)
+  colUnitsMSE = rep(paste0(" ($\\times 10^{-", as.character(scalingPower[1]), "}$)"), 3)
+  colUnitsVar = rep(paste0(" ($\\times 10^{-", as.character(scalingPower[2]), "}$)"), 3)
+  colUnitsBias = rep(paste0(" ($\\times 10^{-", as.character(scalingPower[3]), "}$)"), 3)
   colUnitsCRPS = ""
   colUnits = c(colUnitsIC, colUnitsMSE, colUnitsVar, colUnitsBias, colUnitsCRPS)
   digitsIC = rep(0, 2)
@@ -413,6 +419,10 @@ printValidationResults = function(resultNameRoot="Ed") {
   print("")
   print("Leave out county results:")
   
+  scalingPower = c(MSE=2, Var=3, Bias=3)
+  if(resultNameRoot == "Mort") {
+    scalingPower = c(MSE=4, Var=4, Bias=4)
+  }
   displayRow = "s"
   displayMSE = rep("f", 3)
   displayVar = rep("f", 3)
@@ -420,15 +430,15 @@ printValidationResults = function(resultNameRoot="Ed") {
   displayCPO = "f"
   displayCRPS = "f"
   display = c(displayRow, displayMSE, displayVar, displayBias, displayCPO, displayCRPS)
-  colScaleMSE = rep(10^2, 3)
-  colScaleVar = rep(10^3, 3)
-  colScaleBias = rep(10^3, 3)
+  colScaleMSE = rep(10^scalingPower[1], 3)
+  colScaleVar = rep(10^scalingPower[2], 3)
+  colScaleBias = rep(10^scalingPower[3], 3)
   colScaleCPO = 1
   colScaleCRPS = 1
   colScale = c(colScaleMSE, colScaleVar, colScaleBias, colScaleCPO, colScaleCRPS)
-  colUnitsMSE = rep(" ($\\times 10^{-2}$)", 3)
-  colUnitsVar = rep(" ($\\times 10^{-3}$)", 3)
-  colUnitsBias = rep(" ($\\times 10^{-3}$)", 3)
+  colUnitsMSE = rep(paste0(" ($\\times 10^{-", as.character(scalingPower[1]), "}$)"), 3)
+  colUnitsVar = rep(paste0(" ($\\times 10^{-", as.character(scalingPower[2]), "}$)"), 3)
+  colUnitsBias = rep(paste0(" ($\\times 10^{-", as.character(scalingPower[3]), "}$)"), 3)
   colUnitsCPO = ""
   colUnitsCRPS = ""
   colUnits = c(colUnitsMSE, colUnitsVar, colUnitsBias, colUnitsCPO, colUnitsCRPS)
@@ -437,6 +447,10 @@ printValidationResults = function(resultNameRoot="Ed") {
   digitsBias = rep(1, 3)
   digitsCPO = 2
   digitsCRPS = 2
+  if(resultNameRoot == "Mort") {
+    digitsCPO = 3
+    digitsCRPS = 3
+  }
   colDigits = c(digitsMSE, digitsVar, digitsBias, digitsCPO, digitsCRPS)
   
   tab = data.frame(validationResults$scoresLeaveOutCounty)
@@ -494,8 +508,15 @@ printValidationResults = function(resultNameRoot="Ed") {
     out[!isNA] = abs(tab[i,!isNA] - centers[i]) == rowWorst[i]
     out
   }
-  test = t(sapply(1:nrow(tab), function(i) {cell_spec(tab[i,], "latex", bold=boldFun(i), italic=italicFun(i), 
-                                                      monospace=FALSE, underline=FALSE, strikeout=FALSE)}))
+  if(resultNameRoot == "Ed") {
+    # bold the best model for each scoring rule, italicize the worst
+    test = t(sapply(1:nrow(tab), function(i) {cell_spec(tab[i,], "latex", bold=boldFun(i), italic=italicFun(i), 
+                                                        monospace=FALSE, underline=FALSE, strikeout=FALSE)}))
+  }
+  else {
+    # don't bother bolding or italicizing, since all models perform essentially equally
+    test = tab
+  }
   
   # revert the column names to their true values
   colnames(test) = colnames(tab)

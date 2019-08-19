@@ -2640,21 +2640,26 @@ runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTab
     maxDataSets = argList$maxDataSets 
     nsim = argList$nsim
     
-    # generate an informative id string to label the table we are about to print with
-    testText = ifelse(test, "Test", "")
-    bigText = ifelse(big, "Big", "")
-    strictPriorText = ifelse(strictPriors, "strictPrior", "")
-    runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
-                   "HHoldVar0urbanOverSamplefrac0", strictPriorText, testText, bigText, sampling, 
-                   "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
-    print(runId)
+    # print out the population and design for this table
+    if(margVar == 0 && gamma == 0 && tausq == 0)
+      popText = "suc"
+    else if(gamma == 0 && tausq == 0)
+      popText = "Suc"
+    else if(tausq == 0)
+      popText = "SUc"
+    else
+      popText = "SUC"
     
-    # print out the precomputed scoring rules results
+    contextText = paste(popText, sampling)
+    print(paste0("Printing table for ", contextText))
+    
+    # print out the table
     do.call("runCompareModels2", argList)
   }
 }
 
-runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRows=c(1:3, 4, 6, 10, 12, 13:16)) {
+runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRows=c(1:3, 4, 6, 10, 12, 13:16), 
+                                  incorrectlyAggregatedModels=TRUE) {
   load("compareModelCommandArgs.RData")
   if(is.null(indices))
     indices = 1:length(compareModelCommandArgs)
@@ -2764,6 +2769,8 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
   fullTableSRS4[nonSmoothingI,] = fullTableBigSRS4
   
   # filter out only the desired models
+  if(incorrectlyAggregatedModels)
+    filterRows = c(1, 2, 3, 4, 6, 10, 12, 7, 9, 13, 14, 15, 16)
   fullTable1 = fullTable1[filterRows,]
   fullTable2 = fullTable2[filterRows,]
   fullTable3 = fullTable3[filterRows,]
@@ -2776,7 +2783,8 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
   
   # remove unnecessary symbols from model names
   modelNames = gsub("'", "", modelNames)
-  modelNames[grepl("BYM2", modelNames)] = gsub("a", "", modelNames[grepl("BYM2", modelNames)])
+  if(!incorrectlyAggregatedModels)
+    modelNames[grepl("BYM2", modelNames)] = gsub("a", "", modelNames[grepl("BYM2", modelNames)])
   
   # given the table on the type of model, this function prints out the type of population and 
   # design and a fancy latex version of the table
@@ -2863,14 +2871,15 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
     print(add_header_above(fullTab, numberColumns, italic=FALSE, bold=TRUE, escape=FALSE, line=FALSE))
   }
   
-  makeTable(fullTable1, sampling="DHS-like", popI=1)
-  makeTable(fullTable2, sampling="DHS-like", popI=2)
-  makeTable(fullTable3, sampling="DHS-like", popI=3)
-  makeTable(fullTable4, sampling="DHS-like", popI=4)
+  # print all of the tables to the console
   makeTable(fullTableSRS1, sampling="SRS", popI=1)
   makeTable(fullTableSRS2, sampling="SRS", popI=2)
   makeTable(fullTableSRS3, sampling="SRS", popI=3)
   makeTable(fullTableSRS4, sampling="SRS", popI=4)
+  makeTable(fullTable1, sampling="DHS-like", popI=1)
+  makeTable(fullTable2, sampling="DHS-like", popI=2)
+  makeTable(fullTable3, sampling="DHS-like", popI=3)
+  makeTable(fullTable4, sampling="DHS-like", popI=4)
 }
 
 # plot the scoring rules for each analysis and population model for a fixed type of survey design (the survey design being SRS or urban oversampled)
@@ -2881,13 +2890,15 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
   ## constant plus spatial plus urban: 0
   ## all effects: 5
   pch = c(1, 2, 0, 5)
-  cols = rainbow(4)
+  # cols = rainbow(4)
+  cols = c("red1", "purple", "blue1", "green4")
+  # cols = qualitative_hcl(4, h1=247, h2=54, c1=80, l1=61) # these colors are colorblind friendly
   
   load("compareModelCommandArgs.RData")
   indices = 1:length(compareModelCommandArgs)
   
   plotHelper = function(scoreI, goalVal=NULL, rangeIncludes=c(), scoreName="", filterRows=c(1:3, 4, 6, 10, 12, 13:16), 
-                        shareRange=FALSE, plotSRSLegend=FALSE, plotDHSLegend=TRUE) {
+                        shareRange=FALSE, plotSRSLegend=FALSE, plotDHSLegend=TRUE, logScale=FALSE) {
     plotNameRoot = paste0(tolower(scoreName), "Plot")
     
     fullTableSRS1 = c() # constant risk
@@ -3029,10 +3040,14 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
       scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, rangeIncludes))
     scoringRuleName = colnames(theseScores)[scoreI]
     
+    thisLog = ""
+    if(logScale)
+      thisLog = "y"
+    
     # plot the urban oversampled values
     tempModelNames = sort(factor(modelNames, labels=modelNames))
     # centers = seq(from=1, to=16, by=1)
-    delta = .3
+    delta = .75
     # centers = rev(c(1:4, (5:13) + 1 * delta, 14 + 2 * delta, (15:16) + 3 * delta) * (16 / (16 + 3 * delta)))
     centers = rev(c(1:4 + .5 * delta, (5:8) + 1.5 * delta, 9 + 2.5 * delta, (10:11) + 3.5 * delta) * (11 / (11 + 4 * delta))) # would need a different one for a different filterRows
     centers = centers[1] + centers[length(centers)] - centers
@@ -3042,11 +3057,13 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     unabbreviatedTitle = gsub("\\(", "(urban oversampled, ", unabbreviatedTitle)
     strictText = ifelse(strictPriors, "strictPrior", "")
     
+    browser()
+    
     pdf(paste0("figures/", plotNameRoot, strictText, "DHS.pdf"), width=6, height=5)
     # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
     par(mar=c(6.1, 4.1, 3.1, 5.3), xpd=TRUE)
     stripchart(fullTable1 ~ tempModelNames, cex=0, las=2, ylim=scoreRange, main="", 
-               at=rev(centers), ylab="", axes=FALSE, vertical=TRUE)
+               at=rev(centers), ylab="", axes=FALSE, vertical=TRUE, log=thisLog)
     
     title(TeX(unabbreviatedTitle))
     box()
@@ -3056,11 +3073,20 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     # text(par("usr")[1] - 1, centers, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
     yShift = diff(par("usr")[3:4]) / 15
     # text(centers +  delta, par("usr")[3] - yShift, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
-    text(centers +  delta, par("usr")[3] - yShift, labels = diagonalText, srt = 45, pos = 2, xpd = TRUE)
-    text(centers + 1.5 * delta, par("usr")[3] - 1.25 * yShift, labels = variationText, pos = 2, xpd = TRUE)
+    yloc = par("usr")[3] - yShift
+    if(logScale)
+      yloc = 10^yloc
+    text(centers + max(centers)/30, yloc, labels = diagonalText, srt = 45, pos = 2, xpd = TRUE)
+    yloc = par("usr")[3] - 1.25 * yShift
+    if(logScale)
+      yloc = 10^yloc
+    text(centers + 1.5 * max(centers)/30, yloc, labels = variationText, pos = 2, xpd = TRUE)
     spdeCenter = mean(centers[(length(centers) - 3):length(centers)])
     bym2Center = mean(centers[(length(centers) - 7):(length(centers) - 4)])
-    text(c(bym2Center, spdeCenter) + 2.75 * delta, par("usr")[3] - yShift * 2.75, labels = categoryText, pos = 2, xpd = TRUE)
+    yloc = par("usr")[3] - yShift * 2.75
+    if(logScale)
+      yloc = 10^yloc
+    text(c(bym2Center, spdeCenter) + 2.75 * max(centers)/35, yloc, labels = categoryText, pos = 2, xpd = TRUE)
     
     if(!is.null(goalVal)) {
       segments(y0=goalVal, x0=par("usr")[1], y1=goalVal, x1=par("usr")[2], lty=2, col="black")
@@ -3097,9 +3123,9 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     else
       scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, rangeIncludes))
     stripchart(fullTable1 ~ tempModelNames, cex=0, las=2, ylim=scoreRange, main="", 
-               at=rev(centers), ylab="", axes=FALSE, vertical=TRUE)
+               at=rev(centers), ylab="", axes=FALSE, vertical=TRUE, log=thisLog)
     
-    unabbreviatedTitle = gsub("\\(urban oversampled, ", "(SRS, ", unabbreviatedTitle)
+    unabbreviatedTitle = gsub("\\(urban oversampled, ", "(representative design, ", unabbreviatedTitle)
     # title(TeX(paste0(unabbreviatedTitle)), line=4)
     title(TeX(unabbreviatedTitle))
     box()
@@ -3109,11 +3135,20 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     # text(par("usr")[1] - 1, centers, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
     yShift = diff(par("usr")[3:4]) / 15
     # text(centers +  delta, par("usr")[3] - yShift, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
-    text(centers +  delta, par("usr")[3] - yShift, labels = diagonalText, srt = 45, pos = 2, xpd = TRUE)
-    text(centers + 1.5 * delta, par("usr")[3] - 1.25 * yShift, labels = variationText, pos = 2, xpd = TRUE)
+    yloc = par("usr")[3] - yShift
+    if(logScale)
+      yloc = 10^yloc
+    text(centers + max(centers)/30, yloc, labels = diagonalText, srt = 45, pos = 2, xpd = TRUE)
+    yloc = par("usr")[3] - 1.25 * yShift
+    if(logScale)
+      yloc = 10^yloc
+    text(centers + 1.5 * max(centers)/30, yloc, labels = variationText, pos = 2, xpd = TRUE)
     spdeCenter = mean(centers[(length(centers) - 3):length(centers)])
     bym2Center = mean(centers[(length(centers) - 7):(length(centers) - 4)])
-    text(c(bym2Center, spdeCenter) + 2.75 * delta, par("usr")[3] - yShift * 2.75, labels = categoryText, pos = 2, xpd = TRUE)
+    yloc = par("usr")[3] - yShift * 2.75
+    if(logScale)
+      yloc = 10^yloc
+    text(c(bym2Center, spdeCenter) + 2.75 * max(centers)/35, yloc, labels = categoryText, pos = 2, xpd = TRUE)
     
     if(!is.null(goalVal)) {
       segments(y0=goalVal, x0=par("usr")[1], y1=goalVal, x1=par("usr")[2], lty=2, col="black")
@@ -3142,9 +3177,9 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
   }
   
   # generate plots for each scoring rule (1-6: bias, variance, mse, crps, coverage, width)
-  plotHelper(3, goalVal=0, rangeIncludes=0, scoreName="MSE", plotDHSLegend=FALSE)
-  plotHelper(1, goalVal=0, rangeIncludes=0, scoreName="Bias", plotDHSLegend=TRUE)
-  plotHelper(2, goalVal=0, rangeIncludes=0, scoreName="Var", plotDHSLegend=FALSE)
+  plotHelper(3, goalVal=0, scoreName="MSE", plotDHSLegend=FALSE, shareRange=TRUE, logScale=TRUE)
+  plotHelper(1, goalVal=0, rangeIncludes=0, scoreName="Bias", plotDHSLegend=TRUE, shareRange=TRUE)
+  plotHelper(2, goalVal=0, rangeIncludes=0, scoreName="Var", plotDHSLegend=FALSE, shareRange=TRUE)
   plotHelper(4, goalVal=0, rangeIncludes=0, scoreName="CRPS", shareRange=TRUE, plotDHSLegend=FALSE)
   plotHelper(5, goalVal=80, rangeIncludes=100, scoreName="Cvg", shareRange=TRUE, plotDHSLegend=TRUE)
   plotHelper(6, goalVal=0, rangeIncludes=0, scoreName="Width", shareRange=TRUE, plotDHSLegend=FALSE)

@@ -1,5 +1,5 @@
 # script for plotting predictions for neonatal mortality in Kenya
-source("plotGenerator.R")
+# source("plotGenerator.R")
 
 ##### before we make any plots, put all of them on the same scale
 ##### make multiple scales, two for estimates and quantiles, and two
@@ -147,8 +147,14 @@ makeAllPlots(mort, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels,
              meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND,
              meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2,
              varName="NMR", plotNameRoot="Mort", resultNameRoot="Mort", meanCols=rev(makeRedBlueDivergingColors(64)),
-             relativeCols=rev(makeRedGreenDivergingColors(29)), plotUrbanMap=FALSE, makeScreenSplitPlot=TRUE)
+             relativeCols=rev(makeRedGreenDivergingColors(29)), plotUrbanMap=FALSE, makeScreenSplitPlot=TRUE, 
+             sharedPredictionScale=TRUE)
 
+printModelPredictionTables(mort, resultNameRoot="Mort", nDigitsPredictions=2, nDigitsSmoothedDirect=1)
+# Browse[2]> diff(range(tab[,7]))
+# [1] 0.008698917
+# Browse[2]> median(tab[,9] - tab[,8])
+# [1] 0.006962701
 # makePairPlots(mort, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2,
 #               meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2,
 #               sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE,

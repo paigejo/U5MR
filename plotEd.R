@@ -1,5 +1,5 @@
 # script for plotting predictions for secondary education completion in Kenya
-source("plotGenerator.R")
+# source("plotGenerator.R")
 
 ##### before we make any plots, put all of them on the same scale
 ##### make multiple scales, two for estimates and quantiles, and two
@@ -148,20 +148,25 @@ makeAllPlots(ed, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, m
              sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
              meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
              meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
-             varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", plotUrbanMap=FALSE, makeScreenSplitPlot=TRUE)
+             varName="SEP", plotNameRoot="Education", resultNameRoot="Ed", plotUrbanMap=FALSE, 
+             makeScreenSplitPlot=TRUE, sharedPredictionScale=FALSE)
 
 printModelPredictionTables(ed, resultNameRoot="Ed")
-
-# plotModelPredictions(ed, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2, 
-#                      meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2, 
-#                      sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE, 
-#                      meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND, 
-#                      meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2, 
-#                      varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", plotUrbanMap=FALSE)
+# Browse[2]> diff(range(tab[,7]))
+# [1] 0.4907358
+# Browse[2]> median(tab[,9] - tab[,8])
+# [1] 0.0646057
+# 
+# plotModelPredictions(ed, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2,
+#                      meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2,
+#                      sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE,
+#                      meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND,
+#                      meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2,
+#                      varName="SEP", plotNameRoot="Education", resultNameRoot="Ed", plotUrbanMap=FALSE)
 # 
 # makePairPlots(ed, meanRange, meanRange2, meanTicks, meanTicks2, meanTickLabels, meanTickLabels2,
 #               meanRangeSPDE, meanTicksSPDE, meanTickLabelsSPDE, sdRange, sdRange2,
 #               sdTicks, sdTicks2, sdTicksSPDE, sdTickLabels, sdTickLabels2, sdTickLabelsSPDE,
 #               meanRangeND, meanTicksND, meanTickLabelsND, sdRangeND, sdTicksND, sdTickLabelsND,
 #               meanRangeBYM2, meanTicksBYM2, meanTickLabelsBYM2, sdTicksBYM2, sdTickLabelsBYM2,
-#               varName="SCR", plotNameRoot="Education", resultNameRoot="Ed", plotUrbanMap=FALSE, makeScreenSplitPlot=TRUE)
+#               varName="SEP", plotNameRoot="Education", resultNameRoot="Ed", plotUrbanMap=FALSE, makeScreenSplitPlot=TRUE)
