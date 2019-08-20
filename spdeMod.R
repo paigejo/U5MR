@@ -1250,7 +1250,8 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   # generate samples from posterior
   postSamples = inla.posterior.sample(nPostSamples, mod)
   latentMat = sapply(postSamples, function(x) {x$latent})
-  clusterVars = sapply(postSamples, function(x) {1 / x$hyperpar[3]})
+  if(clusterEffect)
+    clusterVars = sapply(postSamples, function(x) {1 / x$hyperpar[3]})
   latentVarNames = rownames(postSamples[[1]]$latent)
   fieldIndices = which(grepl("field", latentVarNames))
   fixedIndices = which(grepl("X", latentVarNames))
@@ -1276,12 +1277,12 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     predMat = predMat[pixelIndices, ]
   }
   
-  if(integrateOutCluster) {
+  if(integrateOutCluster && clusterEffect) {
     # In this case, we shift each pixel level prediction by the the amount that will remove the 
     # bias induced by not accounting for the cluster effect (we integrate out the cluster effect 
     # for each simulated pixel value)
     
-    predMat = matrix(logit(logitNormMean(cbind(c(predMat), rep(sqrt(clusterVars), each=nrow(predMat))))), nrow=nrow(predMat))
+    predMat = matrix(logit(logitNormMean(cbind(c(as.matrix(predMat)), rep(sqrt(clusterVars), each=nrow(predMat))))), nrow=nrow(predMat))
   }
   
   pops = popGrid$popOrig
