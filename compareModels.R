@@ -73,7 +73,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   # BYM models are in order of complexity: no urban/cluster, no urban, no cluster, full
   allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 ucA", "BYM2 uCA", "BYM2 uCA'", "BYM2 UcA", "BYM2 UCA", "BYM2 UCA'", 
                "BYM2 uca", "BYM2 uCa", "BYM2 uCa'", "BYM2 Uca", "BYM2 UCa", "BYM2 UCa'", 
-               "SPDE uc", "SPDE uC", "SPDE Uc", "SPDE UC")
+               "SPDE uc", "SPDE uC", "SPDE Uc", "SPDE UC", "SPDE uC'", "SPDE UC'")
   allNamesBinomial = paste0(allNames, " Bin.")
   allModels = allNames
   models = allModels[modelsI]
@@ -527,6 +527,34 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         spde = spdeSRS
       else
         spde = spdeOverSamp
+    }
+    if("SPDE uC'" %in% models) {
+      urbanEffect = FALSE
+      includeClustEffect = TRUE
+      testText = ifelse(test, "Test", "")
+      fileName = paste0("resultsSPDEBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+                        round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
+                        "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, strictPriorText, testText, 
+                        "IntClust.RData")
+      out = load(fileName)
+      if(sampling == "SRS")
+        spdeNoUrbMod = spdeSRS
+      else
+        spdeNoUrbMod = spdeOverSamp
+    }
+    if("SPDE UC'" %in% models) {
+      urbanEffect = TRUE
+      includeClustEffect = TRUE
+      testText = ifelse(test, "Test", "")
+      fileName = paste0("resultsSPDEBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+                        round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
+                        "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, strictPriorText, testText, 
+                        "IntClust.RData")
+      out = load(fileName)
+      if(sampling == "SRS")
+        spdeMod = spdeSRS
+      else
+        spdeMod = spdeOverSamp
     }
     
     # relabel direct, naive, and mercer county names
@@ -1076,7 +1104,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     doFancyTables = temp
     allNames = c("Naive", "Direct", "Smoothed Direct", "BYM2 ucA", "BYM2 uCA", "BYM2 uCA'", "BYM2 UcA", "BYM2 UCA", "BYM2 UCA'", 
                  "BYM2 uca", "BYM2 uCa", "BYM2 uCa'", "BYM2 Uca", "BYM2 UCa", "BYM2 UCa'", 
-                 "SPDE uc", "SPDE uC", "SPDE Uc", "SPDE UC")
+                 "SPDE uc", "SPDE uC", "SPDE Uc", "SPDE UC", "SPDE uC'", "SPDE UC'")
     allNamesBinomial = paste0(allNames, " Bin.")
     allModels = allNames
     models = allModels[modelsI]
@@ -1179,6 +1207,38 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
         }
         else {
           spdeScores = rbind(spdeScores, apply(spde[[i]], 2, mean))
+        }
+      }
+    }
+  }
+  if("SPDE uC'" %in% models) {
+    theseNames = names(spdeNoUrb)
+    namesI = grepl(tolower(resultType), tolower(theseNames))
+    first = TRUE
+    for(i in 1:length(theseNames)) {
+      if(namesI[i]) {
+        if(first) {
+          spdeNoUrbModScores = apply(spdeNoUrbMod[[i]], 2, mean)
+          first = FALSE
+        }
+        else {
+          spdeNoUrbModScores = rbind(spdeNoUrbModScores, apply(spdeNoUrbMod[[i]], 2, mean))
+        }
+      }
+    }
+  }
+  if("SPDE UC'" %in% models) {
+    theseNames = names(spde)
+    namesI = grepl(tolower(resultType), tolower(theseNames))
+    first = TRUE
+    for(i in 1:length(theseNames)) {
+      if(namesI[i]) {
+        if(first) {
+          spdeModScores = apply(spdeMod[[i]], 2, mean)
+          first = FALSE
+        }
+        else {
+          spdeModScores = rbind(spdeModScores, apply(spdeMod[[i]], 2, mean))
         }
       }
     }
@@ -1292,6 +1352,26 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       else {
         thisFinalNames = c(thisFinalNames, paste0("SPDE UC", c(" Cts.", " Discrete", " Exact")))
         tab = rbind(tab, spdeScores)
+      }
+    }
+    if("SPDE uC'" %in% models) {
+      if(continuousSPDEonly) {
+        thisFinalNames = c(thisFinalNames, "SPDE uC'")
+        tab = rbind(tab, spdeNoUrbModScores[1,])
+      }
+      else {
+        thisFinalNames = c(thisFinalNames, paste0("SPDE uC'", c(" Cts.", " Discrete", " Exact")))
+        tab = rbind(tab, spdeNoUrbModScores)
+      }
+    }
+    if("SPDE UC" %in% models) {
+      if(continuousSPDEonly) {
+        thisFinalNames = c(thisFinalNames, "SPDE UC'")
+        tab = rbind(tab, spdeModScores[1,])
+      }
+      else {
+        thisFinalNames = c(thisFinalNames, paste0("SPDE UC'", c(" Cts.", " Discrete", " Exact")))
+        tab = rbind(tab, spdeModScores)
       }
     }
     
@@ -1559,6 +1639,70 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       rownames(thisParTab) = theseRowNames
       parTab = rbind(parTab, thisParTab)
       parRowNames = c(parRowNames, rep("SPDE UC", nrow(thisParTab)))
+    }
+    if("SPDE uC'" %in% models) {
+      thisParTab = matrix(spdeNoUrbMod$interceptSummary[spdeParIndices], nrow=1)
+      theseRowNames = "Intercept"
+      if(!is.null(spdeNoUrbMod$urbanSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, Urban=spdeNoUrbMod$urbanSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Urban")
+      }
+      if(!is.null(spdeNoUrbMod$rangeSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrbMod$rangeSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Range")
+      }
+      if(!is.null(spdeNoUrbMod$varSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrbMod$varSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Spatial Var")
+      }
+      if(!is.null(spdeNoUrbMod$sdSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrbMod$sdSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Spatial SD")
+      }
+      if(!is.null(spdeNoUrbMod$nuggetVarSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrbMod$nuggetVarSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Cluster Var")
+      }
+      if(!is.null(spdeNoUrbMod$nuggetSDSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeNoUrbMod$nuggetSDSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Cluster SD")
+      }
+      colnames(thisParTab) = names(parTab)
+      rownames(thisParTab) = theseRowNames
+      parTab = rbind(parTab, thisParTab)
+      parRowNames = c(parRowNames, rep("SPDE uC'", nrow(thisParTab)))
+    }
+    if("SPDE UC" %in% models) {
+      thisParTab = matrix(spdeMod$interceptSummary[spdeParIndices], nrow=1)
+      theseRowNames = "Intercept"
+      if(!is.null(spdeMod$urbanSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, Urban=spdeMod$urbanSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Urban")
+      }
+      if(!is.null(spdeMod$rangeSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeMod$rangeSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Range")
+      }
+      if(!is.null(spdeMod$varSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeMod$varSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Spatial Var")
+      }
+      if(!is.null(spdeMod$sdSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeMod$sdSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Spatial SD")
+      }
+      if(!is.null(spdeMod$nuggetVarSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeMod$nuggetVarSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Cluster Var")
+      }
+      if(!is.null(spdeMod$nuggetSDSummary[spdeParIndices])) {
+        thisParTab = rbind(thisParTab, spdeMod$nuggetSDSummary[spdeParIndices])
+        theseRowNames = c(theseRowNames, "Cluster SD")
+      }
+      colnames(thisParTab) = names(parTab)
+      rownames(thisParTab) = theseRowNames
+      parTab = rbind(parTab, thisParTab)
+      parRowNames = c(parRowNames, rep("SPDE UC'", nrow(thisParTab)))
     }
     
     # add the model to the row names, remove the numbers at the end of the duplicated row names, print out the aggregated parameter table

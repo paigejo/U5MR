@@ -63,11 +63,11 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
   fileName = paste0("resultsSPDEBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
                     round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
                     "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, strictPriorText, 
-                    testText, integrateOutCluster, ".RData")
+                    testText, integrateClusterText, ".RData")
   fileNameTemp = paste0("resultsSPDEBetaTemp", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
                     round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
                     "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, strictPriorText, 
-                    testText, integrateOutCluster, ".RData")
+                    testText, integrateClusterText, ".RData")
   
   if(!loadProgress) {
     print("Generating SRS results")
