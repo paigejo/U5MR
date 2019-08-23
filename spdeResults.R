@@ -1308,6 +1308,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
   scoresPixelExact=results$scoresPixelExact
   scoresPixelExactBVar=results$scoresPixelExactBVar
   scoresCountyInexact=results$scoresCountyInexact
+  scoresCountyInexactUnintegrated=results$scoresCountyInexactUnintegrated
   scoresCountyExact=results$scoresCountyExact
   scoresCountyExactBVar=results$scoresCountyExactBVar
   scoresRegionInexact=results$scoresRegionInexact
