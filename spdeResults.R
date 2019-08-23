@@ -59,7 +59,8 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
   
   strictPriorText = ifelse(strictPrior, "strictPrior", "")
   testText = ifelse(test, "Test", "")
-  integrateClusterText = ifelse(integrateOutCluster, "IntClust", "")
+  # integrateClusterText = ifelse(integrateOutCluster, "IntClust", "")
+  integrateClusterText = ""
   fileName = paste0("resultsSPDEBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
                     round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0", 
                     "urbanEffect", urbanEffect, "clustEffect", includeClustEffect, strictPriorText, 
@@ -835,7 +836,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                               urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
                               predictionType=c("mean", "median"), parClust=cl, calcCrps=TRUE, 
                               significance=.8, continuousOnly=FALSE, strictPrior=TRUE, 
-                              integrateOutCluster=FALSE) {
+                              integrateOutCluster=TRUE) {
   
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
@@ -905,6 +906,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     scoresPixelExact = do.call("rbind", lapply(results, function(x) {x$scoresPixelExact}))
     scoresPixelExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresPixelExactBVar}))
     scoresCountyInexact = do.call("rbind", lapply(results, function(x) {x$scoresCountyInexact}))
+    scoresCountyInexactUnintegrated = do.call("rbind", lapply(results, function(x) {x$scoresCountyInexactUnintegrated}))
     scoresCountyExact = do.call("rbind", lapply(results, function(x) {x$scoresCountyExact}))
     scoresCountyExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresCountyExactBVar}))
     scoresRegionInexact = do.call("rbind", lapply(results, function(x) {x$scoresRegionInexact}))
@@ -937,7 +939,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     
     list(scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
          scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
-         scoresCountyInexact=scoresCountyInexact, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+         scoresCountyInexact=scoresCountyInexact, scoresCountyInexactUnintegrated=scoresCountyInexactUnintegrated, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
          scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
          interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
          rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
@@ -1042,12 +1044,15 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     
     # first generate the county estimates
     thisu1mCountyInexact = logit(rowMeans(countyPreds$countyPredMatInexact))
+    thisu1mCountyInexactUnintegrated = logit(rowMeans(countyPreds$countyPredMatInexactUnintegrated))
     if(!continuousOnly)
       thisu1mCountyExact = logit(rowMeans(countyPreds$countyPredMatExact))
     
     # scoring rules for all aggregation models
     scoresCountyInexact = getScoresSPDE(truthByCounty$truth, truthByCounty$n, thisu1mCountyInexact, 
                                         expit(thisu1mCountyInexact), NULL, bVar=FALSE, probMat=countyPreds$countyPredMatInexact)
+    scoresCountyInexactUnintegrated = getScoresSPDE(truthByCounty$truth, truthByCounty$n, thisu1mCountyInexactUnintegrated, 
+                                        expit(thisu1mCountyInexactUnintegrated), NULL, bVar=FALSE, probMat=countyPreds$countyPredMatInexactUnintegrated)
     cat(".")
     if(!continuousOnly) {
       scoresCountyExact = getScoresSPDE(truthByCounty$truth, truthByCounty$n, thisu1mCountyExact, 
@@ -1153,7 +1158,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     print(paste0("Combining results: iteration ", i, "/", nsim))
     res = list(scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
                scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
-               scoresCountyInexact=scoresCountyInexact, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+               scoresCountyInexact=scoresCountyInexact, scoresCountyInexactUnintegrated=scoresCountyInexactUnintegrated, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
                scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
                interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
                rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
@@ -1328,7 +1333,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
   
   list(scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
        scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
-       scoresCountyInexact=scoresCountyInexact, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+       scoresCountyInexact=scoresCountyInexact, scoresCountyInexactUnintegrated=scoresCountyInexactUnintegrated, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
        scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
        interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
        rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
