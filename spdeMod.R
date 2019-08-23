@@ -1097,7 +1097,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          clusterEffect=FALSE, significance=.8, 
                          onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE, doValidation=FALSE, 
                          previousResult=NULL, predCountyI=NULL, continuousOnly=FALSE, strictPrior=FALSE, 
-                         integrateOutCluster=FALSE) {
+                         integrateOutCluster=FALSE, returnUnintegratedResults=TRUE) {
   
   if(!is.null(predCountyI) && !onlyInexact)
     stop("If generating predictions for a fixed county (i.e. predCountyI is not NULL) then onlyInexact currently must be set to TRUE")
@@ -1281,7 +1281,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     # In this case, we shift each pixel level prediction by the the amount that will remove the 
     # bias induced by not accounting for the cluster effect (we integrate out the cluster effect 
     # for each simulated pixel value)
-    
+    unintegratedMat = predMat
     predMat = matrix(logit(logitNormMean(cbind(c(as.matrix(predMat)), rep(sqrt(clusterVars), each=nrow(predMat))))), nrow=nrow(predMat))
   }
   
@@ -1341,6 +1341,13 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     
     # integrate over the pixels to get aggregated predictions
     countyPredMatInexact <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE), TRUE)
+    if(integrateOutCluster && returnUnintegratedResults) {
+      predMat = unintegratedMat
+      countyPredMatInexactUnintegrated <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE), TRUE)
+    }
+    else {
+      countyPredMatInexactUnintegrated = NULL
+    }
     cat(".")
     
     # integrate over the EAs to get aggregated predictions
@@ -1366,7 +1373,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     }
     
     countyPreds <- list(countyPredMatInexact=countyPredMatInexact, countyPredMatExact=countyPredMatExact, 
-                        countyPredMatExactB=countyPredMatExactB)
+                        countyPredMatExactB=countyPredMatExactB, countyPredMatInexactUnintegrated=countyPredMatInexactUnintegrated)
   }
   
   regionPreds = NULL
