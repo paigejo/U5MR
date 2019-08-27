@@ -200,7 +200,9 @@ getScoresSPDE = function(truth, numChildren, logitEst, est=NULL, var=NULL, probM
   thisBias = out$bias
   
   # get relative bias (relative to the truth)
-  thisRelativeBias = relativeBias(truth, logitEst, logit=FALSE, logitVar, n=1)
+  if(getRelativeBias) {
+    thisRelativeBias = relativeBias(truth, logitEst, logit=FALSE, logitVar, n=1)
+  }
   
   # if CIs are included, but binomial variation is not, calculate credible intervals based on them
   if(!(any(is.null(logitL)) || any(is.null(logitU))) && !bVar) {

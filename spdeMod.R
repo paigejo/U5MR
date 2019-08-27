@@ -591,7 +591,7 @@ fitSPDEModel2 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          eaIndices=1:nrow(kenyaEAs), urbanEffect=TRUE, link=1, 
                          predictionType=c("median", "mean"), eaDat=NULL, nSamplePixel=10, 
                          truthByPixel=NULL, truthByCounty=NULL, truthByRegion=NULL, 
-                         truthByEa=NULL, clusterEffect=FALSE, significance=.8) {
+                         truthByEa=NULL, clusterEffect=FALSE, significance=.8, adjustPopSurface=FALSE) {
   
   # match the prediction type
   predictionType = match.arg(predictionType)
@@ -1097,7 +1097,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          clusterEffect=FALSE, significance=.8, 
                          onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE, doValidation=FALSE, 
                          previousResult=NULL, predCountyI=NULL, continuousOnly=FALSE, strictPrior=FALSE, 
-                         integrateOutCluster=FALSE, returnUnintegratedResults=TRUE) {
+                         integrateOutCluster=FALSE, returnUnintegratedResults=TRUE, adjustPopSurface=FALSE) {
   
   if(!is.null(predCountyI) && !onlyInexact)
     stop("If generating predictions for a fixed county (i.e. predCountyI is not NULL) then onlyInexact currently must be set to TRUE")
@@ -1240,7 +1240,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   
   # if not supplied, get grid of population densities for pop-weighted integration
   if(is.null(popGrid))
-    popGrid = makeInterpPopGrid(kmRes=kmRes)
+    popGrid = makeInterpPopGrid(kmRes=kmRes, adjustPopSurface=adjustPopSurface)
   
   # make sure prediction coordinates correspond to population density grid coordinates
   if(length(pixelIndices) != nrow(popGrid)) {

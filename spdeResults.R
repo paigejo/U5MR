@@ -836,7 +836,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                               urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
                               predictionType=c("mean", "median"), parClust=cl, calcCrps=TRUE, 
                               significance=.8, continuousOnly=FALSE, strictPrior=TRUE, 
-                              integrateOutCluster=TRUE) {
+                              integrateOutCluster=TRUE, adjustPopSurface=TRUE) {
   
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
@@ -871,10 +871,12 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
   nsim = length(clustDatMulti)
   
   # get prediction locations from population grid
-  if(kmres == 5)
+  if(kmres == 5 && adjustPopSurface)
+    load("popGridAdjusted.RData")
+  else if(kmres == 5 && !adjustPopSurface)
     load("popGrid.RData")
   else
-    popGrid = makeInterpPopGrid(kmres)
+    popGrid = makeInterpPopGrid(kmres, adjustPopSurface)
   
   predCoords = cbind(popGrid$east, popGrid$north)
   predUrban = popGrid$urban

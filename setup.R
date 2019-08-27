@@ -96,7 +96,10 @@ load("lims.RData")
 # generate 5km population density grid over Kenya
 # popGrid = makeInterpPopGrid(kmRes=5)
 # save(popGrid, file="popGrid.RData")
-load("popGrid.RData")
+# popGrid = makeInterpPopGrid(kmRes=5, adjustPopSurface=TRUE)
+# save(popGrid, file="popGridAdjusted.RData")
+# load("popGrid.RData")
+load("popGridAdjusted.RData")
 
 # set enumeration areas
 # kenyaEAs = simEAs2(popGrid, numEAs, totalKenyaPop)

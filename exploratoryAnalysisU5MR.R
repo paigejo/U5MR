@@ -905,6 +905,41 @@ ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiri
 ecdfExpectation(empiricalDistributions$mothersUrban) * ecdfExpectation(empiricalDistributions$childrenUrban) # 0.4532017 urban
 ecdfExpectation(empiricalDistributions$mothersRural) * ecdfExpectation(empiricalDistributions$childrenRural) # 0.6967159 rural
 
+# Integrate population density within each county and stratum
+popGrid = makeInterpPopGrid(kmRes=5)
+counties=sort(unique(poppc$County))
+getCountyStratumIntegrationMatrix = function(getUrban=TRUE) {
+  counties = as.character(counties)
+  
+  mat = t(sapply(counties, function(countyName) {popGrid$admin1 == countyName}))
+  mat = sweep(mat, 2, popGrid$popOrig, "*")
+  sweep(mat, 2, popGrid$urban == getUrban, "*")
+}
+urbanPopulations = rowSums(getCountyStratumIntegrationMatrix())
+ruralPopulations = rowSums(getCountyStratumIntegrationMatrix(FALSE))
+popTable = cbind(urban=urbanPopulations, rural=ruralPopulations, pctUrban=urbanPopulations / (urbanPopulations + ruralPopulations))
+
+# compare that to the average proportion of children that are in urban and rural strata per county
+load("~/git/U5MR/empiricalDistributions.RData")
+sortI = sort(easpc$County, index.return=TRUE)$ix
+temp = easpc[sortI,]
+childrenPerStratumUrban = temp$EAUrb * ecdfExpectation(empiricalDistributions$householdsUrban) * ecdfExpectation(empiricalDistributions$mothersUrban) * 
+  ecdfExpectation(empiricalDistributions$childrenUrban)
+childrenPerStratumRural = temp$EARur * ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiricalDistributions$mothersRural) * 
+  ecdfExpectation(empiricalDistributions$childrenRural)
+childTable = cbind(urban=childrenPerStratumUrban, rural=childrenPerStratumRural, pctUrban=childrenPerStratumUrban / (childrenPerStratumUrban + childrenPerStratumRural))
+
+compareTable = cbind(pctUrbanPop=popTable[,3], pctUrbanChild=childTable[,3])
+format(compareTable, digits=1)
+colMeans(compareTable)
+# pctUrbanPop pctUrbanChild 
+# 0.2536728     0.2308785 
+
+popEstimateUnintegrated = 0.2536728 * mean(expit(-1.777 -1.003)) + (1 - 0.2536728) * mean(expit(-1.777 + rnorm(100000, sd=.103)))
+childEstimate = 0.2308785 * mean(expit(-1.777 -1.003+ rnorm(100000, sd=.103))) + (1 - 0.2308785) * mean(expit(-1.777+ rnorm(100000, sd=.103)))
+childEstimate - popEstimateUnintegrated
+# [1] 0.002076907
+
 # test sampling weights:
 getWeightedMean = function(clusterDat) {
   weights = clusterDat$samplingWeight

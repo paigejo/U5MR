@@ -249,7 +249,7 @@ makeKenyaPop = function(kmRes=5) {
 }
 
 # generate the population density surface along with urbanicity estimates
-makeInterpPopGrid = function(kmRes=5) {
+makeInterpPopGrid = function(kmRes=5, adjustPopSurface=FALSE) {
   # load population density data
   require(raster)
   
@@ -286,6 +286,45 @@ makeInterpPopGrid = function(kmRes=5) {
   
   newPop$east = utmGrid[,1]
   newPop$north = utmGrid[,2]
+  
+  # if necessary, adjust the population surface so that it better represents the the child population density 
+  # rather than the total population density
+  if(adjustPopSurface) {
+    # sort easpc by county name alphabetically
+    counties=sort(unique(poppc$County))
+    sortI = sort(easpc$County, index.return=TRUE)$ix
+    temp = easpc[sortI,]
+    
+    # calculate the number of children per stratum using true total eas and empirical children per ea from census data
+    load("empiricalDistributions.RData")
+    childrenPerStratumUrban = temp$EAUrb * ecdfExpectation(empiricalDistributions$householdsUrban) * ecdfExpectation(empiricalDistributions$mothersUrban) * 
+      ecdfExpectation(empiricalDistributions$childrenUrban)
+    childrenPerStratumRural = temp$EARur * ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiricalDistributions$mothersRural) * 
+      ecdfExpectation(empiricalDistributions$childrenRural)
+    
+    # generate 2 47 x nPixels matrices for urban and rural strata integrating pixels with respect to population density to get county estimates
+    getCountyStratumIntegrationMatrix = function(getUrban=TRUE) {
+      counties = as.character(counties)
+      
+      mat = t(sapply(counties, function(countyName) {newPop$admin1 == countyName}))
+      mat = sweep(mat, 2, newPop$popOrig, "*")
+      sweep(mat, 2, newPop$urban == getUrban, "*")
+    }
+    urbanIntegrationMat = getCountyStratumIntegrationMatrix()
+    ruralIntegrationMat = getCountyStratumIntegrationMatrix(FALSE)
+    
+    # calculate number of people per stratum by integrating the population density surface
+    urbanPopulations = rowSums(urbanIntegrationMat)
+    ruralPopulations = rowSums(ruralIntegrationMat)
+    
+    # adjust each row of the integration matrices to get the correct expected number of children per stratum
+    urbanIntegrationMat = sweep(urbanIntegrationMat, 1, childrenPerStratumUrban / urbanPopulations, "*")
+    ruralIntegrationMat = sweep(ruralIntegrationMat, 1, childrenPerStratumRural / ruralPopulations, "*")
+    ruralIntegrationMat[ruralPopulations == 0,] = 0
+    
+    # the column sums of the matrices give the correct modified population densities
+    newPop$popOrig = colSums(urbanIntegrationMat) + colSums(ruralIntegrationMat)
+  }
   
   newPop
 }
