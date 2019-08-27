@@ -1097,7 +1097,10 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          clusterEffect=FALSE, significance=.8, 
                          onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE, doValidation=FALSE, 
                          previousResult=NULL, predCountyI=NULL, continuousOnly=FALSE, strictPrior=FALSE, 
-                         integrateOutCluster=FALSE, returnUnintegratedResults=TRUE, adjustPopSurface=FALSE) {
+                         integrateOutCluster=FALSE, returnUnintegratedResults=TRUE, adjustPopSurface=FALSE, 
+                         seed=123) {
+  if(!is.null(seed))
+    set.seed(seed)
   
   if(!is.null(predCountyI) && !onlyInexact)
     stop("If generating predictions for a fixed county (i.e. predCountyI is not NULL) then onlyInexact currently must be set to TRUE")
