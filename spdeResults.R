@@ -874,8 +874,12 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
   nsim = length(clustDatMulti)
   
   # get prediction locations from population grid
-  if(kmres == 5 && adjustPopSurface)
+  popGridAdjusted = NULL
+  if(kmres == 5 && adjustPopSurface) {
     load("popGridAdjusted.RData")
+    popGridAdjusted = popGrid
+    load("popGrid.RData")
+  }
   else if(kmres == 5 && !adjustPopSurface)
     load("popGrid.RData")
   else
@@ -912,6 +916,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     scoresPixelExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresPixelExactBVar}))
     scoresCountyInexact = do.call("rbind", lapply(results, function(x) {x$scoresCountyInexact}))
     scoresCountyInexactUnintegrated = do.call("rbind", lapply(results, function(x) {x$scoresCountyInexactUnintegrated}))
+    countyPredMatInexactUnadjusted = do.call("rbind", lapply(results, function(x) {x$countyPredMatInexactUnadjusted}))
     scoresCountyExact = do.call("rbind", lapply(results, function(x) {x$scoresCountyExact}))
     scoresCountyExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresCountyExactBVar}))
     scoresRegionInexact = do.call("rbind", lapply(results, function(x) {x$scoresRegionInexact}))
@@ -944,7 +949,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     
     list(scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
          scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
-         scoresCountyInexact=scoresCountyInexact, scoresCountyInexactUnintegrated=scoresCountyInexactUnintegrated, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+         scoresCountyInexact=scoresCountyInexact, scoresCountyInexactUnintegrated=scoresCountyInexactUnintegrated, countyPredMatInexactUnadjusted=countyPredMatInexactUnadjusted, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
          scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
          interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
          rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
@@ -976,7 +981,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                         urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
                         eaDat=eaDat, nSamplePixel=nSamplePixel, significance=significance, 
                         continuousOnly=continuousOnly, strictPrior=strictPrior, 
-                        integrateOutCluster=integrateOutCluster)
+                        integrateOutCluster=integrateOutCluster, popGridAdjusted=popGridAdjusted)
     print(paste0("Fit completed: iteration ", i, "/", nsim))
     countyPreds = fit$countyPreds
     regionPreds = fit$regionPreds
@@ -1050,6 +1055,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     # first generate the county estimates
     thisu1mCountyInexact = logit(rowMeans(countyPreds$countyPredMatInexact))
     thisu1mCountyInexactUnintegrated = logit(rowMeans(countyPreds$countyPredMatInexactUnintegrated))
+    thisu1mCountyInexactUnadjusted = logit(rowMeans(countyPreds$countyPredMatInexactUnadjusted))
     if(!continuousOnly)
       thisu1mCountyExact = logit(rowMeans(countyPreds$countyPredMatExact))
     
@@ -1058,6 +1064,8 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                                         expit(thisu1mCountyInexact), NULL, bVar=FALSE, probMat=countyPreds$countyPredMatInexact)
     scoresCountyInexactUnintegrated = getScoresSPDE(truthByCounty$truth, truthByCounty$n, thisu1mCountyInexactUnintegrated, 
                                         expit(thisu1mCountyInexactUnintegrated), NULL, bVar=FALSE, probMat=countyPreds$countyPredMatInexactUnintegrated)
+    scoresCountyInexactUnadjusted = getScoresSPDE(truthByCounty$truth, truthByCounty$n, thisu1mCountyInexactUnadjusted, 
+                                                    expit(thisu1mCountyInexactUnadjusted), NULL, bVar=FALSE, probMat=countyPreds$countyPredMatInexactUnadjusted)
     cat(".")
     if(!continuousOnly) {
       scoresCountyExact = getScoresSPDE(truthByCounty$truth, truthByCounty$n, thisu1mCountyExact, 
@@ -1163,7 +1171,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     print(paste0("Combining results: iteration ", i, "/", nsim))
     res = list(scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
                scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
-               scoresCountyInexact=scoresCountyInexact, scoresCountyInexactUnintegrated=scoresCountyInexactUnintegrated, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+               scoresCountyInexact=scoresCountyInexact, scoresCountyInexactUnintegrated=scoresCountyInexactUnintegrated, scoresCountyInexactUnadjusted=scoresCountyInexactUnadjusted, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
                scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
                interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
                rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
@@ -1314,6 +1322,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
   scoresPixelExactBVar=results$scoresPixelExactBVar
   scoresCountyInexact=results$scoresCountyInexact
   scoresCountyInexactUnintegrated=results$scoresCountyInexactUnintegrated
+  scoresCountyInexactUnadjusted=results$scoresCountyInexactUnadjusted
   scoresCountyExact=results$scoresCountyExact
   scoresCountyExactBVar=results$scoresCountyExactBVar
   scoresRegionInexact=results$scoresRegionInexact
@@ -1339,7 +1348,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
   
   list(scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
        scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
-       scoresCountyInexact=scoresCountyInexact, scoresCountyInexactUnintegrated=scoresCountyInexactUnintegrated, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+       scoresCountyInexact=scoresCountyInexact, scoresCountyInexactUnintegrated=scoresCountyInexactUnintegrated, scoresCountyInexactUnadjusted=scoresCountyInexactUnadjusted, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
        scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
        interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
        rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
@@ -1360,7 +1369,7 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
   
   # get prediction locations from population grid
   if(kmres == 5)
-    load("popGrid.RData")
+    load("popGridAdjusted.RData")
   else
     popGrid = makeInterpPopGrid(kmres)
   
@@ -1383,7 +1392,9 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
   obsCounts = clustDat$y
   obsUrban = clustDat$urban
   
-  # fit model, get all predictions for each areal level and each posterior sample
+  # fit model, get all predictions for each areal level and each posterior sample 
+  # (even though adjustPopSurface is FALSE by default, the predictions will be using the adjusted surface, 
+  # passed in as the popGrid variable)
   fit = fitSPDEModel3(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
                       predUrban, clusterIndices=1:nrow(clustDat), genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
                       verbose = verbose, clusterEffect=includeClustEffect, 
@@ -1392,7 +1403,7 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
                       urbanEffect=urbanEffect, eaIndices=1:nrow(clustDat), 
                       eaDat=eaDat, nSamplePixel=nSamplePixel, 
                       significance=significance, onlyInexact=TRUE, allPixels=TRUE, 
-                      newMesh=TRUE, previousResult=previousResult, predCountyI=predCountyI)
+                      newMesh=TRUE, previousResult=previousResult, predCountyI=predCountyI, integrateOutCluster=TRUE)
   
   countyPreds = fit$countyPreds
   regionPreds = fit$regionPreds

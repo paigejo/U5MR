@@ -1098,7 +1098,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE, doValidation=FALSE, 
                          previousResult=NULL, predCountyI=NULL, continuousOnly=FALSE, strictPrior=FALSE, 
                          integrateOutCluster=FALSE, returnUnintegratedResults=TRUE, adjustPopSurface=FALSE, 
-                         seed=NULL) {
+                         seed=NULL, popGridAdjusted=NULL) {
   if(!is.null(seed))
     set.seed(seed)
   
@@ -1244,6 +1244,22 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   # if not supplied, get grid of population densities for pop-weighted integration
   if(is.null(popGrid))
     popGrid = makeInterpPopGrid(kmRes=kmRes, adjustPopSurface=adjustPopSurface)
+  if(kmres == 5) {
+    if(is.null(popGridAdjusted) && adjustPopSurface) {
+      load("popGridAdjusted.RData")
+      popGridAdjusted = popGrid
+    }
+    if(is.null(popGrid)) {
+      load("popGrid.RData")
+    }
+  }
+  else {
+    if(adjustPopSurface) {
+      load("popGridAdjusted.RData")
+      popGridAdjusted = popGrid
+    }
+    popGrid = makeInterpPopGrid(kmres, adjustPopSurface)
+  }
   
   # make sure prediction coordinates correspond to population density grid coordinates
   if(length(pixelIndices) != nrow(popGrid)) {
@@ -1328,12 +1344,15 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     
     predCountiesPixel = popGrid$admin1
     
-    getCountyIntegrationMatrix = function(integrateByPixel=TRUE) {
+    getCountyIntegrationMatrix = function(integrateByPixel=TRUE, adjustDensities=FALSE) {
       counties = as.character(counties)
       
       if(integrateByPixel) {
         mat = t(sapply(counties, function(countyName) {popGrid$admin1 == countyName}))
-        mat = sweep(mat, 2, popGrid$popOrig, "*")
+        if(!adjustDensities)
+          mat = sweep(mat, 2, popGrid$popOrig, "*")
+        else
+          mat = sweep(mat, 2, popGridAdjusted$popOrig, "*")
       }
       else {
         mat = t(sapply(counties, function(countyName) {eaDat$admin1 == countyName}))
@@ -1342,11 +1361,19 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
       sweep(mat, 1, 1/rowSums(mat), "*")
     }
     
-    # integrate over the pixels to get aggregated predictions
-    countyPredMatInexact <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE), TRUE)
+    # integrate over the pixels to get aggregated predictions. We consider three cases from most to least complex: 
+    # integrate out cluster and adjust population density surface to account for different number of children in urban/rural areas
+    # adjust population density surface to account for different number of children in urban/rural areas (Unintegrated)
+    # do no integration or adjustments (Unadjusted)
+    countyPredMatInexact <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE, adjustPopSurface), TRUE)
     if(integrateOutCluster && returnUnintegratedResults) {
       predMat = unintegratedMat
-      countyPredMatInexactUnintegrated <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE), TRUE)
+      countyPredMatInexactUnintegrated <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE, adjustPopSurface), TRUE)
+      
+      if(adjustPopSurface)
+        countyPredMatInexactUnadjusted <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE, FALSE), TRUE)
+      else
+        countyPredMatInexactUnadjusted = NULL
     }
     else {
       countyPredMatInexactUnintegrated = NULL
@@ -1376,7 +1403,8 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     }
     
     countyPreds <- list(countyPredMatInexact=countyPredMatInexact, countyPredMatExact=countyPredMatExact, 
-                        countyPredMatExactB=countyPredMatExactB, countyPredMatInexactUnintegrated=countyPredMatInexactUnintegrated)
+                        countyPredMatExactB=countyPredMatExactB, countyPredMatInexactUnintegrated=countyPredMatInexactUnintegrated, 
+                        countyPredMatInexactUnadjusted=countyPredMatInexactUnadjusted)
   }
   
   regionPreds = NULL
