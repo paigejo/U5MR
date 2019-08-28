@@ -1244,7 +1244,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   # if not supplied, get grid of population densities for pop-weighted integration
   if(is.null(popGrid))
     popGrid = makeInterpPopGrid(kmRes=kmRes, adjustPopSurface=adjustPopSurface)
-  if(kmres == 5) {
+  if(kmRes == 5) {
     if(is.null(popGridAdjusted) && adjustPopSurface) {
       load("popGridAdjusted.RData")
       popGridAdjusted = popGrid
@@ -1258,7 +1258,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
       load("popGridAdjusted.RData")
       popGridAdjusted = popGrid
     }
-    popGrid = makeInterpPopGrid(kmres, adjustPopSurface)
+    popGrid = makeInterpPopGrid(kmRes, adjustPopSurface)
   }
   
   # make sure prediction coordinates correspond to population density grid coordinates

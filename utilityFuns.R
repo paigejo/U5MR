@@ -329,6 +329,22 @@ makeInterpPopGrid = function(kmRes=5, adjustPopSurface=FALSE) {
   newPop
 }
 
+# takes the poppc table, containing the proportion of population that is urban and rural in each stratum, and
+# adjusts it to be representative of the children in urban and rural areas per stratum based on census data
+adjustPopulationPerCountyTable = function() {
+  
+  # calculate the number of children per stratum using true total eas and empirical children per ea from census data
+  load("empiricalDistributions.RData")
+  childrenPerStratumUrban = temp$EAUrb * ecdfExpectation(empiricalDistributions$householdsUrban) * ecdfExpectation(empiricalDistributions$mothersUrban) * 
+    ecdfExpectation(empiricalDistributions$childrenUrban)
+  childrenPerStratumRural = temp$EARur * ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiricalDistributions$mothersRural) * 
+    ecdfExpectation(empiricalDistributions$childrenRural)
+  
+  # adjust poppc table to be representative of the number of children per stratum
+  childrenPerCounty = childrenPerStratumUrban + childrenPerStratumRural
+  
+}
+
 ##### some random convenient function for breaking down number of urban counties for simulated 
 ##### and real datasets
 numPerCounty = function(datSet, byUrban=TRUE, counties=clustpc$County) {
