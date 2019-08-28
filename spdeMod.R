@@ -1098,7 +1098,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE, doValidation=FALSE, 
                          previousResult=NULL, predCountyI=NULL, continuousOnly=FALSE, strictPrior=FALSE, 
                          integrateOutCluster=FALSE, returnUnintegratedResults=TRUE, adjustPopSurface=FALSE, 
-                         seed=123) {
+                         seed=NULL) {
   if(!is.null(seed))
     set.seed(seed)
   

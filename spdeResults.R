@@ -11,7 +11,10 @@ resultsSPDE = function(nPostSamples=100, test=FALSE, nTest=2, verbose=TRUE,
                        genEALevel=TRUE, urbanEffect=TRUE, tausq=0, 
                        saveResults=!test && is.null(maxDataSets), margVar=.15^2, gamma=-1, 
                        beta0=-1.75, loadProgress=FALSE, continuousOnly=TRUE, strictPrior=FALSE, 
-                       maxDataSets=NULL, integrateOutCluster=TRUE) {
+                       maxDataSets=NULL, integrateOutCluster=TRUE, seed=123) {
+  if(!is.null(seed))
+    set.seed(seed)
+  
   # Load data
   # load("simDataMulti.RData") # overSampDat, SRSDat
   # load a different 1 of these depending on whether a cluster effect should be included 

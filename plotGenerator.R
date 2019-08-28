@@ -243,15 +243,15 @@ plotDataVisualizations = function(dat=ed, meanRange, meanRange2, meanTicks, mean
   dev.off()
   
   popGrid = makeInterpPopGrid(kmRes=5, adjustPopSurface = TRUE)
-  thisPop = popGridAdjusted$popOrig
+  thisPop = popGrid$popOrig / 5^2
   png(file=paste0("figures/populationDensityAdjusted.png"), width=550, height=500)
   par(oma=c( 0,0,0,5), mar=c(5.1, 5.1, 4.1, 4), lab.cex=2.0, cex.lab=1.5, cex.axis=1.5, cex.main=2)
   plot(cbind(popGrid$lon, popGrid$lat), type="n", main=TeX("Adjusted population density (people/$km^2$)"), ylim=kenyaLatRange, 
        xlim=kenyaLonRange, xlab="Longitude", ylab="Latitude", asp=1)
-  popRange = log(c(1, max(thisPop)))
+  popRange = log(c(.1, max(thisPop)))
   popTicks = log(pretty(exp(popRange)))
-  popTicks = c(log(1), log(10), log(100), log(1000), popTicks[-c(1, 4)])
-  tickLabels = trim(format(exp(popTicks), digits=0, scientific=FALSE))
+  popTicks = c(log(.1), log(1), log(10), log(100), log(1000), popTicks[-c(1, 2, 4, 5, 6)])
+  tickLabels = as.character(exp(popTicks))
   # tickLabels[7] = ""
   quilt.plot(cbind(popGrid$lon, popGrid$lat, log(thisPop)), nx=150, ny=150, add.legend=FALSE, add=TRUE, 
              zlim=range(popTicks), col=popCols)
