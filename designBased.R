@@ -29,6 +29,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
       urbanI = idx[SRSDat$eaDat$urban[idx]]
       urbRatio[i] = sum(SRSDat$eaDat$numChildren[urbanI])/sum(SRSDat$eaDat$numChildren[idx])
     }
+    urbRatioAdjusted = urbRatio
   } else {
     
     # now compute the proportion of the population that is urban (possibly adjusting for 

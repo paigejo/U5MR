@@ -949,7 +949,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     
     list(scoresEaExact=scoresEaExact, scoresEaExactBVar=scoresEaExactBVar, 
          scoresPixelInexact=scoresPixelInexact, scoresPixelExact=scoresPixelExact, scoresPixelExactBVar=scoresPixelExactBVar, 
-         scoresCountyInexact=scoresCountyInexact, scoresCountyInexactUnintegrated=scoresCountyInexactUnintegrated, countyPredMatInexactUnadjusted=countyPredMatInexactUnadjusted, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
+         scoresCountyInexact=scoresCountyInexact, scoresCountyInexactUnintegrated=scoresCountyInexactUnintegrated, scoresCountyInexactUnadjusted=scoresCountyInexactUnadjusted, scoresCountyExact=scoresCountyExact, scoresCountyExactBVar=scoresCountyExactBVar, 
          scoresRegionInexact=scoresRegionInexact, scoresRegionExact=scoresRegionExact, scoresRegionExactBVar=scoresRegionExactBVar, 
          interceptSummary=interceptSummary, urbanSummary=urbanSummary, 
          rangeSummary=rangeSummary, varSummary=varSummary, sdSummary=sdSummary, 
