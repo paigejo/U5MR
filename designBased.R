@@ -7,7 +7,7 @@
 # same as runBYM, except fits the BYM2 reparameterized model (iid component in the BYM2 is that the county level)
 runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluster=TRUE, maxDataSets=NULL, 
                    aggregateByPopulation=FALSE, margVar=0.15^2, gamma=-1, plotPriorPost=FALSE, strictPrior=FALSE, 
-                   adjustAggregationWeights=TRUE, seed=NULL) {
+                   seed=NULL) {
   if(!is.null(seed))
     set.seed(seed)
   
@@ -30,16 +30,16 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
       urbRatio[i] = sum(SRSDat$eaDat$numChildren[urbanI])/sum(SRSDat$eaDat$numChildren[idx])
     }
   } else {
-    # if desired, adjust the population weights to be more representative of the number of children per stratum
-    if(adjustAggregationWeights)
-      aggregationWeightTable = adjustPopulationPerCountyTable()
-    else
-      aggregationWeightTable = poppc
     
-    # now compute the proportion of the population that is urban
-    urbRatio = aggregationWeightTable$popUrb / aggregationWeightTable$popTotal
-    sortI = matchMultiple(counties, aggregationWeightTable$County)
-    urbRatio = urbRatio[sortI]
+    # now compute the proportion of the population that is urban (possibly adjusting for 
+    # the number of children per unit population being different in urban and rural areas)
+    getUrbanRatios = function(aggregationWeightTable) {
+      urbRatio = aggregationWeightTable$popUrb / aggregationWeightTable$popTotal
+      sortI = matchMultiple(counties, aggregationWeightTable$County)
+      urbRatio = urbRatio[sortI]
+    }
+    urbRatio = getUrbanRatios(poppc)
+    urbRatioAdjusted = getUrbanRatios(adjustPopulationPerCountyTable())
   }
   
   sortI = matchMultiple(counties, easpc$County)
@@ -112,6 +112,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   
   # Go through datasets for SRSDat
   sampCountySRSDat = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampCountySRSDatAdjusted = array(NA, dim = c(47, Nsim, maxDataSets))
   sampCountySRSDatMod = array(NA, dim = c(47, Nsim, maxDataSets))
   sampClusterSRSDatUrban = array(NA, dim = c(47, Nsim, maxDataSets))
   sampClusterSRSDatRural = array(NA, dim = c(47, Nsim, maxDataSets))
@@ -236,7 +237,8 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
         }
       }
       sampCountySRSDat[,,i] = logit(expit(sampUrban)*urbRatio + expit(sampRural)*(1-urbRatio))
-      sampCountySRSDatMod[,,i] = logit(sampUrbanMod*urbRatio + sampRuralMod*(1-urbRatio))
+      sampCountySRSDatAdjusted[,,i] = logit(expit(sampUrban)*urbRatioAdjusted + expit(sampRural)*(1-urbRatioAdjusted))
+      sampCountySRSDatMod[,,i] = logit(sampUrbanMod*urbRatioAdjusted + sampRuralMod*(1-urbRatioAdjusted))
       if(!includeCluster) {
         sampClusterSRSDatRural[,,i] = sampRural
         sampClusterSRSDatUrban[,,i] = sampUrban
@@ -263,6 +265,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
         }
       }
       sampCountySRSDat[,,i] = sampCounty
+      sampCountySRSDatAdjusted[,,i] = sampCounty
       sampCountySRSDatMod[,,i] = logit(sampCountyMod)
       sampPixelSRSDatUrban[,,i] = sampCounty
       sampPixelSRSDatRural[,,i] = sampCounty
@@ -278,6 +281,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   
   # Go through datasets for overSampDat
   sampCountyOverSampDat = array(NA, dim = c(47, Nsim, maxDataSets))
+  sampCountyOverSampDatAdjusted = array(NA, dim = c(47, Nsim, maxDataSets))
   sampCountyOverSampDatMod = array(NA, dim = c(47, Nsim, maxDataSets))
   sampClusterOverSampDatUrban = array(NA, dim = c(47, Nsim, maxDataSets))
   sampClusterOverSampDatRural = array(NA, dim = c(47, Nsim, maxDataSets))
@@ -390,7 +394,8 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
         }
       }
       sampCountyOverSampDat[,,i] = logit(expit(sampUrban)*urbRatio + expit(sampRural)*(1-urbRatio))
-      sampCountyOverSampDatMod[,,i] = logit(sampUrbanMod*urbRatio + sampRuralMod*(1-urbRatio))
+      sampCountyOverSampDatAdjusted[,,i] = logit(expit(sampUrban)*urbRatioAdjusted + expit(sampRural)*(1-urbRatioAdjusted))
+      sampCountyOverSampDatMod[,,i] = logit(sampUrbanMod*urbRatioAdjusted + sampRuralMod*(1-urbRatioAdjusted))
       if(!includeCluster) {
         sampClusterOverSampDatRural[,,i] = sampRural
         sampClusterOverSampDatUrban[,,i] = sampUrban
@@ -417,6 +422,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
         }
       }
       sampCountyOverSampDat[,,i] = sampCounty
+      sampCountyOverSampDatAdjusted[,,i] = sampCounty
       sampCountyOverSampDatMod[,,i] = logit(sampCountyMod)
       sampPixelOverSampDatUrban[,,i] = sampCounty
       sampPixelOverSampDatRural[,,i] = sampCounty
@@ -461,6 +467,25 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
                    Q90 = Q90,
                    mean = mm,
                    stddev = ss)
+  
+  Q10 = matrix(NA, nrow = 47, ncol = dim(sampCountySRSDatAdjusted)[3])
+  Q50 = matrix(NA, nrow = 47, ncol = dim(sampCountySRSDatAdjusted)[3])
+  Q90 = matrix(NA, nrow = 47, ncol = dim(sampCountySRSDatAdjusted)[3])
+  mm = matrix(NA, nrow = 47, ncol = dim(sampCountySRSDatAdjusted)[3])
+  ss = matrix(NA, nrow = 47, ncol = dim(sampCountySRSDatAdjusted)[3])
+  for(i in 1:dim(sampCountySRSDatAdjusted)[3]){
+    tmp = processSamples(sampCountySRSDatAdjusted[,,i])
+    Q10[,i] = tmp$logit$CI[,1]
+    Q50[,i] = tmp$logit$CI[,2]
+    Q90[,i] = tmp$logit$CI[,3]
+    mm[,i] = tmp$logit$mean
+    ss[,i] = tmp$logit$stddev
+  }
+  resSRSdatAdjusted = list(Q10 = Q10,
+                           Q50 = Q50,
+                           Q90 = Q90,
+                           mean = mm,
+                           stddev = ss)
   
   # calculate summary statistics for cluster and pixel predictions
   Q10 = matrix(NA, nrow = 47, ncol = dim(sampClusterSRSDatRural)[3])
@@ -641,6 +666,25 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
                         mean = mm,
                         stddev = ss)
   
+  Q10 = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDatAdjusted)[3])
+  Q50 = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDatAdjusted)[3])
+  Q90 = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDatAdjusted)[3])
+  mm = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDatAdjusted)[3])
+  ss = matrix(NA, nrow = 47, ncol = dim(sampCountyOverSampDatAdjusted)[3])
+  for(i in 1:dim(sampCountyOverSampDatAdjusted)[3]){
+    tmp = processSamples(sampCountyOverSampDatAdjusted[,,i])
+    Q10[,i] = tmp$logit$CI[,1]
+    Q50[,i] = tmp$logit$CI[,2]
+    Q90[,i] = tmp$logit$CI[,3]
+    mm[,i] = tmp$logit$mean
+    ss[,i] = tmp$logit$stddev
+  }
+  resDatOverSampAdjusted = list(Q10 = Q10,
+                        Q50 = Q50,
+                        Q90 = Q90,
+                        mean = mm,
+                        stddev = ss)
+  
   # calculate summary statistics for cluster and pixel predictions
   Q10 = matrix(NA, nrow = 47, ncol = dim(sampClusterOverSampDatRural)[3])
   Q50 = matrix(NA, nrow = 47, ncol = dim(sampClusterOverSampDatRural)[3])
@@ -801,8 +845,10 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
                                       Q90 = Q90))
   
   # Full result
-  designRes = list(SRSdat = resSRSdat,
-                   overSampDat = resDatOverSamp, 
+  designRes = list(SRSdat = resSRSdatAdjusted,
+                   overSampDat = resDatOverSampAdjusted, 
+                   SRSdatUnadjusted = resSRSdat,
+                   overSampDatUnadjusted = resDatOverSamp, 
                    SRSdatPixelRural = resDatSRSPixelRural,
                    overSampDatPixelRural = resDatOverSampPixelRural, 
                    SRSdatPixelUrban = resDatSRSPixelUrban,
@@ -828,6 +874,10 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   if(includeCluster) {
     designRes = list(SRSdat = resSRSdatMod,
                      overSampDat = resDatOverSampMod, 
+                     SRSdatAdjusted = resSRSdatAdjusted,
+                     overSampDatAdjusted = resDatOverSampAdjusted, 
+                     SRSdatUnadjusted = resSRSdat,
+                     overSampDatUnadjusted = resDatOverSamp, 
                      SRSdatPixelRural = resDatSRSPixelRuralMod,
                      overSampDatPixelRural = resDatOverSampPixelRuralMod, 
                      SRSdatPixelUrban = resDatSRSPixelRuralMod,
