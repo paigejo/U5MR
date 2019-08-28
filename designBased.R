@@ -6,7 +6,8 @@
 
 # same as runBYM, except fits the BYM2 reparameterized model (iid component in the BYM2 is that the county level)
 runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeCluster=TRUE, maxDataSets=NULL, 
-                   aggregateByPopulation=FALSE, margVar=0.15^2, gamma=-1, plotPriorPost=FALSE, strictPrior=FALSE) {
+                   aggregateByPopulation=FALSE, margVar=0.15^2, gamma=-1, plotPriorPost=FALSE, strictPrior=FALSE, 
+                   adjustAggregationWeights=TRUE) {
   
   # load and relevant data
   if(!test)
@@ -21,13 +22,21 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   counties = sort(unique(as.character(SRSDat$eaDat$admin1)))
   if(!aggregateByPopulation) {
     for(i in 1:47){
+      # compute the exact proportion of children that are in urban areas
       idx = which(as.numeric(factor(SRSDat$eaDat$admin1)) == i)
       urbanI = idx[SRSDat$eaDat$urban[idx]]
       urbRatio[i] = sum(SRSDat$eaDat$numChildren[urbanI])/sum(SRSDat$eaDat$numChildren[idx])
     }
   } else {
-    urbRatio = poppc$popUrb / poppc$popTotal
-    sortI = matchMultiple(counties, poppc$County)
+    # if desired, adjust the population weights to be more representative of the number of children per stratum
+    if(adjustAggregationWeights)
+      aggregationWeightTable = adjustPopulationPerCountyTable()
+    else
+      aggregationWeightTable = poppc
+    
+    # now compute the proportion of the population that is urban
+    urbRatio = aggregationWeightTable$popUrb / aggregationWeightTable$popTotal
+    sortI = matchMultiple(counties, aggregationWeightTable$County)
     urbRatio = urbRatio[sortI]
   }
   
