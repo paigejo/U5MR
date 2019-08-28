@@ -916,7 +916,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
     scoresPixelExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresPixelExactBVar}))
     scoresCountyInexact = do.call("rbind", lapply(results, function(x) {x$scoresCountyInexact}))
     scoresCountyInexactUnintegrated = do.call("rbind", lapply(results, function(x) {x$scoresCountyInexactUnintegrated}))
-    countyPredMatInexactUnadjusted = do.call("rbind", lapply(results, function(x) {x$countyPredMatInexactUnadjusted}))
+    scoresCountyInexactUnadjusted = do.call("rbind", lapply(results, function(x) {x$scoresCountyInexactUnadjusted}))
     scoresCountyExact = do.call("rbind", lapply(results, function(x) {x$scoresCountyExact}))
     scoresCountyExactBVar = do.call("rbind", lapply(results, function(x) {x$scoresCountyExactBVar}))
     scoresRegionInexact = do.call("rbind", lapply(results, function(x) {x$scoresRegionInexact}))
