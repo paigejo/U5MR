@@ -981,7 +981,8 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                         urbanEffect=urbanEffect, link=1, predictionType=predictionType, 
                         eaDat=eaDat, nSamplePixel=nSamplePixel, significance=significance, 
                         continuousOnly=continuousOnly, strictPrior=strictPrior, 
-                        integrateOutCluster=integrateOutCluster, popGridAdjusted=popGridAdjusted)
+                        integrateOutCluster=integrateOutCluster, popGridAdjusted=popGridAdjusted, 
+                        adjustPopSurface=adjustPopSurface)
     print(paste0("Fit completed: iteration ", i, "/", nsim))
     countyPreds = fit$countyPreds
     regionPreds = fit$regionPreds

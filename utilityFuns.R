@@ -335,14 +335,22 @@ adjustPopulationPerCountyTable = function() {
   
   # calculate the number of children per stratum using true total eas and empirical children per ea from census data
   load("empiricalDistributions.RData")
-  childrenPerStratumUrban = temp$EAUrb * ecdfExpectation(empiricalDistributions$householdsUrban) * ecdfExpectation(empiricalDistributions$mothersUrban) * 
+  childrenPerStratumUrban = easpc$EAUrb * ecdfExpectation(empiricalDistributions$householdsUrban) * ecdfExpectation(empiricalDistributions$mothersUrban) * 
     ecdfExpectation(empiricalDistributions$childrenUrban)
-  childrenPerStratumRural = temp$EARur * ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiricalDistributions$mothersRural) * 
+  childrenPerStratumRural = easpc$EARur * ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiricalDistributions$mothersRural) * 
     ecdfExpectation(empiricalDistributions$childrenRural)
   
   # adjust poppc table to be representative of the number of children per stratum
+  newPopTable = poppc
   childrenPerCounty = childrenPerStratumUrban + childrenPerStratumRural
+  newPopTable$popUrb = childrenPerStratumUrban
+  newPopTable$popRur = childrenPerStratumRural
+  newPopTable$popTotal = childrenPerCounty
+  newPopTable$pctUrb = newPopTable$popUrb / childrenPerCounty  * 100
+  newPopTable$popTotal = newPopTable$popTotal/sum(newPopTable$popTotal) * 100
   
+  # return results
+  newPopTable
 }
 
 ##### some random convenient function for breaking down number of urban counties for simulated 
