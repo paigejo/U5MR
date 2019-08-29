@@ -1296,11 +1296,11 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     predMat = predMat[pixelIndices, ]
   }
   
+  unintegratedMat = predMat
   if(integrateOutCluster && clusterEffect) {
     # In this case, we shift each pixel level prediction by the the amount that will remove the 
     # bias induced by not accounting for the cluster effect (we integrate out the cluster effect 
     # for each simulated pixel value)
-    unintegratedMat = predMat
     predMat = matrix(logit(logitNormMean(cbind(c(as.matrix(predMat)), rep(sqrt(clusterVars), each=nrow(predMat))))), nrow=nrow(predMat))
   }
   
