@@ -347,7 +347,7 @@ adjustPopulationPerCountyTable = function() {
   newPopTable$popRur = childrenPerStratumRural
   newPopTable$popTotal = childrenPerCounty
   newPopTable$pctUrb = newPopTable$popUrb / childrenPerCounty  * 100
-  newPopTable$popTotal = newPopTable$popTotal/sum(newPopTable$popTotal) * 100
+  newPopTable$pctTotal = newPopTable$popTotal/sum(newPopTable$popTotal) * 100
   
   # return results
   newPopTable
