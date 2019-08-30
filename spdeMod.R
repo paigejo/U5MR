@@ -1224,6 +1224,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                control.compute=list(config=TRUE, cpo=doValidation, dic=doValidation, waic=doValidation), 
                control.mode=modeControl)
   }
+  print("Finish fitting model")
   
   # get predictive surface, SD, and data
   n = nrow(obsCoords)
@@ -1267,6 +1268,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   }
   
   # generate samples from posterior
+  ("Sampling from the posterior...")
   postSamples = inla.posterior.sample(nPostSamples, mod)
   latentMat = sapply(postSamples, function(x) {x$latent})
   if(clusterEffect)
@@ -1278,6 +1280,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     clustIndices = grepl("clust", latentVarNames)
   
   # generate logit predictions (first without cluster effect then add the cluster effect in)
+  paste("Computing prediction surface and EA predictions for integration...")
   predMatNoClust = XPred  %*% latentMat[fixedIndices,] + APred %*% latentMat[fieldIndices,]
   predMat <- predMatNoClust
   
