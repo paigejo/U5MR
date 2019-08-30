@@ -89,7 +89,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
   
   
   # Number of simulations for producing results
-  Nsim = 1000
+  Nsim = 10000
   
   # Help functions
   logit = function(x){

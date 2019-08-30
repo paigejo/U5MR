@@ -1308,14 +1308,15 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   
   # regionPixelI: the pixel indices (from 1 to the number of pixels) over which to aggregate predictions
   # integrateByPixel: either integrate over the pixels or enumeration areas
-  noBinomialIntegration = function(integrationMat, integrateByPixel=TRUE, nSample=nPostSamples) {
+  noBinomialIntegration = function(integrationMat, integrateByPixel=TRUE, nSample=nPostSamples, 
+                                   pixelMatrix=predMat, eaMatrix=eaMat) {
     ## aggregate predictions over the region by integrating with respect to population density
     
     # either integrate predictions of the pixels or enumeration areas
     if(integrateByPixel)
-      regionPredMat = expit(predMat[,1:nSample])
+      regionPredMat = expit(pixelMatrix[,1:nSample])
     else
-      regionPredMat = eaMat[,1:nSample]
+      regionPredMat = eaMatrix[,1:nSample]
     
     # compute integrals of predictions with respect to population density or the number of children
     integrationMat %*% regionPredMat
@@ -1365,13 +1366,12 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     # integrate out cluster and adjust population density surface to account for different number of children in urban/rural areas
     # adjust population density surface to account for different number of children in urban/rural areas (Unintegrated)
     # do no integration or adjustments (Unadjusted)
-    countyPredMatInexact <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE, adjustPopSurface), TRUE)
+    countyPredMatInexact <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE, adjustPopSurface), TRUE, pixelMatrix=predMat)
     if(integrateOutCluster && returnUnintegratedResults) {
-      predMat = unintegratedMat
-      countyPredMatInexactUnintegrated <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE, adjustPopSurface), TRUE)
+      countyPredMatInexactUnintegrated <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE, adjustPopSurface), TRUE, pixelMatrix=unintegratedMat)
       
       if(adjustPopSurface)
-        countyPredMatInexactUnadjusted <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE, FALSE), TRUE)
+        countyPredMatInexactUnadjusted <- noBinomialIntegration(getCountyIntegrationMatrix(TRUE, FALSE), TRUE, pixelMatrix=unintegratedMat)
       else
         countyPredMatInexactUnadjusted = NULL
     }
