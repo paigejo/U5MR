@@ -12,8 +12,6 @@ resultsSPDE = function(nPostSamples=1000, test=FALSE, nTest=2, verbose=TRUE,
                        saveResults=!test && is.null(maxDataSets), margVar=.15^2, gamma=-1, 
                        beta0=-1.75, loadProgress=FALSE, continuousOnly=TRUE, strictPrior=FALSE, 
                        maxDataSets=NULL, integrateOutCluster=TRUE, seed=123) {
-  if(!is.null(seed))
-    set.seed(seed)
   
   # Load data
   # load("simDataMulti.RData") # overSampDat, SRSDat
@@ -45,6 +43,14 @@ resultsSPDE = function(nPostSamples=1000, test=FALSE, nTest=2, verbose=TRUE,
     clustSRS = lapply(1:maxDataSets, function(i) {clustSRS[[i]]})
     clustOverSamp = lapply(1:maxDataSets, function(i) {clustOverSamp[[i]]})
   }
+  
+  # set random number seed for generating random number seeds...
+  if(!is.null(seed))
+    set.seed(seed)
+  
+  # in the parallel case, we must generate random numbers for each data set, so do it even in the sequential case for consistency
+  randomSeedsSRS = sample(1:2000000, length(clustSRS), replace=FALSE)
+  randomSeedsOverSamp = sample(1:2000000, length(clustOverSamp), replace=FALSE)
   
   # SRS results are correct, so load those and recompute overSamp results
   # load(paste0("resultsSPDETausq", round(tausq, 4), 
@@ -80,7 +86,7 @@ resultsSPDE = function(nPostSamples=1000, test=FALSE, nTest=2, verbose=TRUE,
                                  genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds,
                                  genEALevel=genEALevel, urbanEffect=urbanEffect, kmres=kmres, 
                                  continuousOnly=continuousOnly, strictPrior=strictPrior, 
-                                 integrateOutCluster=integrateOutCluster)
+                                 integrateOutCluster=integrateOutCluster, randomSeeds=randomSeedsSRS)
     
     # save our progress as we go
     if(saveResults)
@@ -98,13 +104,13 @@ resultsSPDE = function(nPostSamples=1000, test=FALSE, nTest=2, verbose=TRUE,
                                     genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds, 
                                     genEALevel=genEALevel, urbanEffect=urbanEffect, kmres=kmres, 
                                     continuousOnly=continuousOnly, strictPrior=strictPrior, 
-                                    integrateOutCluster=integrateOutCluster)
+                                    integrateOutCluster=integrateOutCluster, randomSeeds=randomSeedsOverSamp)
   print(paste0("Saving final results under: ", fileName))
   if(saveResults)
     save(spdeSRS, spdeOverSamp, file=fileName)
   print(paste0("Finished saving final results under: ", fileName))
   
-  list(spdeSRS=spdeSRS, spdeOverSamp=spdeOverSamp)
+  list(spdeSRS=spdeSRS, spdeOverSamp=spdeOverSamp, randomSeedsSRS=randomSeedsSRS, randomSeedsOverSamp=randomSeedsOverSamp)
 }
 
 # generate predictive results given a simulated dataset simDataMulti.RData
@@ -839,7 +845,11 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                               urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
                               predictionType=c("mean", "median"), parClust=cl, calcCrps=TRUE, 
                               significance=.8, continuousOnly=FALSE, strictPrior=TRUE, 
-                              integrateOutCluster=TRUE, adjustPopSurface=TRUE) {
+                              integrateOutCluster=TRUE, adjustPopSurface=TRUE, randomSeeds=NULL) {
+  
+  # generate random seeds for each data set
+  if(is.null(randomSeeds))
+    randomSeeds = sample(1:2000000, length(clustDatMulti), replace=FALSE)
   
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
@@ -960,6 +970,8 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
   mainFunction = function(i, doSink=FALSE) {
     if(doSink)
       sink("log.txt", append=TRUE)
+    
+    set.seed(randomSeeds[i])
     
     print(paste0("iteration ", i, "/", nsim))
     
