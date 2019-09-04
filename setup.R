@@ -98,13 +98,15 @@ load("lims.RData")
 # save(popGrid, file="popGrid.RData")
 # popGrid = makeInterpPopGrid(kmRes=5, adjustPopSurface=TRUE)
 # save(popGrid, file="popGridAdjusted.RData")
-# load("popGrid.RData")
-load("popGridAdjusted.RData")
 
 # set enumeration areas
-# kenyaEAs = simEAs2(popGrid, numEAs, totalKenyaPop)
+# kenyaEAs = simEAs2(popGrid, numEAs, totalKenyaPop, fixNumUrbanAtTruth=TRUE)
 # save(kenyaEAs, file="kenyaEAs.RData")
 load("kenyaEAs.RData")
+
+# load 5km population density grid over Kenya
+# load("popGrid.RData")
+load("popGridAdjusted.RData")
 
 # project mort dataset lon/lat coords to easting/westing in km
 # tmp = projKenya(mort$lon, mort$lat)

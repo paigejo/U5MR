@@ -42,7 +42,7 @@ makeUrbanMap = function(popGrid=NULL, kmres=2.5, savePlot=FALSE, fileName=ifelse
   
   if(savePlot) {
     png(file=fileName, width=width, height=height)
-    par(oma=c( 0,0,0,0), mar=c(5.1, 5.1, 4.1, 4.1), lab.cex=2.0, cex.lab=1.5, cex.axis=1.5, cex.main=2)
+    par(oma=c( 0,0,0,0), mar=c(5.1, 4.1, 4.1, 4.1))
   }
   plot(popGrid$lon, popGrid$lat, xlab="Longitude", ylab="Latitude", main=TeX("Urbanicity"), xlim=lonLim, ylim=latLim, asp=1, type="n")
   # quilt.plot(popGrid$lon, popGrid$lat, urban, col=c("green", "blue"), nx=850, ny=1050, add.legend = FALSE, 
@@ -63,7 +63,7 @@ makeUrbanMap = function(popGrid=NULL, kmres=2.5, savePlot=FALSE, fileName=ifelse
 # simulate enumeration areas from population data.  stratified by urban 
 # and rural and county
 simEAs2 = function(kenyaPop, numEAs=96251, totalKenyaPop=43.0 * 10^6, seed=123, 
-                   sampleByPop=TRUE, fixNumUrbanAtTruth=FALSE, thisEasPC=easpc) {
+                   sampleByPop=TRUE, fixNumUrbanAtTruth=TRUE, thisEasPC=easpc) {
   set.seed(seed)
   
   # determine which points in Kenya are urban
@@ -1233,7 +1233,7 @@ simDatEmpirical = function(empiricalDistributions, eaDat, clustDat=NULL, nsim=1,
     SPDEArgs = list(coords=eaCoords, nsim=1, margVar=margVar, effRange=effRange)
     simVals = do.call("simSPDE", SPDEArgs)
   } else {
-    simVals = rep(0, nrow(eaCoords))
+    simVals = matrix(rep(0, nrow(eaCoords)), ncol=1)
   }
   
   # add in intercept

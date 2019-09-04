@@ -72,9 +72,11 @@ source("setup.R")
 # HHoldVar: household effect variance
 # effRange: spatial range
 # urbanOverSamplefrac: the proportion with which to inflate the amount of urban samples in the surveys
-generateSimDataSets = function(nsim=100, nsimBig = 250, seeds=c(580252, 1234), beta0 = -1.75, margVar = .15^2, 
-                               tausq = .1^2, gamma = -1, HHoldVar = 0, effRange = 150, 
+generateSimDataSets = function(nsim=100, nsimBig = 250, seeds=c(580252, 1234), margVar=.15^2,
+                               gamma = -1, HHoldVar = 0, effRange = 150, 
                                urbanOverSamplefrac = 0) {
+  beta0 = -1.75
+  tausq = .1^2
   set.seed(seeds[1])
   wd = getwd()
   setwd("~/Google Drive/UW/Wakefield/WakefieldShared/U5MR/")
@@ -227,6 +229,13 @@ generateSimDataSets = function(nsim=100, nsimBig = 250, seeds=c(580252, 1234), b
   setwd(wd)
   
   invisible(NULL)
+}
+
+generateAllDataSets = function() {
+  generateSimDataSets(gamma=-1, margVar=.15^2)
+  generateSimDataSets(gamma=-1, margVar=0)
+  generateSimDataSets(gamma=0, margVar=.15^2)
+  generateSimDataSets(gamma=0, margVar=0)
 }
 
 # simulate and save datasets used for the simulation study with the given model parameters

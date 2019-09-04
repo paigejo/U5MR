@@ -329,6 +329,94 @@ makeInterpPopGrid = function(kmRes=5, adjustPopSurface=FALSE) {
   newPop
 }
 
+testPopSurfaceAdjustment = function() {
+  adjustedGrid = makeInterpPopGrid(adjustPopSurface = TRUE)
+  
+  # sort easpc by county name alphabetically
+  counties=sort(unique(poppc$County))
+  sortI = sort(easpc$County, index.return=TRUE)$ix
+  temp = easpc[sortI,]
+  
+  # calculate the number of children per stratum using true total eas and empirical children per ea from census data
+  load("empiricalDistributions.RData")
+  householdsPerStratumUrban = temp$EAUrb * ecdfExpectation(empiricalDistributions$householdsUrban)
+  householdsPerStratumRural = temp$EARur * ecdfExpectation(empiricalDistributions$householdsRural)
+  childrenPerStratumUrban = householdsPerStratumUrban * ecdfExpectation(empiricalDistributions$mothersUrban) * 
+    ecdfExpectation(empiricalDistributions$childrenUrban)
+  childrenPerStratumRural = householdsPerStratumRural * ecdfExpectation(empiricalDistributions$mothersRural) * 
+    ecdfExpectation(empiricalDistributions$childrenRural)
+  
+  # generate 2 47 x nPixels matrices for urban and rural strata integrating pixels with respect to population density to get county estimates
+  getCountyStratumIntegrationMatrix = function(getUrban=TRUE) {
+    counties = as.character(counties)
+    
+    mat = t(sapply(counties, function(countyName) {adjustedGrid$admin1 == countyName}))
+    mat = sweep(mat, 2, adjustedGrid$popOrig, "*")
+    sweep(mat, 2, adjustedGrid$urban == getUrban, "*")
+  }
+  urbanIntegrationMat = getCountyStratumIntegrationMatrix()
+  ruralIntegrationMat = getCountyStratumIntegrationMatrix(FALSE)
+  
+  # calculate number of people per stratum by integrating the population density surface
+  urbanPopulations = rowSums(urbanIntegrationMat)
+  ruralPopulations = rowSums(ruralIntegrationMat)
+  
+  # load in the true enumeration areas
+  margVar=.15^2
+  gamma=-1
+  beta0=-1.75
+  tausq=0.1^2
+  load(paste0("simDataMultiBeta", round(beta0, 4), "margVar", round(margVar, 4), "tausq", 
+              round(tausq, 4), "gamma", round(gamma, 4), "HHoldVar0urbanOverSamplefrac0.RData"))
+  
+  # calculate the true number of households and children per stratum
+  nHHUrban = aggregate(overSampDat$eaDat$nHH[overSampDat$eaDat$urban], by=list(overSampDat$eaDat$admin1[overSampDat$eaDat$urban]), FUN=sum)
+  nHHRural = aggregate(overSampDat$eaDat$nHH[!overSampDat$eaDat$urban], by=list(overSampDat$eaDat$admin1[!overSampDat$eaDat$urban]), FUN=sum)
+  nChildrenUrban = aggregate(overSampDat$eaDat$numChildren[overSampDat$eaDat$urban], by=list(overSampDat$eaDat$admin1[overSampDat$eaDat$urban]), FUN=sum)
+  nChildrenRural = aggregate(overSampDat$eaDat$numChildren[!overSampDat$eaDat$urban], by=list(overSampDat$eaDat$admin1[!overSampDat$eaDat$urban]), FUN=sum)
+  
+  print(cbind(Expected=urbanPopulations, observed=nChildrenUrban$x, eaUrb=temp$EAUrb))
+  
+  genNumHouseholds = function(nSamplesPerEA, nEAs, urban=TRUE) {
+    helperFun = function() {
+      if(urban) {
+        nHHs = sapply(nEAs, function(n) {sum(recdf(n, distribution=empiricalDistributions$householdsUrban))})
+      }
+      else {
+        nHHs = sapply(nEAs, function(n) {sum(recdf(n, distribution=empiricalDistributions$householdsRural))})
+      }
+    }
+    
+    replicate(nSamplesPerEA, {helperFun()})
+  }
+  
+  genNumChildren = function(nHouseholdsMat, urban=TRUE) {
+    if(urban) {
+      nMothersMat = matrix(sapply(nHouseholdsMat, function(n) {sum(recdf(n, distribution=empiricalDistributions$mothersUrban))}), ncol=ncol(nHouseholdsMat))
+      matrix(sapply(nMothersMat, function(n) {sum(recdf(n, distribution=empiricalDistributions$childrenUrban))}), ncol=ncol(nHouseholdsMat))
+    }
+    else {
+      nMothersMat = matrix(sapply(nHouseholdsMat, function(n) {sum(recdf(n, distribution=empiricalDistributions$mothersRural))}), ncol=ncol(nHouseholdsMat))
+      matrix(sapply(nMothersMat, function(n) {sum(recdf(n, distribution=empiricalDistributions$childrenRural))}), ncol=ncol(nHouseholdsMat))
+    }
+  }
+  
+  ## calculate the number of households and the number of children per stratum
+  # in urban areas
+  testHouseholdsUrban = genNumHouseholds(2, temp$EAUrb)
+  testChildrenUrban = genNumChildren(testHouseholdsUrban)
+  
+  # in rural areas
+  testHouseholdsRural = genNumHouseholds(2, temp$EARur, FALSE)
+  testHouseholdsRural = testHouseholdsRural[apply(testHouseholdsRural, 1, function(x) {any(x != 0)}),]
+  testChildrenRural = genNumChildren(testHouseholdsRural, FALSE)
+  
+  pctEAUrban = temp$EAUrb/temp$EATotal
+  
+  print(cbind(datasetChildren=nChildrenUrban, simulatedChildren=testChildrenUrban, datasetHH=nHHUrban[,2], simulatedHH=testHouseholdsUrban, pctEAUrb=pctEAUrban, pctPopUrb=poppc$pctUrb[sortI]))
+  print(cbind(datasetChildren=nChildrenRural, simulatedChildren=testChildrenRural, datasetHH=nHHRural[,2], simulatedHH=testHouseholdsRural, pctEARur=(1 - pctEAUrban)[pctEAUrban != 1], pctPopRur=(100-poppc$pctUrb[sortI])[pctEAUrban != 1]))
+}
+
 # takes the poppc table, containing the proportion of population that is urban and rural in each stratum, and
 # adjusts it to be representative of the children in urban and rural areas per stratum based on census data
 adjustPopulationPerCountyTable = function() {
