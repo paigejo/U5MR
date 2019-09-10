@@ -28,7 +28,7 @@ source("scores.R")
 #             i "2", binomial scores are put on extra rows of the printed table
 runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1, 
                              beta0=-1.75, resultType=c("county", "pixel", "EA"), 
-                             sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:19, 
+                             sampling=c("SRS", "oversamp"), recomputeTruth=TRUE, modelsI=1:21, 
                              produceFigures=FALSE, big=FALSE, printIEvery=50, 
                              maxDataSets=NULL, nsim=10, saveResults=TRUE, loadResults=TRUE, 
                              xtable.args=list(digits=c(0, 2, 2, 2, 2, 1, 2), display=rep("f", 7), auto=TRUE), 
