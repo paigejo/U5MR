@@ -1295,7 +1295,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     if("SPDE uC" %in% models || "SPDE uC'" %in% models) {
       if(continuousSPDEonly) {
         thisFinalNames = c(thisFinalNames, "SPDE uC", "SPDE uC'")
-        tab = rbind(tab, spdeNoUrbScores[1:2,])
+        tab = rbind(tab, spdeNoUrbScores[2:1,])
       }
       else {
         thisFinalNames = c(thisFinalNames, paste0("SPDE uC", c(" Cts.", " Discrete", " Exact")))
@@ -1315,7 +1315,7 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     if("SPDE UC" %in% models || "SPDE UC'" %in% models) {
       if(continuousSPDEonly) {
         thisFinalNames = c(thisFinalNames, "SPDE UC", "SPDE UC'")
-        tab = rbind(tab, spdeScores[1:2,])
+        tab = rbind(tab, spdeScores[2:1,])
       }
       else {
         thisFinalNames = c(thisFinalNames, paste0("SPDE UC", c(" Cts.", " Discrete", " Exact")))
