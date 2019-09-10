@@ -2997,7 +2997,7 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
   makeTable(fullTable4, sampling="DHS-like", popI=4)
 }
 
-# plot the scoring rules for each analysis and population model for a fixed type of survey design (the survey design being SRS or urban oversampled)
+# plot the scoring rules for each analysis and population model for a fixed type of survey design (the survey design being SRS or stratified)
 plotCompareModelsAllLocal = function(strictPriors=FALSE) {
   # map the population type to a type of point plotted:
   ## constant risk: 1
@@ -3169,7 +3169,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     unabbreviatedTitle = gsub('\\\\%', "\\%", scoringRuleName)
     unabbreviatedTitle = gsub('Var', "Variance", unabbreviatedTitle)
     unabbreviatedTitle = gsub('Cvg', "Coverage", unabbreviatedTitle)
-    unabbreviatedTitle = gsub("\\(", "(urban oversampled, ", unabbreviatedTitle)
+    unabbreviatedTitle = gsub("\\(", "(stratified, ", unabbreviatedTitle)
     strictText = ifelse(strictPriors, "strictPrior", "")
     
     browser()
@@ -3217,7 +3217,9 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
                at=jitter(centers, amount = .15), vertical=TRUE)
     
     if(plotDHSLegend) {
-      pos = legend("right", c("suc", "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
+      # pos = legend("right", c("suc", "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
+      #              title="Population\nmodel", bty="n")
+      pos = legend("right", c(TeX("POP[suc]"), "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
                    title="Population\nmodel", bty="n")
       xleft <- pos$rect[["left"]]
       ytop <- pos$rect[["top"]]
@@ -3240,7 +3242,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     stripchart(fullTable1 ~ tempModelNames, cex=0, las=2, ylim=scoreRange, main="", 
                at=rev(centers), ylab="", axes=FALSE, vertical=TRUE, log=thisLog)
     
-    unabbreviatedTitle = gsub("\\(urban oversampled, ", "(representative design, ", unabbreviatedTitle)
+    unabbreviatedTitle = gsub("\\(stratified, ", "(unstratified design, ", unabbreviatedTitle)
     # title(TeX(paste0(unabbreviatedTitle)), line=4)
     title(TeX(unabbreviatedTitle))
     box()
