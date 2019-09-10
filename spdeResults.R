@@ -11,7 +11,8 @@ resultsSPDE = function(nPostSamples=1000, test=FALSE, nTest=2, verbose=TRUE,
                        genEALevel=TRUE, urbanEffect=TRUE, tausq=0, 
                        saveResults=!test && is.null(maxDataSets), margVar=.15^2, gamma=-1, 
                        beta0=-1.75, loadProgress=FALSE, continuousOnly=TRUE, strictPrior=FALSE, 
-                       maxDataSets=NULL, integrateOutCluster=TRUE, seed=123) {
+                       maxDataSets=NULL, integrateOutCluster=TRUE, seed=123, 
+                       strictSpatialPrior=FALSE) {
   
   # Load data
   # load("simDataMulti.RData") # overSampDat, SRSDat
@@ -86,7 +87,8 @@ resultsSPDE = function(nPostSamples=1000, test=FALSE, nTest=2, verbose=TRUE,
                                  genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds,
                                  genEALevel=genEALevel, urbanEffect=urbanEffect, kmres=kmres, 
                                  continuousOnly=continuousOnly, strictPrior=strictPrior, 
-                                 integrateOutCluster=integrateOutCluster, randomSeeds=randomSeedsSRS)
+                                 integrateOutCluster=integrateOutCluster, randomSeeds=randomSeedsSRS, 
+                                 strictSpatialPrior=strictSpatialPrior)
     
     # save our progress as we go
     if(saveResults)
@@ -104,7 +106,8 @@ resultsSPDE = function(nPostSamples=1000, test=FALSE, nTest=2, verbose=TRUE,
                                     genRegionLevel=genRegionLevel, keepPixelPreds=keepPixelPreds, 
                                     genEALevel=genEALevel, urbanEffect=urbanEffect, kmres=kmres, 
                                     continuousOnly=continuousOnly, strictPrior=strictPrior, 
-                                    integrateOutCluster=integrateOutCluster, randomSeeds=randomSeedsOverSamp)
+                                    integrateOutCluster=integrateOutCluster, randomSeeds=randomSeedsOverSamp, 
+                                    strictSpatialPrior=strictSpatialPrior)
   print(paste0("Saving final results under: ", fileName))
   if(saveResults)
     save(spdeSRS, spdeOverSamp, file=fileName)
@@ -845,7 +848,8 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                               urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
                               predictionType=c("mean", "median"), parClust=cl, calcCrps=TRUE, 
                               significance=.8, continuousOnly=FALSE, strictPrior=TRUE, 
-                              integrateOutCluster=TRUE, adjustPopSurface=TRUE, randomSeeds=NULL) {
+                              integrateOutCluster=TRUE, adjustPopSurface=TRUE, randomSeeds=NULL, 
+                              strictSpatialPrior-FALSE) {
   
   # generate random seeds for each data set
   if(is.null(randomSeeds))
@@ -994,7 +998,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                         eaDat=eaDat, nSamplePixel=nSamplePixel, significance=significance, 
                         continuousOnly=continuousOnly, strictPrior=strictPrior, 
                         integrateOutCluster=integrateOutCluster, popGridAdjusted=popGridAdjusted, 
-                        adjustPopSurface=adjustPopSurface)
+                        adjustPopSurface=adjustPopSurface, strictSpatialPrior=strictSpatialPrior)
     print(paste0("Fit completed: iteration ", i, "/", nsim))
     countyPreds = fit$countyPreds
     regionPreds = fit$regionPreds
@@ -1507,7 +1511,7 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
                            urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
                            predictionType=c("mean", "median"), parClust=cl, 
                            significance=.8, saveResults=TRUE, fileNameRoot="Ed", 
-                           loadPreviousFit=FALSE) {
+                           loadPreviousFit=FALSE, targetPop=c("children", "women")) {
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
   

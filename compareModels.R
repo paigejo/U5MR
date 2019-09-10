@@ -3172,7 +3172,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     unabbreviatedTitle = gsub("\\(", "(stratified, ", unabbreviatedTitle)
     strictText = ifelse(strictPriors, "strictPrior", "")
     
-    browser()
+    # browser()
     
     pdf(paste0("figures/", plotNameRoot, strictText, "Stratified.pdf"), width=6, height=5)
     # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
