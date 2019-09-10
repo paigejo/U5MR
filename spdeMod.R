@@ -1098,7 +1098,8 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE, doValidation=FALSE, 
                          previousResult=NULL, predCountyI=NULL, continuousOnly=FALSE, strictPrior=FALSE, 
                          integrateOutCluster=TRUE, returnUnintegratedResults=TRUE, adjustPopSurface=TRUE, 
-                         seed=NULL, popGridAdjusted=NULL, targetPop=c("children", "women")) {
+                         seed=NULL, popGridAdjusted=NULL, targetPop=c("children", "women"), 
+                         strictSpatialPrior=FALSE) {
   if(!is.null(seed))
     set.seed(seed)
   
@@ -1127,7 +1128,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   
   # make default prior
   if(is.null(prior)) {
-    prior = getSPDEPrior(mesh, strictPrior=strictPrior)
+    prior = getSPDEPrior(mesh, strictPrior=strictPrior||strictSpatialPrior)
   }
   
   # make covariate matrices (intercept plus urban/rural depending on whether urban effect included)

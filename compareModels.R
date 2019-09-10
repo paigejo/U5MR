@@ -2903,7 +2903,7 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
   
   # given the table on the type of model, this function prints out the type of population and 
   # design and a fancy latex version of the table
-  makeTable = function(fullTab, sampling=c("SRS", "DHS-like"), popI=1) {
+  makeTable = function(fullTab, sampling=c("Unstratified", "Stratified"), popI=1) {
     # first print out label for the table so we know which one it is
     sampling = match.arg(sampling)
     
@@ -2987,14 +2987,14 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
   }
   
   # print all of the tables to the console
-  makeTable(fullTableSRS1, sampling="SRS", popI=1)
-  makeTable(fullTableSRS2, sampling="SRS", popI=2)
-  makeTable(fullTableSRS3, sampling="SRS", popI=3)
-  makeTable(fullTableSRS4, sampling="SRS", popI=4)
-  makeTable(fullTable1, sampling="DHS-like", popI=1)
-  makeTable(fullTable2, sampling="DHS-like", popI=2)
-  makeTable(fullTable3, sampling="DHS-like", popI=3)
-  makeTable(fullTable4, sampling="DHS-like", popI=4)
+  makeTable(fullTableSRS1, sampling="Unstratified", popI=1)
+  makeTable(fullTableSRS2, sampling="Unstratified", popI=2)
+  makeTable(fullTableSRS3, sampling="Unstratified", popI=3)
+  makeTable(fullTableSRS4, sampling="Unstratified", popI=4)
+  makeTable(fullTable1, sampling="Stratified", popI=1)
+  makeTable(fullTable2, sampling="Stratified", popI=2)
+  makeTable(fullTable3, sampling="Stratified", popI=3)
+  makeTable(fullTable4, sampling="Stratified", popI=4)
 }
 
 # plot the scoring rules for each analysis and population model for a fixed type of survey design (the survey design being SRS or stratified)
@@ -3012,7 +3012,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
   load("compareModelCommandArgs.RData")
   indices = 1:length(compareModelCommandArgs)
   
-  plotHelper = function(scoreI, goalVal=NULL, rangeIncludes=c(), scoreName="", filterRows=c(1:3, 4, 6, 10, 12, 13:16), 
+  plotHelper = function(scoreI, goalVal=NULL, rangeIncludes=c(), scoreName="", filterRows=c(1:3, 4, 6, 10, 12, 13, 15, 16, 18), 
                         shareRange=FALSE, plotSRSLegend=FALSE, plotDHSLegend=TRUE, logScale=FALSE) {
     plotNameRoot = paste0(tolower(scoreName), "Plot")
     
@@ -3174,7 +3174,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     
     browser()
     
-    pdf(paste0("figures/", plotNameRoot, strictText, "DHS.pdf"), width=6, height=5)
+    pdf(paste0("figures/", plotNameRoot, strictText, "Stratified.pdf"), width=6, height=5)
     # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
     par(mar=c(6.1, 4.1, 3.1, 5.3), xpd=TRUE)
     stripchart(fullTable1 ~ tempModelNames, cex=0, las=2, ylim=scoreRange, main="", 
@@ -3219,7 +3219,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     if(plotDHSLegend) {
       # pos = legend("right", c("suc", "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
       #              title="Population\nmodel", bty="n")
-      pos = legend("right", c(TeX("POP[suc]"), "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
+      pos = legend("right", c(expression("POP"[suc]), expression("POP"[Suc]), expression("POP"[SUc]), expression("POP"[SUC])), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
                    title="Population\nmodel", bty="n")
       xleft <- pos$rect[["left"]]
       ytop <- pos$rect[["top"]]
@@ -3231,7 +3231,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     dev.off()
     
     # plot the SRS values
-    pdf(paste0("figures/", plotNameRoot, strictText, "SRS.pdf"), width=6, height=5)
+    pdf(paste0("figures/", plotNameRoot, strictText, "Unstratified.pdf"), width=6, height=5)
     # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
     par(mar=c(6.1, 4.1, 3.1, 5.3), xpd=TRUE)
     
@@ -3281,7 +3281,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
                at=jitter(centers, amount = .15), vertical=TRUE)
     
     if(plotSRSLegend) {
-      pos = legend("right", c("suc", "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
+      pos = legend("right", c(expression("POP"[suc]), expression("POP"[Suc]), expression("POP"[SUc]), expression("POP"[SUC])), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
                    title="Population\nmodel", bty="n")
       xleft <- pos$rect[["left"]]
       ytop <- pos$rect[["top"]]
