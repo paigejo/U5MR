@@ -849,7 +849,7 @@ resultsSPDEHelper3 = function(clustDatMulti, eaDat, nPostSamples=100, verbose=FA
                               predictionType=c("mean", "median"), parClust=cl, calcCrps=TRUE, 
                               significance=.8, continuousOnly=FALSE, strictPrior=TRUE, 
                               integrateOutCluster=TRUE, adjustPopSurface=TRUE, randomSeeds=NULL, 
-                              strictSpatialPrior-FALSE) {
+                              strictSpatialPrior=FALSE) {
   
   # generate random seeds for each data set
   if(is.null(randomSeeds))
