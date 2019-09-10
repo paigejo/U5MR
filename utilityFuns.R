@@ -249,7 +249,7 @@ makeKenyaPop = function(kmRes=5) {
 }
 
 # generate the population density surface along with urbanicity estimates
-makeInterpPopGrid = function(kmRes=5, adjustPopSurface=FALSE) {
+makeInterpPopGrid = function(kmRes=5, adjustPopSurface=FALSE, targetPop=c("children", "women")) {
   # load population density data
   require(raster)
   
@@ -290,6 +290,8 @@ makeInterpPopGrid = function(kmRes=5, adjustPopSurface=FALSE) {
   # if necessary, adjust the population surface so that it better represents the the child population density 
   # rather than the total population density
   if(adjustPopSurface) {
+    targetPop = match.arg(targetPop)
+    
     # sort easpc by county name alphabetically
     counties=sort(unique(poppc$County))
     sortI = sort(easpc$County, index.return=TRUE)$ix
@@ -297,10 +299,16 @@ makeInterpPopGrid = function(kmRes=5, adjustPopSurface=FALSE) {
     
     # calculate the number of children per stratum using true total eas and empirical children per ea from census data
     load("empiricalDistributions.RData")
-    childrenPerStratumUrban = temp$EAUrb * ecdfExpectation(empiricalDistributions$householdsUrban) * ecdfExpectation(empiricalDistributions$mothersUrban) * 
-      ecdfExpectation(empiricalDistributions$childrenUrban)
-    childrenPerStratumRural = temp$EARur * ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiricalDistributions$mothersRural) * 
-      ecdfExpectation(empiricalDistributions$childrenRural)
+    if(targetPop == "children") {
+      targetPopPerStratumUrban = temp$EAUrb * ecdfExpectation(empiricalDistributions$householdsUrban) * ecdfExpectation(empiricalDistributions$mothersUrban) * 
+        ecdfExpectation(empiricalDistributions$childrenUrban)
+      targetPopPerStratumRural = temp$EARur * ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiricalDistributions$mothersRural) * 
+        ecdfExpectation(empiricalDistributions$childrenRural)
+    }
+    else {
+      targetPopPerStratumUrban = temp$EAUrb * ecdfExpectation(empiricalDistributions$householdsUrban) * ecdfExpectation(empiricalDistributions$womenUrban)
+      targetPopPerStratumRural = temp$EARur * ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiricalDistributions$womenRural)
+    }
     
     # generate 2 47 x nPixels matrices for urban and rural strata integrating pixels with respect to population density to get county estimates
     getCountyStratumIntegrationMatrix = function(getUrban=TRUE) {
@@ -318,8 +326,8 @@ makeInterpPopGrid = function(kmRes=5, adjustPopSurface=FALSE) {
     ruralPopulations = rowSums(ruralIntegrationMat)
     
     # adjust each row of the integration matrices to get the correct expected number of children per stratum
-    urbanIntegrationMat = sweep(urbanIntegrationMat, 1, childrenPerStratumUrban / urbanPopulations, "*")
-    ruralIntegrationMat = sweep(ruralIntegrationMat, 1, childrenPerStratumRural / ruralPopulations, "*")
+    urbanIntegrationMat = sweep(urbanIntegrationMat, 1, targetPopPerStratumUrban / urbanPopulations, "*")
+    ruralIntegrationMat = sweep(ruralIntegrationMat, 1, targetPopPerStratumRural / ruralPopulations, "*")
     ruralIntegrationMat[ruralPopulations == 0,] = 0
     
     # the column sums of the matrices give the correct modified population densities
@@ -419,22 +427,30 @@ testPopSurfaceAdjustment = function() {
 
 # takes the poppc table, containing the proportion of population that is urban and rural in each stratum, and
 # adjusts it to be representative of the children in urban and rural areas per stratum based on census data
-adjustPopulationPerCountyTable = function() {
+adjustPopulationPerCountyTable = function(dataType=c("children", "women")) {
+  dataType = match.arg(dataType)
   
-  # calculate the number of children per stratum using true total eas and empirical children per ea from census data
+  # calculate the number of childrenor women per stratum using true total eas and empirical children per ea from census data
   load("empiricalDistributions.RData")
-  childrenPerStratumUrban = easpc$EAUrb * ecdfExpectation(empiricalDistributions$householdsUrban) * ecdfExpectation(empiricalDistributions$mothersUrban) * 
-    ecdfExpectation(empiricalDistributions$childrenUrban)
-  childrenPerStratumRural = easpc$EARur * ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiricalDistributions$mothersRural) * 
-    ecdfExpectation(empiricalDistributions$childrenRural)
+  if(dataType == "children") {
+    targetPopPerStratumUrban = easpc$EAUrb * ecdfExpectation(empiricalDistributions$householdsUrban) * ecdfExpectation(empiricalDistributions$mothersUrban) * 
+      ecdfExpectation(empiricalDistributions$childrenUrban)
+    targetPopPerStratumRural = easpc$EARur * ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiricalDistributions$mothersRural) * 
+      ecdfExpectation(empiricalDistributions$childrenRural)
+  }
+  else {
+    targetPopPerStratumUrban = easpc$EAUrb * ecdfExpectation(empiricalDistributions$householdsUrban) * ecdfExpectation(empiricalDistributions$womenUrban)
+    targetPopPerStratumRural = easpc$EARur * ecdfExpectation(empiricalDistributions$householdsRural) * ecdfExpectation(empiricalDistributions$womenRural)
+  }
+  
   
   # adjust poppc table to be representative of the number of children per stratum
   newPopTable = poppc
-  childrenPerCounty = childrenPerStratumUrban + childrenPerStratumRural
-  newPopTable$popUrb = childrenPerStratumUrban
-  newPopTable$popRur = childrenPerStratumRural
-  newPopTable$popTotal = childrenPerCounty
-  newPopTable$pctUrb = newPopTable$popUrb / childrenPerCounty  * 100
+  targetPopPerCounty = targetPopPerStratumUrban + targetPopPerStratumRural
+  newPopTable$popUrb = targetPopPerStratumUrban
+  newPopTable$popRur = targetPopPerStratumRural
+  newPopTable$popTotal = targetPopPerCounty
+  newPopTable$pctUrb = newPopTable$popUrb / targetPopPerCounty  * 100
   newPopTable$pctTotal = newPopTable$popTotal/sum(newPopTable$popTotal) * 100
   
   # return results

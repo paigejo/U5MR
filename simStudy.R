@@ -184,14 +184,18 @@ getSurveyEmpiricalDistributions2 = function(data=NULL, dataDHS=NULL, maxAge=4) {
   print("reading in DHS data")
   if(is.null(dataDHS))
     dataDHS <- data.frame(read_dta("Kenya2014BirthRecode/KEBR70FL.DTA"))
-  
-  # P11: sex (1: male, 2: female)
-  # P12: age in years completed
 
   # initialize lists of numbers for the empirical distributions
   print("calculating households per cluster empirical distribution")
   urbanDat = dataDHS[dataDHS$v025 == 1, ]
   ruralDat = dataDHS[dataDHS$v025 == 2, ]
+  nHouseholds = aggregate(dataDHS$v002, data.frame(v001=dataDHS$v001), function(x) {max(x)})$x
+  nHouseholdsUrban = aggregate(urbanDat$v002, data.frame(v001=urbanDat$v001), function(x) {max(x)})$x
+  nHouseholdsRural = aggregate(ruralDat$v002, data.frame(v001=ruralDat$v001), function(x) {max(x)})$x
+  
+  nHouseholds=nHouseholds[(nHouseholds >= 50) & (nHouseholds <= 150)]
+  nHouseholdsUrban=nHouseholdsUrban[(nHouseholdsUrban >= 50) & (nHouseholdsUrban <= 150)]
+  nHouseholdsRural=nHouseholdsRural[(nHouseholdsRural >= 50) & (nHouseholdsRural <= 150)]
 
   # read in census data for the other empirical distributions
   print("reading and census data if necessary")
@@ -236,69 +240,48 @@ getSurveyEmpiricalDistributions2 = function(data=NULL, dataDHS=NULL, maxAge=4) {
        householdsRural=householdDistributionRural, mothersRural=motherDistributionRural, childrenRural=childrenDistributionRural)
 }
 
-# get empirical women distribution per cluster
+# get empirical women distribution per household
 # minAge: the minimum age of the women being included in the distribution rounded down
 # maxAge: the maximum age of the women being included in the distribution rounded down
-getSurveyEmpiricalDistributionsWomen = function(data=NULL, dataDHS=NULL, maxAge=4) {
-  
-  # read in DHS data for the estimate of the number of households within each cluster
-  print("reading in DHS data")
-  if(is.null(dataDHS))
-    dataDHS <- data.frame(read_dta("Kenya2014BirthRecode/KEBR70FL.DTA"))
-  
-  # initialize lists of numbers for the empirical distributions
-  print("calculating households per cluster empirical distribution")
-  urbanDat = dataDHS[dataDHS$v025 == 1, ]
-  ruralDat = dataDHS[dataDHS$v025 == 2, ]
-  nHouseholds = aggregate(dataDHS$v002, data.frame(v001=dataDHS$v001), function(x) {max(x)})$x
-  nHouseholdsUrban = aggregate(urbanDat$v002, data.frame(v001=urbanDat$v001), function(x) {max(x)})$x
-  nHouseholdsRural = aggregate(ruralDat$v002, data.frame(v001=ruralDat$v001), function(x) {max(x)})$x
-  
-  nHouseholds=nHouseholds[(nHouseholds >= 50) & (nHouseholds <= 150)]
-  nHouseholdsUrban=nHouseholdsUrban[(nHouseholdsUrban >= 50) & (nHouseholdsUrban <= 150)]
-  nHouseholdsRural=nHouseholdsRural[(nHouseholdsRural >= 50) & (nHouseholdsRural <= 150)]
+getSurveyEmpiricalDistributionsWomen = function(data=NULL, dataDHS=NULL, minAge=20, maxAge=29, 
+                                                datawd="~/Google Drive/UW/Wakefield/WakefieldShared/U5MR/") {
+  require(haven)
+  thiswd = getwd()
+  setwd(datawd)
   
   # read in census data for the other empirical distributions
-  print("reading and census data if necessary")
+  print("reading in census data if necessary")
   if(is.null(data))
     data <- data.frame(read_dta("popSurvey2009/Population_2009KPHC_10PCT_STATA.dta"))
+  # data = data[, c("PROVINCE", "DISTRICT", "DIVISION", "LOCATION", "SUBLOC", "COUNTY", 
+  #                 "RecreatedEANO", "HHNO", "EATYPE", "BARCODE", "P12", "P13")]
   data = data[, c("PROVINCE", "DISTRICT", "DIVISION", "LOCATION", "SUBLOC", "COUNTY", 
-                  "RecreatedEANO", "HHNO", "EATYPE", "BARCODE", "P12", "P13")]
+                  "RecreatedEANO", "HHNO", "EATYPE", "BARCODE", "P11", "P12")]
+  
+  # P11: sex (1: male, 2: female)
+  # P12: age in years completed
   
   print("beginning data table operations")
   dat = as.data.table(data)
-  print(system.time(outMothers <- dat[, {
-    .("nMothers"=uniqueN(P13[P13 != 0 & P12 <= maxAge]), "urban"=any(EATYPE != 1))
+  # print(system.time(outMothers <- dat[, {
+  #   .("nMothers"=uniqueN(P13[P13 != 0 & P12 <= maxAge]), "urban"=any(EATYPE != 1))
+  # }
+  # , by = .(PROVINCE, DISTRICT, DIVISION, LOCATION, SUBLOC, COUNTY, RecreatedEANO, HHNO, BARCODE)]))
+  print(system.time(outWomen <- dat[, {
+    .("nWomen"=length(P11[P11 != 1 & P12 <= maxAge & P12 >= minAge]), "urban"=any(EATYPE != 1))
   }
   , by = .(PROVINCE, DISTRICT, DIVISION, LOCATION, SUBLOC, COUNTY, RecreatedEANO, HHNO, BARCODE)]))
   
-  dat0 = dat[P13 != 0 & P12 <= maxAge,]
-  print(system.time(outChildren <- dat0[, {
-    if(any(unlist(tapply(P13, P13, length, simplify = FALSE))) >= 15)
-      print(.SD)
-    .("nChildren"=unlist(tapply(P13, P13, length, simplify = FALSE)), "urban"=rep(any(EATYPE != 1), uniqueN(P13)))
-  }
-  , by = .(PROVINCE, DISTRICT, DIVISION, LOCATION, SUBLOC, COUNTY, RecreatedEANO, HHNO, BARCODE)]))
+  nWomen = outWomen[["nWomen"]]
+  nWomenUrban = outWomen[urban == TRUE, nWomen]
+  nWomenRural = outWomen[urban == FALSE, nWomen]
   
-  nMothers = outMothers[["nMothers"]]
-  nMothersUrban = outMothers[urban == TRUE, nMothers]
-  nMothersRural = outMothers[urban == FALSE, nMothers]
-  nChildren = outChildren[["nChildren"]]
-  nChildrenUrban = outChildren[urban == TRUE, nChildren]
-  nChildrenRural = outChildren[urban == FALSE, nChildren]
+  womenDistribution = ecdf(nWomen)
+  womenDistributionUrban = ecdf(nWomenUrban)
+  womenDistributionRural = ecdf(nWomenRural)
   
-  householdDistribution = ecdf(nHouseholds)
-  motherDistribution = ecdf(nMothers)
-  childrenDistribution = ecdf(nChildren)
-  householdDistributionUrban = ecdf(nHouseholdsUrban)
-  motherDistributionUrban = ecdf(nMothersUrban)
-  childrenDistributionUrban = ecdf(nChildrenUrban)
-  householdDistributionRural = ecdf(nHouseholdsRural)
-  motherDistributionRural = ecdf(nMothersRural)
-  childrenDistributionRural = ecdf(nChildrenRural)
-  list(households=householdDistribution, mothers=motherDistribution, children=childrenDistribution,
-       householdsUrban=householdDistributionUrban, mothersUrban=motherDistributionUrban, childrenUrban=childrenDistributionUrban,
-       householdsRural=householdDistributionRural, mothersRural=motherDistributionRural, childrenRural=childrenDistributionRural)
+  setwd(thiswd)
+  list(women=womenDistribution, womenUrban=womenDistributionUrban, womenRural=womenDistributionRural)
 }
 
 # simulate EAs household, mother, and child values in the clusters based on empirical distributions 

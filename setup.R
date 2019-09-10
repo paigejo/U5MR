@@ -98,6 +98,8 @@ load("lims.RData")
 # save(popGrid, file="popGrid.RData")
 # popGrid = makeInterpPopGrid(kmRes=5, adjustPopSurface=TRUE)
 # save(popGrid, file="popGridAdjusted.RData")
+# popGrid = makeInterpPopGrid(kmRes=5, adjustPopSurface=TRUE, "women")
+# save(popGrid, file="popGridAdjustedWomen.RData")
 
 # set enumeration areas
 # kenyaEAs = simEAs2(popGrid, numEAs, totalKenyaPop, fixNumUrbanAtTruth=TRUE)
@@ -117,6 +119,11 @@ load("popGridAdjusted.RData")
 
 # Bernoulli datasets
 out = load("data4direct.RData")
+
+# empirical distributions
+# empiricalDistributions = getSurveyEmpiricalDistributions2(maxAge=0)
+# empiricalDistributions = c(empiricalDistributions, getSurveyEmpiricalDistributionsWomen())
+# save(empiricalDistributions, file="empiricalDistributions.RData")
 
 # parallelization
 if(!exists("doParallel") || (exists("doParallel") && doParallel == FALSE)) {

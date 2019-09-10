@@ -1098,7 +1098,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE, doValidation=FALSE, 
                          previousResult=NULL, predCountyI=NULL, continuousOnly=FALSE, strictPrior=FALSE, 
                          integrateOutCluster=FALSE, returnUnintegratedResults=TRUE, adjustPopSurface=FALSE, 
-                         seed=NULL, popGridAdjusted=NULL) {
+                         seed=NULL, popGridAdjusted=NULL, targetPop=c("children", "women")) {
   if(!is.null(seed))
     set.seed(seed)
   
@@ -1247,19 +1247,21 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
     popGrid = makeInterpPopGrid(kmRes=kmRes, adjustPopSurface=adjustPopSurface)
   if(kmRes == 5) {
     if(is.null(popGridAdjusted) && adjustPopSurface) {
-      load("popGridAdjusted.RData")
-      popGridAdjusted = popGrid
+      if(targetPop == "children") {
+        load("popGridAdjusted.RData")
+        popGridAdjusted = popGrid
+      }
+      else {
+        load("popGridAdjustedWomen.RData")
+        popGridAdjusted = popGrid
+      }
     }
     if(is.null(popGrid)) {
       load("popGrid.RData")
     }
   }
   else {
-    if(adjustPopSurface) {
-      load("popGridAdjusted.RData")
-      popGridAdjusted = popGrid
-    }
-    popGrid = makeInterpPopGrid(kmRes, adjustPopSurface)
+    popGrid = makeInterpPopGrid(kmRes, adjustPopSurface, targetPop)
   }
   
   # make sure prediction coordinates correspond to population density grid coordinates

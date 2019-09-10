@@ -904,8 +904,7 @@ runBYM2 = function(tausq=0.1^2, test=FALSE, includeUrbanRural=TRUE, includeClust
 # getPosteriorDensity: EXPERIMENTAL: evaluate the posterior density of direct estimates using multivariate normal approximation
 runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveResults=TRUE, fileNameRoot="Ed", 
                       previousResult=NULL, doValidation=FALSE, predCountyI=NULL, counties=sort(unique(poppc$County)), 
-                      doPredsAtPostMean=FALSE, directLogitEsts=NULL, fixedParameters=FALSE, 
-                      getPosteriorDensity=FALSE) {
+                      doPredsAtPostMean=FALSE, directLogitEsts=NULL, fixedParameters=FALSE, getPosteriorDensity=FALSE) {
   
   # remove data from the given county for validation if necessary
   if(!is.null(predCountyI))
@@ -914,10 +913,14 @@ runBYM2Dat = function(dat=ed, includeUrbanRural=TRUE, includeCluster=TRUE, saveR
   includeUrban = includeUrbanRural
   
   # Get true ratios of urban/rural
+  if(fileNameRoot == "Ed")
+    thisPopTable = adjustPopulationPerCountyTable("women")
+  else
+    thisPopTable = adjustPopulationPerCountyTable("children")
   urbRatio = vector('numeric', length = 47)
   counties = sort(unique(as.character(dat$admin1)))
-  urbRatio = poppc$popUrb / poppc$popTotal
-  sortI = matchMultiple(counties, poppc$County)
+  urbRatio = thisPopTable$popUrb / thisPopTable$popTotal
+  sortI = matchMultiple(counties, thisPopTable$County)
   urbRatio = urbRatio[sortI]
   
   # Define formula

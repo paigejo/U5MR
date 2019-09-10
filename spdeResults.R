@@ -1375,16 +1375,10 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
                           urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
                           predictionType=c("mean", "median"), parClust=cl, 
                           significance=.8, previousResult=NULL, predCountyI=NULL, 
-                          summarizeParameters=TRUE) {
+                          summarizeParameters=TRUE, targetPop=c("children", "women")) {
   
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
-  
-  # get prediction locations from population grid
-  if(kmres == 5)
-    load("popGridAdjusted.RData")
-  else
-    popGrid = makeInterpPopGrid(kmres)
   
   predCoords = cbind(popGrid$east, popGrid$north)
   predUrban = popGrid$urban
@@ -1409,14 +1403,15 @@ resultsSPDEDat = function(clustDat=ed, nPostSamples=1000, verbose=FALSE,
   # (even though adjustPopSurface is FALSE by default, the predictions will be using the adjusted surface, 
   # passed in as the popGrid variable)
   fit = fitSPDEModel3(obsCoords, obsNs=obsNs, obsCounts, obsUrban, predCoords, predNs=predNs, 
-                      predUrban, clusterIndices=1:nrow(clustDat), genCountyLevel=TRUE, popGrid=popGrid, nPostSamples=nPostSamples, 
+                      predUrban, clusterIndices=1:nrow(clustDat), genCountyLevel=TRUE, nPostSamples=nPostSamples, 
                       verbose = verbose, clusterEffect=includeClustEffect, 
                       int.strategy=int.strategy, genRegionLevel=TRUE, counties=sort(unique(kenyaEAs$admin1)), 
                       keepPixelPreds=keepPixelPreds, genEALevel=TRUE, regions=sort(unique(kenyaEAs$region)), 
                       urbanEffect=urbanEffect, eaIndices=1:nrow(clustDat), 
                       eaDat=eaDat, nSamplePixel=nSamplePixel, 
                       significance=significance, onlyInexact=TRUE, allPixels=TRUE, 
-                      newMesh=TRUE, previousResult=previousResult, predCountyI=predCountyI, integrateOutCluster=TRUE)
+                      newMesh=TRUE, previousResult=previousResult, predCountyI=predCountyI, integrateOutCluster=TRUE, 
+                      targetPop=targetPop)
   
   countyPreds = fit$countyPreds
   regionPreds = fit$regionPreds
@@ -1516,11 +1511,23 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
   
-  # get prediction locations from population grid
-  if(kmres == 5)
+  # if not supplied, get grid of population densities for pop-weighted integration
+  if(kmRes == 5) {
+    if(is.null(popGridAdjusted) && adjustPopSurface) {
+      if(targetPop == "children") {
+        load("popGridAdjusted.RData")
+        popGridAdjusted = popGrid
+      }
+      else {
+        load("popGridAdjustedWomen.RData")
+        popGridAdjusted = popGrid
+      }
+    }
     load("popGrid.RData")
-  else
-    popGrid = makeInterpPopGrid(kmres)
+  }
+  else {
+    popGrid = makeInterpPopGrid(kmRes, adjustPopSurface, targetPop)
+  }
   
   predCoords = cbind(popGrid$east, popGrid$north)
   predUrban = popGrid$urban
@@ -1554,7 +1561,7 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
                         urbanEffect=urbanEffect, eaIndices=1:nrow(clustDat), 
                         eaDat=eaDat, nSamplePixel=nSamplePixel, 
                         significance=significance, onlyInexact=TRUE, allPixels=TRUE, 
-                        newMesh=TRUE, doValidation=TRUE)
+                        newMesh=TRUE, doValidation=TRUE, popGridAdjusted=popGridAdjusted)
     
     if(saveResults)
       save(out, file=fileName)
@@ -1589,7 +1596,7 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
                         urbanEffect=urbanEffect, eaIndices=1:nrow(clustDat), 
                         eaDat=eaDat, nSamplePixel=nSamplePixel, 
                         significance=significance, onlyInexact=TRUE, allPixels=TRUE, 
-                        newMesh=TRUE, previousResult=modelFit, predCountyI=i)
+                        newMesh=TRUE, previousResult=modelFit, predCountyI=i, popGridAdjusted=popGridAdjusted)
     
     # thisCountyPreds = fit$countyPreds$countyPredMatInexact
     thisClusterPreds = fit$eaPreds$eaPredMat
