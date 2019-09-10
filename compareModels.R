@@ -1391,6 +1391,9 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
     unroundedTab = unroundedTab[models != "BYM2 uCa'",]
     models = models[models != "BYM2 uCa'"]
   }
+  if(identical(modelsI, 1:21)) {
+    models = models[c(1:12, 13, 14, 17, 15, 16, 18)]
+  }
   rownames(tab) = models
   rownames(unroundedTab) = models
   
