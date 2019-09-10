@@ -1097,7 +1097,7 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
                          clusterEffect=FALSE, significance=.8, 
                          onlyInexact=FALSE, allPixels=FALSE, newMesh=TRUE, doValidation=FALSE, 
                          previousResult=NULL, predCountyI=NULL, continuousOnly=FALSE, strictPrior=FALSE, 
-                         integrateOutCluster=FALSE, returnUnintegratedResults=TRUE, adjustPopSurface=FALSE, 
+                         integrateOutCluster=TRUE, returnUnintegratedResults=TRUE, adjustPopSurface=TRUE, 
                          seed=NULL, popGridAdjusted=NULL, targetPop=c("children", "women")) {
   if(!is.null(seed))
     set.seed(seed)
@@ -1243,8 +1243,6 @@ fitSPDEModel3 = function(obsCoords, obsNs=rep(25, nrow(obsCoords)), obsCounts, o
   predSDs = linpred.sd
   
   # if not supplied, get grid of population densities for pop-weighted integration
-  if(is.null(popGrid))
-    popGrid = makeInterpPopGrid(kmRes=kmRes, adjustPopSurface=adjustPopSurface)
   if(kmRes == 5) {
     if(is.null(popGridAdjusted) && adjustPopSurface) {
       if(targetPop == "children") {
