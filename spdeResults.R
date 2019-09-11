@@ -1511,7 +1511,8 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
                            urbanEffect=TRUE, kmres=5, nSamplePixel=nPostSamples, 
                            predictionType=c("mean", "median"), parClust=cl, 
                            significance=.8, saveResults=TRUE, fileNameRoot="Ed", 
-                           loadPreviousFit=FALSE, targetPop=c("children", "women")) {
+                           loadPreviousFit=FALSE, targetPop=c("children", "women"), 
+                           adjustPopSurface=TRUE) {
   # match the requested prediction type with one of the possible options
   predictionType = match.arg(predictionType)
   
