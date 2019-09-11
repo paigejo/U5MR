@@ -1,5 +1,5 @@
 # script for plotting predictions for neonatal mortality in Kenya
-# source("plotGenerator.R")
+source("plotGenerator.R")
 
 ##### before we make any plots, put all of them on the same scale
 ##### make multiple scales, two for estimates and quantiles, and two

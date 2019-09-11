@@ -2998,7 +2998,460 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
 }
 
 # plot the scoring rules for each analysis and population model for a fixed type of survey design (the survey design being SRS or stratified)
-plotCompareModelsAllLocal = function(strictPriors=FALSE) {
+plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=FALSE, saveResults=FALSE) {
+  # map the population type to a type of point plotted:
+  ## constant risk: 1
+  ## constant plus spatial: 2
+  ## constant plus spatial plus urban: 0
+  ## all effects: 5
+  pch = c(1, 2, 0, 5)
+  # cols = rainbow(4)
+  cols = c("red1", "purple", "blue1", "green4")
+  # cols = qualitative_hcl(4, h1=247, h2=54, c1=80, l1=61) # these colors are colorblind friendly
+  
+  load("compareModelCommandArgs.RData")
+  indices = 1:length(compareModelCommandArgs)
+  
+  plotHelper = function(scoreI, goalVal=NULL, rangeIncludes=c(), scoreName="", filterRows=c(1:3, 4, 6, 10, 12, 13, 15, 16, 18), 
+                        shareRange=FALSE, plotSRSLegend=FALSE, plotDHSLegend=TRUE, logScale=FALSE) {
+    plotNameRoot = paste0(tolower(scoreName), "Plot")
+    
+    if(!usePrecomputedResults) {
+      fullTableSRS1 = c() # constant risk
+      fullTableSRS2 = c() # constant plus spatial effect
+      fullTableSRS3 = c() # all but cluster effect
+      fullTableSRS4 = c() # all effects
+      fullTableBigSRS1 = c() # constant risk
+      fullTableBigSRS2 = c() # constant plus spatial effect
+      fullTableBigSRS3 = c() # all but cluster effect
+      fullTableBigSRS4 = c() # all effects
+      fullTable1 = c() # constant risk
+      fullTable2 = c() # constant plus spatial effect
+      fullTable3 = c() # all but cluster effect
+      fullTable4 = c() # all effects
+      fullTableBig1 = c() # constant risk
+      fullTableBig2 = c() # constant plus spatial effect
+      fullTableBig3 = c() # all but cluster effect
+      fullTableBig4 = c() # all effects
+      for(i in indices) {
+        # get the arguments for the run, and specify that we want to load the precomputed results
+        argList = compareModelCommandArgs[[i]]
+        argList$loadResults = TRUE
+        argList$strictPriors = strictPriors
+        
+        # get all elements from the list
+        tausq = argList$tausq
+        gamma = argList$gamma
+        margVar = argList$margVar
+        test = argList$test
+        resultType = argList$resultType
+        sampling = argList$sampling
+        recomputeTruth = argList$recomputeTruth
+        modelsI = argList$modelsI
+        produceFigures = argList$produceFigures
+        big = argList$big
+        maxDataSets = argList$maxDataSets 
+        nsim = argList$nsim
+        
+        # generate an informative id string to label the table we are about to print with
+        testText = ifelse(test, "Test", "")
+        bigText = ifelse(big, "Big", "")
+        strictPriorText = ifelse(strictPriors, "strictPrior", "")
+        runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
+                       "HHoldVar0urbanOverSamplefrac0", strictPriorText, testText, bigText, sampling, 
+                       "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
+        print(runId)
+        
+        # get the precomputed scoring rule results
+        out = do.call("runCompareModels2", argList)
+        theseScores = out$unroundedTab
+        
+        # append scores to the score table for the relevant population
+        if(big && sampling == "oversamp") {
+          if(margVar == 0 && gamma == 0 && tausq == 0)
+            fullTableBig1 = cbind(fullTableBig1, theseScores[,scoreI])
+          else if(gamma == 0 && tausq == 0)
+            fullTableBig2 = cbind(fullTableBig2, theseScores[,scoreI])
+          else if(tausq == 0)
+            fullTableBig3 = cbind(fullTableBig3, theseScores[,scoreI])
+          else
+            fullTableBig4 = cbind(fullTableBig4, theseScores[,scoreI])
+        } else if(!big && sampling == "oversamp") {
+          if(margVar == 0 && gamma == 0 && tausq == 0)
+            fullTable1 = cbind(fullTable1, theseScores[,scoreI])
+          else if(gamma == 0 && tausq == 0)
+            fullTable2 = cbind(fullTable2, theseScores[,scoreI])
+          else if(tausq == 0)
+            fullTable3 = cbind(fullTable3, theseScores[,scoreI])
+          else
+            fullTable4 = cbind(fullTable4, theseScores[,scoreI])
+        }
+        else if(big && sampling == "SRS") {
+          if(margVar == 0 && gamma == 0 && tausq == 0)
+            fullTableBigSRS1 = cbind(fullTableBigSRS1, theseScores[,scoreI])
+          else if(gamma == 0 && tausq == 0)
+            fullTableBigSRS2 = cbind(fullTableBigSRS2, theseScores[,scoreI])
+          else if(tausq == 0)
+            fullTableBigSRS3 = cbind(fullTableBigSRS3, theseScores[,scoreI])
+          else
+            fullTableBigSRS4 = cbind(fullTableBigSRS4, theseScores[,scoreI])
+        } else if(!big && sampling == "SRS") {
+          if(margVar == 0 && gamma == 0 && tausq == 0)
+            fullTableSRS1 = cbind(fullTableSRS1, theseScores[,scoreI])
+          else if(gamma == 0 && tausq == 0)
+            fullTableSRS2 = cbind(fullTableSRS2, theseScores[,scoreI])
+          else if(tausq == 0)
+            fullTableSRS3 = cbind(fullTableSRS3, theseScores[,scoreI])
+          else
+            fullTableSRS4 = cbind(fullTableSRS4, theseScores[,scoreI])
+        }
+      }
+      
+      # overwrite the scoring rules for the non-smoothing models with the big scoring rules
+      modelNames = rownames(fullTable1)
+      nonSmoothingI = (modelNames == "Naive") | (modelNames == "Direct")
+      fullTable1[nonSmoothingI,] = fullTableBig1
+      fullTable2[nonSmoothingI,] = fullTableBig2
+      fullTable3[nonSmoothingI,] = fullTableBig3
+      fullTable4[nonSmoothingI,] = fullTableBig4
+      fullTableSRS1[nonSmoothingI,] = fullTableBigSRS1
+      fullTableSRS2[nonSmoothingI,] = fullTableBigSRS2
+      fullTableSRS3[nonSmoothingI,] = fullTableBigSRS3
+      fullTableSRS4[nonSmoothingI,] = fullTableBigSRS4
+      
+      # get the scoring rule name
+      scoringRuleName = colnames(theseScores)[scoreI]
+    }
+    
+    # save results if necessary
+    if(usePrecomputedResults) {
+      load(paste0("compareModelPlotVar", scoreI, ".RData"))
+    }
+    if(saveResults) {
+      save(fullTable1, fullTable2, fullTable3, fullTable4, 
+           fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, scoringRuleName, 
+           file=paste0("compareModelPlotVar", scoreI, ".RData"))
+    }
+    
+    # filter out only the desired models
+    fullTable1 = fullTable1[filterRows,]
+    fullTable2 = fullTable2[filterRows,]
+    fullTable3 = fullTable3[filterRows,]
+    fullTable4 = fullTable4[filterRows,]
+    fullTableSRS1 = fullTableSRS1[filterRows,]
+    fullTableSRS2 = fullTableSRS2[filterRows,]
+    fullTableSRS3 = fullTableSRS3[filterRows,]
+    fullTableSRS4 = fullTableSRS4[filterRows,]
+    modelNames = names(fullTable1)
+    
+    # remove unnecessary symbols from model names
+    modelNames = gsub("'", "", modelNames)
+    modelNames[grepl("BYM2", modelNames)] = gsub("a", "", modelNames[grepl("BYM2", modelNames)])
+    
+    # get the model variation and the model type
+    require(stringr)
+    modelTypes = word(modelNames, 1)
+    modelTypes[modelTypes == "Smoothed"] = "Smoothed Direct"
+    uniqueModelTypes = unique(modelTypes)
+    modelTypeGroups = lapply(uniqueModelTypes, function(x) {(1:length(modelTypes))[modelTypes == x]})
+    modelVariations = word(modelNames, 2)
+    modelVariations[is.na(modelVariations)] = ""
+    modelVariations[modelVariations == "Direct"] = ""
+    
+    # separate the text that will be diagonal, vertical, and horizontal
+    diagonalText = c(modelTypes[1:3], rep("", length(modelTypes) - 3))
+    variationText = modelVariations
+    categoryText = c("BYM2", "SPDE")
+    
+    ## Generate the plots
+    if(!shareRange)
+      scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, rangeIncludes))
+    else
+      scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, rangeIncludes))
+    
+    thisLog = ""
+    if(logScale)
+      thisLog = "y"
+    
+    # plot the urban oversampled values
+    tempModelNames = sort(factor(modelNames, labels=modelNames))
+    # centers = seq(from=1, to=16, by=1)
+    delta = .75
+    # centers = rev(c(1:4, (5:13) + 1 * delta, 14 + 2 * delta, (15:16) + 3 * delta) * (16 / (16 + 3 * delta)))
+    centers = rev(c(1:4 + .5 * delta, (5:8) + 1.5 * delta, 9 + 2.5 * delta, (10:11) + 3.5 * delta) * (11 / (11 + 4 * delta))) # would need a different one for a different filterRows
+    centers = centers[1] + centers[length(centers)] - centers
+    unabbreviatedTitle = gsub('\\\\%', "\\%", scoringRuleName)
+    unabbreviatedTitle = gsub('Var', "Variance", unabbreviatedTitle)
+    unabbreviatedTitle = gsub('Cvg', "Coverage", unabbreviatedTitle)
+    unabbreviatedTitle = gsub("\\(", "(stratified, ", unabbreviatedTitle)
+    strictText = ifelse(strictPriors, "strictPrior", "")
+    
+    # browser()
+    
+    pdf(paste0("figures/", plotNameRoot, strictText, "Stratified.pdf"), width=6, height=5)
+    # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
+    par(mar=c(6.1, 4.1, 3.1, 6.3), xpd=TRUE)
+    stripchart(fullTable1 ~ tempModelNames, cex=0, las=2, ylim=scoreRange, main="", 
+               at=rev(centers), ylab="", axes=FALSE, vertical=TRUE, log=thisLog)
+    
+    title(TeX(unabbreviatedTitle))
+    box()
+    # axis(3, las=2)
+    axis(2, las=2)
+    axis(1, srt=60, at=centers, labels=rep("", length(centers)))
+    # text(par("usr")[1] - 1, centers, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
+    yShift = diff(par("usr")[3:4]) / 15
+    # text(centers +  delta, par("usr")[3] - yShift, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
+    yloc = par("usr")[3] - yShift
+    if(logScale)
+      yloc = 10^yloc
+    text(centers + max(centers)/30, yloc, labels = diagonalText, srt = 45, pos = 2, xpd = TRUE)
+    yloc = par("usr")[3] - 1.25 * yShift
+    if(logScale)
+      yloc = 10^yloc
+    text(centers + 1.5 * max(centers)/30, yloc, labels = variationText, pos = 2, xpd = TRUE)
+    spdeCenter = mean(centers[(length(centers) - 3):length(centers)])
+    bym2Center = mean(centers[(length(centers) - 7):(length(centers) - 4)])
+    yloc = par("usr")[3] - yShift * 2.75
+    if(logScale)
+      yloc = 10^yloc
+    text(c(bym2Center, spdeCenter) + 2.75 * max(centers)/35, yloc, labels = categoryText, pos = 2, xpd = TRUE)
+    
+    if(!is.null(goalVal)) {
+      segments(y0=goalVal, x0=par("usr")[1], y1=goalVal, x1=par("usr")[2], lty=2, col="black")
+    }
+    
+    stripchart(fullTable1 ~ tempModelNames, col=cols[1], pch=pch[1], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    stripchart(fullTable2 ~ tempModelNames, col=cols[2], pch=pch[2], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    stripchart(fullTable3 ~ tempModelNames, col=cols[3], pch=pch[3], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    stripchart(fullTable4 ~ tempModelNames, col=cols[4], pch=pch[4], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    
+    if(plotDHSLegend) {
+      # pos = legend("right", c("suc", "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
+      #              title="Population\nmodel", bty="n")
+      pos = legend("right", c(expression("Pop"[suc]), expression("Pop"[Suc]), expression("Pop"[SUc]), expression("Pop"[SUC])), pch=pch, col=cols, horiz=FALSE, inset=c(-0.315,0), 
+                   title="Population\nmodel", bty="n", lwd=2, lty=NA)
+      xleft <- pos$rect[["left"]]
+      ytop <- pos$rect[["top"]]
+      ybottom <- ytop - pos$rect[["h"]]
+      xright <- xleft + pos$rect[["w"]]
+      rect(xleft, ybottom + 0.25 * yShift, xright, ytop-1.35 * yShift)
+    }
+    
+    dev.off()
+    
+    # plot the SRS values
+    pdf(paste0("figures/", plotNameRoot, strictText, "Unstratified.pdf"), width=6, height=5)
+    # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
+    par(mar=c(6.1, 4.1, 3.1, 6.3), xpd=TRUE)
+    
+    if(!shareRange)
+      scoreRange = range(c(fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, rangeIncludes))
+    else
+      scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, rangeIncludes))
+    stripchart(fullTable1 ~ tempModelNames, cex=0, las=2, ylim=scoreRange, main="", 
+               at=rev(centers), ylab="", axes=FALSE, vertical=TRUE, log=thisLog)
+    
+    unabbreviatedTitle = gsub("\\(stratified, ", "(unstratified design, ", unabbreviatedTitle)
+    # title(TeX(paste0(unabbreviatedTitle)), line=4)
+    title(TeX(unabbreviatedTitle))
+    box()
+    # axis(3, las=2)
+    axis(2, las=2)
+    axis(1, srt=60, at=centers, labels=rep("", length(centers)))
+    # text(par("usr")[1] - 1, centers, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
+    yShift = diff(par("usr")[3:4]) / 15
+    # text(centers +  delta, par("usr")[3] - yShift, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
+    yloc = par("usr")[3] - yShift
+    if(logScale)
+      yloc = 10^yloc
+    text(centers + max(centers)/30, yloc, labels = diagonalText, srt = 45, pos = 2, xpd = TRUE)
+    yloc = par("usr")[3] - 1.25 * yShift
+    if(logScale)
+      yloc = 10^yloc
+    text(centers + 1.5 * max(centers)/30, yloc, labels = variationText, pos = 2, xpd = TRUE)
+    spdeCenter = mean(centers[(length(centers) - 3):length(centers)])
+    bym2Center = mean(centers[(length(centers) - 7):(length(centers) - 4)])
+    yloc = par("usr")[3] - yShift * 2.75
+    if(logScale)
+      yloc = 10^yloc
+    text(c(bym2Center, spdeCenter) + 2.75 * max(centers)/35, yloc, labels = categoryText, pos = 2, xpd = TRUE)
+    
+    if(!is.null(goalVal)) {
+      segments(y0=goalVal, x0=par("usr")[1], y1=goalVal, x1=par("usr")[2], lty=2, col="black")
+    }
+    
+    stripchart(fullTable1 ~ tempModelNames, col=cols[1], pch=pch[1], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    stripchart(fullTableSRS2 ~ tempModelNames, col=cols[2], pch=pch[2], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    stripchart(fullTableSRS3 ~ tempModelNames, col=cols[3], pch=pch[3], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    stripchart(fullTableSRS4 ~ tempModelNames, col=cols[4], pch=pch[4], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    
+    if(plotSRSLegend) {
+      pos = legend("right", c(expression("Pop"[suc]), expression("Pop"[Suc]), expression("Pop"[SUc]), expression("Pop"[SUC])), pch=pch, col=cols, horiz=FALSE, inset=c(-0.315,0), 
+                   title="Population\nmodel", bty="n", lwd=2, lty=NA)
+      xleft <- pos$rect[["left"]]
+      ytop <- pos$rect[["top"]]
+      ybottom <- ytop - pos$rect[["h"]]
+      xright <- xleft + pos$rect[["w"]]
+      rect(xleft, ybottom + 0.25 * yShift, xright, ytop-1.35 * yShift) 
+    }
+    
+    dev.off()
+    
+    ##### Now constructe simplified versions of the above plots
+    simpleI = c(2, 3, 7, 11)
+    
+    # separate the text that will be diagonal, vertical, and horizontal
+    # TO DO: fixed model type indices
+    diagonalText = modelTypes[c(2:3, 4, 8)]
+    variationText = modelVariations[c(2:3, 7, 11)]
+    diagonalText[3] = paste(diagonalText[3], variationText[3])
+    diagonalText[4] = paste(diagonalText[4], variationText[4])
+    
+    ## Generate the plots
+    if(!shareRange)
+      scoreRange = range(c(fullTable1[simpleI], fullTable2[simpleI], fullTable3[simpleI], fullTable4[simpleI], rangeIncludes))
+    else
+      scoreRange = range(c(fullTable1[simpleI], fullTable2[simpleI], fullTable3[simpleI], fullTable4[simpleI], fullTableSRS1[simpleI], fullTableSRS2[simpleI], fullTableSRS3[simpleI], fullTableSRS4[simpleI], rangeIncludes))
+    
+    thisLog = ""
+    if(logScale)
+      thisLog = "y"
+    
+    # plot the urban oversampled values
+    tempModelNames = sort(factor(diagonalText, labels=diagonalText))
+    # centers = seq(from=1, to=16, by=1)
+    delta = .5
+    # centers = rev(c(1:4, (5:13) + 1 * delta, 14 + 2 * delta, (15:16) + 3 * delta) * (16 / (16 + 3 * delta)))
+    # centers = rev(c(1:4 + .5 * delta, (5:8) + 1.5 * delta, 9 + 2.5 * delta, (10:11) + 3.5 * delta) * (11 / (11 + 4 * delta))) # would need a different one for a different filterRows
+    centers = rev(seq(1 + delta, 4 - delta, l=4)) # would need a different one for a different filterRows
+    centers = centers[1] + centers[length(centers)] - centers
+    unabbreviatedTitle = gsub('\\\\%', "\\%", scoringRuleName)
+    unabbreviatedTitle = gsub('Var', "Variance", unabbreviatedTitle)
+    unabbreviatedTitle = gsub('Cvg', "Coverage", unabbreviatedTitle)
+    unabbreviatedTitle = gsub("\\(", "(stratified, ", unabbreviatedTitle)
+    strictText = ifelse(strictPriors, "strictPrior", "")
+    
+    # browser()
+    
+    pdf(paste0("figures/", plotNameRoot, strictText, "StratifiedSimple.pdf"), width=6, height=5)
+    # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
+    par(mar=c(6.1, 4.1, 3.1, 6.3), xpd=TRUE)
+    stripchart(fullTable1[simpleI] ~ tempModelNames, cex=0, las=2, ylim=scoreRange, main="", 
+               at=rev(centers), ylab="", axes=FALSE, vertical=TRUE, log=thisLog)
+    
+    title(TeX(unabbreviatedTitle))
+    box()
+    # axis(3, las=2)
+    axis(2, las=2)
+    axis(1, srt=60, at=centers, labels=rep("", length(centers)))
+    # text(par("usr")[1] - 1, centers, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
+    yShift = diff(par("usr")[3:4]) / 15
+    # text(centers +  delta, par("usr")[3] - yShift, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
+    yloc = par("usr")[3] - yShift
+    if(logScale)
+      yloc = 10^yloc
+    text(centers + max(centers)/30, yloc, labels = diagonalText, srt = 45, pos = 2, xpd = TRUE)
+    
+    if(!is.null(goalVal)) {
+      segments(y0=goalVal, x0=par("usr")[1], y1=goalVal, x1=par("usr")[2], lty=2, col="black")
+    }
+    
+    stripchart(fullTable1[simpleI] ~ tempModelNames, col=cols[1], pch=pch[1], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    stripchart(fullTable2[simpleI] ~ tempModelNames, col=cols[2], pch=pch[2], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    stripchart(fullTable3[simpleI] ~ tempModelNames, col=cols[3], pch=pch[3], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    stripchart(fullTable4[simpleI] ~ tempModelNames, col=cols[4], pch=pch[4], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    
+    if(plotDHSLegend) {
+      # pos = legend("right", c("suc", "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
+      #              title="Population\nmodel", bty="n")
+      pos = legend("right", c(expression("Pop"[suc]), expression("Pop"[Suc]), expression("Pop"[SUc]), expression("Pop"[SUC])), pch=pch, lwd=2, col=cols, horiz=FALSE, inset=c(-0.315,0), 
+                   title="Population\nmodel", bty="n", lty=NA)
+      xleft <- pos$rect[["left"]]
+      ytop <- pos$rect[["top"]]
+      ybottom <- ytop - pos$rect[["h"]]
+      xright <- xleft + pos$rect[["w"]]
+      rect(xleft, ybottom + 0.25 * yShift, xright, ytop-1.35 * yShift)
+    }
+    
+    dev.off()
+    
+    # plot the SRS values
+    pdf(paste0("figures/", plotNameRoot, strictText, "UnstratifiedSimple.pdf"), width=6, height=5)
+    # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
+    par(mar=c(6.1, 4.1, 3.1, 6.3), xpd=TRUE)
+    
+    if(!shareRange)
+      scoreRange = range(c(fullTableSRS1[simpleI], fullTableSRS2[simpleI], fullTableSRS3[simpleI], fullTableSRS4[simpleI], rangeIncludes))
+    else
+      scoreRange = range(c(fullTable1[simpleI], fullTable2[simpleI], fullTable3[simpleI], fullTable4[simpleI], fullTableSRS1[simpleI], fullTableSRS2[simpleI], fullTableSRS3[simpleI], fullTableSRS4[simpleI], rangeIncludes))
+    stripchart(fullTable1[simpleI] ~ tempModelNames, cex=0, las=2, ylim=scoreRange, main="", 
+               at=rev(centers), ylab="", axes=FALSE, vertical=TRUE, log=thisLog)
+    
+    unabbreviatedTitle = gsub("\\(stratified, ", "(unstratified design, ", unabbreviatedTitle)
+    # title(TeX(paste0(unabbreviatedTitle)), line=4)
+    title(TeX(unabbreviatedTitle))
+    box()
+    # axis(3, las=2)
+    axis(2, las=2)
+    axis(1, srt=60, at=centers, labels=rep("", length(centers)))
+    # text(par("usr")[1] - 1, centers, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
+    yShift = diff(par("usr")[3:4]) / 15
+    # text(centers +  delta, par("usr")[3] - yShift, labels = tempModelNames, srt = 45, pos = 2, xpd = TRUE)
+    yloc = par("usr")[3] - yShift
+    if(logScale)
+      yloc = 10^yloc
+    text(centers + max(centers)/30, yloc, labels = diagonalText, srt = 45, pos = 2, xpd = TRUE)
+    
+    if(!is.null(goalVal)) {
+      segments(y0=goalVal, x0=par("usr")[1], y1=goalVal, x1=par("usr")[2], lty=2, col="black")
+    }
+    
+    stripchart(fullTable1[simpleI] ~ tempModelNames, col=cols[1], pch=pch[1], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    stripchart(fullTableSRS2[simpleI] ~ tempModelNames, col=cols[2], pch=pch[2], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    stripchart(fullTableSRS3[simpleI] ~ tempModelNames, col=cols[3], pch=pch[3], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    stripchart(fullTableSRS4[simpleI] ~ tempModelNames, col=cols[4], pch=pch[4], add=TRUE, 
+               at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    
+    if(plotSRSLegend) {
+      pos = legend("right", c(expression("Pop"[suc]), expression("Pop"[Suc]), expression("Pop"[SUc]), expression("Pop"[SUC])), pch=pch, col=cols, horiz=FALSE, inset=c(-0.315,0), 
+                   title="Population\nmodel", bty="n", lwd=2, lty=NA)
+      xleft <- pos$rect[["left"]]
+      ytop <- pos$rect[["top"]]
+      ybottom <- ytop - pos$rect[["h"]]
+      xright <- xleft + pos$rect[["w"]]
+      rect(xleft, ybottom + 0.25 * yShift, xright, ytop-1.35 * yShift) 
+    }
+    
+    dev.off()
+  }
+  
+  # generate plots for each scoring rule (1-6: bias, variance, mse, crps, coverage, width)
+  plotHelper(3, goalVal=0, scoreName="MSE", plotDHSLegend=FALSE, shareRange=TRUE, logScale=TRUE)
+  plotHelper(1, goalVal=0, rangeIncludes=0, scoreName="Bias", plotDHSLegend=TRUE, shareRange=TRUE)
+  plotHelper(2, goalVal=0, rangeIncludes=0, scoreName="Var", plotDHSLegend=FALSE, shareRange=TRUE)
+  plotHelper(4, goalVal=0, rangeIncludes=0, scoreName="CRPS", shareRange=TRUE, plotDHSLegend=FALSE)
+  plotHelper(5, goalVal=80, rangeIncludes=100, scoreName="Cvg", shareRange=TRUE, plotDHSLegend=TRUE)
+  plotHelper(6, goalVal=0, rangeIncludes=0, scoreName="Width", shareRange=TRUE, plotDHSLegend=FALSE)
+}
+
+# plot the scoring rules for each analysis and population model for a fixed type of survey design (the survey design being SRS or stratified)
+plotCompareModelsAllLocalSimplified = function(strictPriors=FALSE) {
   # map the population type to a type of point plotted:
   ## constant risk: 1
   ## constant plus spatial: 2
@@ -3219,7 +3672,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
     if(plotDHSLegend) {
       # pos = legend("right", c("suc", "Suc", "SUc", "SUC"), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
       #              title="Population\nmodel", bty="n")
-      pos = legend("right", c(expression("POP"[suc]), expression("POP"[Suc]), expression("POP"[SUc]), expression("POP"[SUC])), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
+      pos = legend("right", c(expression("Pop"[suc]), expression("Pop"[Suc]), expression("Pop"[SUc]), expression("Pop"[SUC])), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
                    title="Population\nmodel", bty="n")
       xleft <- pos$rect[["left"]]
       ytop <- pos$rect[["top"]]
@@ -3281,7 +3734,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE) {
                at=jitter(centers, amount = .15), vertical=TRUE)
     
     if(plotSRSLegend) {
-      pos = legend("right", c(expression("POP"[suc]), expression("POP"[Suc]), expression("POP"[SUc]), expression("POP"[SUC])), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
+      pos = legend("right", c(expression("Pop"[suc]), expression("Pop"[Suc]), expression("Pop"[SUc]), expression("Pop"[SUC])), pch=pch, col=cols, horiz=FALSE, inset=c(-0.225,0), 
                    title="Population\nmodel", bty="n")
       xleft <- pos$rect[["left"]]
       ytop <- pos$rect[["top"]]

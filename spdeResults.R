@@ -1516,7 +1516,7 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
   predictionType = match.arg(predictionType)
   
   # if not supplied, get grid of population densities for pop-weighted integration
-  if(kmRes == 5) {
+  if(kmres == 5) {
     if(is.null(popGridAdjusted) && adjustPopSurface) {
       if(targetPop == "children") {
         load("popGridAdjusted.RData")
@@ -1530,7 +1530,7 @@ validateSPDEDat = function(directLogitEsts, directLogitVars, directVars,
     load("popGrid.RData")
   }
   else {
-    popGrid = makeInterpPopGrid(kmRes, adjustPopSurface, targetPop)
+    popGrid = makeInterpPopGrid(kmres, adjustPopSurface, targetPop)
   }
   
   predCoords = cbind(popGrid$east, popGrid$north)
