@@ -244,7 +244,6 @@ generateAllDataSets = function() {
 
 generateAllNewDataSets = function() {
   generateSimDataSets(gamma=-1, margVar=.15^2, effRange=50)
-  generateSimDataSets(gamma=-1, margVar=0, effRange=50)
   generateSimDataSets(gamma=0, margVar=.15^2, effRange=50)
   generateSimDataSets(gamma=0, margVar=0, effRange=50)
   
