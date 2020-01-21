@@ -104,6 +104,9 @@ plot(adm1)
 adm0 = readRDS("mapData/KEN_adm0.rds")
 plot(adm0)
 names(adm0)
+regionData = readShapePoly("mapData/kenya_region_shapefile/kenya_region_shapefile.shp", delete_null_obj=TRUE, force_ring=TRUE, repair=TRUE)
+plot(regionData)
+out = readShapePoly("Kenya2014gps/KEGE71FL.shp", delete_null_obj=TRUE, force_ring=TRUE, repair=TRUE)
 
 # subset population density to be within Kenya
 polys = adm0@polygons

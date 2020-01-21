@@ -693,10 +693,14 @@ simClustersEmpirical = function(eaDat, eaDatLong, nsim=1, seed=NULL, urbanOverSa
   
   if(!fixedPerStrata) {
     # set number of clusters empirically if not otherwise set, scale by a factor depending on how much to oversample urban areas
+    # thisclustpc = clustpc
+    # thisclustpc$clustUrb = round(thisclustpc$clustUrb * (1 + urbanOverSamplefrac))
+    # thisclustpc$clustUrb[thisclustpc$clustUrb >= thisclustpc$clustTotal] = thisclustpc$clustTotal[thisclustpc$clustUrb >= thisclustpc$clustTotal]
+    # thisclustpc$clustRur = thisclustpc$clustTotal - thisclustpc$clustUrb
     thisclustpc = clustpc
-    thisclustpc$clustUrb = round(thisclustpc$clustUrb * (1 + urbanOverSamplefrac))
-    thisclustpc$clustUrb[thisclustpc$clustUrb >= thisclustpc$clustTotal] = thisclustpc$clustTotal[thisclustpc$clustUrb >= thisclustpc$clustTotal]
-    thisclustpc$clustRur = thisclustpc$clustTotal - thisclustpc$clustUrb
+    thisclustpc$clustRur = round(thisclustpc$clustRur * (1 - urbanOverSamplefrac))
+    thisclustpc$clustRur[thisclustpc$clustRur < 0] = 0
+    thisclustpc$clustUrb = thisclustpc$clustTotal - thisclustpc$clustRur
     
     if(SRS) {
       # in this case, we want the naive model to be unbiased so we need the proportion of urban clusters and rural clusters to 

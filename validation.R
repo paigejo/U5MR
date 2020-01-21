@@ -91,8 +91,10 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   }
   else {
     print("Loading SPDE I results...")
+    # fileName = paste0("resultsSPDE", resultNameRoot, "ValidationAll", "_includeClustEffect", FALSE, 
+    #                   "_urbanEffect", FALSE, ".RData")
     fileName = paste0("resultsSPDE", resultNameRoot, "ValidationAll", "_includeClustEffect", FALSE, 
-                      "_urbanEffect", FALSE, ".RData")
+                      "_urbanEffect", FALSE, "compact.RData")
     load(fileName)
     spdeI = spdeResults
   }
@@ -105,8 +107,10 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   }
   else {
     print("Loading SPDE II results...")
+    # fileName = paste0("resultsSPDE", resultNameRoot, "ValidationAll", "_includeClustEffect", TRUE, 
+    #                   "_urbanEffect", FALSE, ".RData")
     fileName = paste0("resultsSPDE", resultNameRoot, "ValidationAll", "_includeClustEffect", TRUE, 
-                      "_urbanEffect", FALSE, ".RData")
+                      "_urbanEffect", FALSE, "compact.RData")
     load(fileName)
     spdeII = spdeResults
   }
@@ -119,8 +123,10 @@ validateExample = function(dat=ed, resultNameRoot="Ed", directEstResults=NULL, c
   }
   else {
     print("Loading SPDE III results...")
+    # fileName = paste0("resultsSPDE", resultNameRoot, "ValidationAll", "_includeClustEffect", FALSE, 
+    #                   "_urbanEffect", TRUE, ".RData")
     fileName = paste0("resultsSPDE", resultNameRoot, "ValidationAll", "_includeClustEffect", FALSE, 
-                      "_urbanEffect", TRUE, ".RData")
+                      "_urbanEffect", TRUE, "compact.RData")
     load(fileName)
     spdeIII = spdeResults
   }
