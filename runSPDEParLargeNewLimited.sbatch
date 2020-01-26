@@ -4,7 +4,7 @@
 #SBATCH --ntasks 8          # Number of tasks to run. By default, one CPU core will be allocated per task
 #SBATCH --time 10-00:00        # Wall time limit in D-HH:MM
 #SBATCH --mem-per-cpu=80000     # Memory limit for each tasks (in MB)
-#SBATCH --partition=newton1     # Limit jobs to only the specified nodes
+#SBATCH --nodelist=newton1     # Limit jobs to only the specified nodes
 #SBATCH -o runSPDEParLargeNewLimited_%A_%a.out    # File to which STDOUT will be written
 #SBATCH -e runSPDEParLargeNewLimited_%A_%a.err    # File to which STDERR will be written
 #SBATCH --mail-type=ALL       # Type of email notification- BEGIN,END,FAIL,ALL
