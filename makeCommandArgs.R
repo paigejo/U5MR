@@ -348,6 +348,8 @@ makeDirectCommandArgsNew = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), mar
               effRange = effRangeVec[i6]
               if(margVar == 0.3^2 && effRange == 50)
                 next
+              if(margVar == 0 && effRange == 50)
+                next
               if(margVar != 0.3^2 && effRange == 150)
                 next
               
