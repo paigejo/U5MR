@@ -452,7 +452,7 @@ makeBYM2CommandArgsNew = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), margV
                 aggregateByPopulation = aggregateByPopulationVec[i7]
                 
                 for(i8 in 1:length(effRangeVec)) {
-                  effRange = effRangeVec[i6]
+                  effRange = effRangeVec[i8]
                   if(margVar == 0.3^2 && effRange == 50)
                     next
                   if(margVar != 0.3^2 && effRange == 150)
@@ -526,7 +526,7 @@ makeCompareModelArgsNew = function(tausqVec=c(0, 0.1^2), gammaVec=c(0, -1), marg
                   big = bigVec[i8]
                   
                   for(i9 in 1:length(effRangeVec)) {
-                    effRange = effRangeVec[i6]
+                    effRange = effRangeVec[i9]
                     if(margVar == 0.3^2 && effRange == 50)
                       next
                     if(margVar != 0.3^2 && effRange == 150)
