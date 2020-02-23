@@ -98,7 +98,7 @@ resultsSPDE = function(nPostSamples=1000, test=FALSE, nTest=2, verbose=TRUE,
   else {
     # load our previous progress if necessary
     print("Loading SRS results")
-    load(fileName)
+    load(fileNameTemp)
   }
   
   print("Generating urban oversampled results")
