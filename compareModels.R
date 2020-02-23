@@ -2758,6 +2758,7 @@ runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTab
     big = argList$big
     maxDataSets = argList$maxDataSets 
     nsim = argList$nsim
+    range = argList$effRange
     
     # print out the population and design for this table
     if(margVar == 0 && gamma == 0 && tausq == 0)
@@ -2768,6 +2769,10 @@ runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTab
       popText = "SUc"
     else
       popText = "SUC"
+    
+    # skip nonexistent populations
+    if(range == 50 && margVar == 0)
+      next
     
     contextText = paste(popText, sampling)
     print(paste0("Printing table for ", contextText))
