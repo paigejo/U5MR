@@ -2784,11 +2784,19 @@ runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTab
 }
 
 runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRows=c(1:3, 4, 6, 10, 12, 13:16), 
-                                  incorrectlyAggregatedModels=TRUE, newSimulations=TRUE) {
-  if(!newSimulations)
+                                  incorrectlyAggregatedModels=TRUE, spatialRange=c(150, 50), spatialVar=c(0.15^2, 0.3^2)) {
+  spatialRange = match.arg(spatialRange)
+  spatialVar = match.arg(spatialVar)
+  
+  if(spatialRange == 150 && spatialVar == 0.15^2)
     load("compareModelCommandArgs.RData")
+  else if(spatialRange == 50 && spatialVar == 0.3^2)
+    stop("spatialRange == 50 && spatialVar == 0.3^2 not supported")
   else
     load("compareModelCommandArgsNew.RData")
+  rangeID = ifelse(spatialRange == 50, "Range50", "")
+  spatialVarID = ifelse(spatialRange == 0.3^2, "margVar0.09")
+  scenarioID = ifelse(spatialRange == 150 && spatialBar == 0.15^2, "", paste0(rangeID, "_", spatialVarID))
   
   if(is.null(indices))
     indices = 1:length(compareModelCommandArgs)
@@ -2834,8 +2842,12 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
     argList$colDigits = c(2, 2, 3, 2, 1, 2)
     range = argList$effRange
     
-    # skip nonexistent populations
+    # skip nonexistent populations and populations not in our scenario
+    if(range != spatialRange && margVar != 0)
+      next
     if(range == 50 && margVar == 0)
+      range = 150
+    if(margVar != 0 && margVar != spatialVar)
       next
     
     # generate an informative id string to label the table we are about to print with
@@ -2844,7 +2856,8 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
     strictPriorText = ifelse(strictPriors, "strictPrior", "")
     runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
                    "HHoldVar0urbanOverSamplefrac0", strictPriorText, testText, bigText, sampling, 
-                   "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
+                   "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets, 
+                   scenarioID)
     print(runId)
     
     # get the precomputed scoring rule results
@@ -3022,6 +3035,7 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
   }
   
   # print all of the tables to the console
+  browser()
   makeTable(fullTableSRS1, sampling="Unstratified", popI=1, colDigits=c(1, 1, 2, 1, 0, 2)) # MSE is very small in this case so go out an extra digit
   makeTable(fullTableSRS2, sampling="Unstratified", popI=2, colDigits=c(1, 1, 2, 1, 0, 2))
   makeTable(fullTableSRS3, sampling="Unstratified", popI=3, colDigits=c(1, 1, 2, 1, 0, 2))
