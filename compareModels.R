@@ -2795,7 +2795,7 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
   else
     load("compareModelCommandArgsNew.RData")
   rangeID = ifelse(spatialRange == 50, "Range50", "")
-  spatialVarID = ifelse(spatialVar == 0.3^2, "margVar0.09")
+  spatialVarID = ifelse(spatialVar == 0.3^2, "margVar0.09", "")
   scenarioID = ifelse(spatialRange == 150 && spatialVar == 0.15^2, "", paste0(rangeID, "_", spatialVarID))
   
   if(is.null(indices))
