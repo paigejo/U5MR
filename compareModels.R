@@ -2726,8 +2726,11 @@ getTruth = function(resultType = c("county", "region", "EA", "pixel"), eaDat) {
 
 # takes all precomputed scoring rules from compareModels2 listed in compareModelCommandArgs.RData, and outputs results
 runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTables=TRUE, printScoreTable=TRUE, 
-                                    printParTable=TRUE, printBigResults=TRUE) {
-  load("compareModelCommandArgs.RData")
+                                    printParTable=TRUE, printBigResults=TRUE, newSimulations=TRUE) {
+  if(!newSimulations)
+    load("compareModelCommandArgs.RData")
+  else
+    load("compareModelCommandArgsNew.RData")
   if(is.null(indices))
     indices = 1:length(compareModelCommandArgs)
   for(i in indices) {
