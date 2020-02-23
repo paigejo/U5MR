@@ -2778,6 +2778,7 @@ runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTab
     print(paste0("Printing table for ", contextText))
     
     # print out the table
+    browser()
     do.call("runCompareModels2", argList)
   }
 }
