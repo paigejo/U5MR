@@ -2783,8 +2783,12 @@ runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTab
 }
 
 runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRows=c(1:3, 4, 6, 10, 12, 13:16), 
-                                  incorrectlyAggregatedModels=TRUE) {
-  load("compareModelCommandArgs.RData")
+                                  incorrectlyAggregatedModels=TRUE, newSimulations=TRUE) {
+  if(!newSimulations)
+    load("compareModelCommandArgs.RData")
+  else
+    load("compareModelCommandArgsNew.RData")
+  
   if(is.null(indices))
     indices = 1:length(compareModelCommandArgs)
   
@@ -2827,6 +2831,11 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
     nsim = argList$nsim
     argList$xtable.args=list(digits=c(0, 2, 2, 3, 2, 1, 2), display=rep("f", 7), auto=TRUE)
     argList$colDigits = c(2, 2, 3, 2, 1, 2)
+    range = argList$effRange
+    
+    # skip nonexistent populations
+    if(range == 50 && margVar == 0)
+      next
     
     # generate an informative id string to label the table we are about to print with
     testText = ifelse(test, "Test", "")
@@ -3023,7 +3032,11 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
 }
 
 # plot the scoring rules for each analysis and population model for a fixed type of survey design (the survey design being SRS or stratified)
-plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=FALSE, saveResults=FALSE) {
+plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=FALSE, saveResults=FALSE, 
+                                     spatialRange=c(150, 50), spatialVar=c(0.15^2, 0.3^2)) {
+  spatialRange = match.arg(spatialRange)
+  spatialVar = match.arg(spatialVar)
+  
   # map the population type to a type of point plotted:
   ## constant risk: 1
   ## constant plus spatial: 2
@@ -3034,7 +3047,16 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
   cols = c("red1", "purple", "blue1", "green4")
   # cols = qualitative_hcl(4, h1=247, h2=54, c1=80, l1=61) # these colors are colorblind friendly
   
-  load("compareModelCommandArgs.RData")
+  if(spatialRange == 150 && spatialVar == 0.15^2)
+    load("compareModelCommandArgs.RData")
+  else if(spatialRange == 50 && spatialVar == 0.3^2)
+    stop("spatialRange == 50 && spatialVar == 0.3^2 not supported")
+  else
+    load("compareModelCommandArgsNew.RData")
+  rangeID = ifelse(spatialRange == 50, "Range50", "")
+  spatialVarID = ifelse(spatialRange == 0.3^2, "margVar0.09")
+  scenarioID = ifelse(spatialRange == 150 && spatialBar == 0.15^2, "", paste0(rangeID, "_", spatialVarID))
+  
   indices = 1:length(compareModelCommandArgs)
   
   plotHelper = function(scoreI, goalVal=NULL, rangeIncludes=c(), scoreName="", filterRows=c(1:3, 4, 6, 10, 12, 13, 15, 16, 18), 
@@ -3077,6 +3099,15 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
         big = argList$big
         maxDataSets = argList$maxDataSets 
         nsim = argList$nsim
+        range = argList$effRange
+        
+        # skip nonexistent populations and populations not in our scenario
+        if(range != spatialRange && margVar != 0)
+          next
+        if(range == 50 && margVar == 0)
+          range = 150
+        if(margVar != 0 && margVar != spatialVar)
+          next
         
         # generate an informative id string to label the table we are about to print with
         testText = ifelse(test, "Test", "")
@@ -3084,7 +3115,8 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
         strictPriorText = ifelse(strictPriors, "strictPrior", "")
         runId = paste0("Beta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
                        "HHoldVar0urbanOverSamplefrac0", strictPriorText, testText, bigText, sampling, 
-                       "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets)
+                       "models", do.call("paste0", as.list(modelsI)), "nsim", nsim, "MaxDataSetI", maxDataSets, 
+                       scenarioID)
         print(runId)
         
         # get the precomputed scoring rule results
@@ -3155,7 +3187,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
     if(saveResults) {
       save(fullTable1, fullTable2, fullTable3, fullTable4, 
            fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, scoringRuleName, 
-           file=paste0("compareModelPlotVar", scoreI, ".RData"))
+           file=paste0("compareModelPlotVar", scoreI, scenarioID, ".RData"))
     }
     
     # filter out only the desired models
@@ -3213,7 +3245,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
     
     # browser()
     
-    pdf(paste0("figures/", plotNameRoot, strictText, "Stratified.pdf"), width=6, height=5)
+    pdf(paste0("figures/", plotNameRoot, strictText, "Stratified", scenarioID, ".pdf"), width=6, height=5)
     # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
     par(mar=c(6.1, 4.1, 3.1, 6.3), xpd=TRUE)
     stripchart(fullTable1 ~ tempModelNames, cex=0, las=2, ylim=scoreRange, main="", 
@@ -3270,7 +3302,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
     dev.off()
     
     # plot the SRS values
-    pdf(paste0("figures/", plotNameRoot, strictText, "Unstratified.pdf"), width=6, height=5)
+    pdf(paste0("figures/", plotNameRoot, strictText, "Unstratified", scenarioID, ".pdf"), width=6, height=5)
     # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
     par(mar=c(6.1, 4.1, 3.1, 6.3), xpd=TRUE)
     
@@ -3369,7 +3401,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
     
     # browser()
     
-    pdf(paste0("figures/", plotNameRoot, strictText, "StratifiedSimple.pdf"), width=6, height=5)
+    pdf(paste0("figures/", plotNameRoot, strictText, "StratifiedSimple", scenarioID, ".pdf"), width=6, height=5)
     # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
     par(mar=c(6.1, 4.1, 3.1, 6.3), xpd=TRUE)
     stripchart(fullTable1[simpleI] ~ tempModelNames, cex=0, las=2, ylim=scoreRange, main="", 
@@ -3416,7 +3448,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
     dev.off()
     
     # plot the SRS values
-    pdf(paste0("figures/", plotNameRoot, strictText, "UnstratifiedSimple.pdf"), width=6, height=5)
+    pdf(paste0("figures/", plotNameRoot, strictText, "UnstratifiedSimple", scenarioID, ".pdf"), width=6, height=5)
     # par(mar=c(4.1, 8.1, 5.1, 5.3), xpd=TRUE)
     par(mar=c(6.1, 4.1, 3.1, 6.3), xpd=TRUE)
     
@@ -3476,6 +3508,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
   plotHelper(5, goalVal=80, rangeIncludes=100, scoreName="Cvg", shareRange=TRUE, plotDHSLegend=TRUE)
   plotHelper(6, goalVal=0, rangeIncludes=0, scoreName="Width", shareRange=TRUE, plotDHSLegend=FALSE)
 }
+
 
 
 
