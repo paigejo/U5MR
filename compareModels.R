@@ -2784,7 +2784,7 @@ runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTab
 }
 
 runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRows=c(1:3, 4, 6, 10, 12, 13:16), 
-                                  incorrectlyAggregatedModels=TRUE, spatialRange=c(150, 50), spatialVar=c(0.15^2, 0.3^2)) {
+                                  incorrectlyAggregatedModels=TRUE, spatialRange=150, spatialVar=0.15^2) {
   spatialRange = match.arg(as.character(spatialRange), choices=c(150, 50))
   spatialVar = match.arg(as.character(spatialVar), choices=c(0.15^2, 0.3^2))
   
