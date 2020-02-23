@@ -55,10 +55,10 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
   rangeText = ifelse(effRange == 150, "", "Range50")
   if(!test)
     load(paste0("simDataMultiBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
-                "HHoldVar0urbanOverSamplefrac0", bigText, rangeText, ".RData"))
+                "HHoldVar0urbanOverSamplefrac0", rangeText, bigText, ".RData"))
   else
     load(paste0("simDataMultiBeta-1.75margVar", round(margVar, 4), "tausq", round(tausq, 4), "gamma", round(gamma, 4), 
-                "HHoldVar0urbanOverSamplefrac0Test", bigText, rangeText, ".RData"))
+                "HHoldVar0urbanOverSamplefrac0Test", rangeText, bigText, ".RData"))
   eaDat = SRSDat$eaDat
   
   if(sampling == "SRS") {
@@ -3069,8 +3069,8 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
   else
     load("compareModelCommandArgsNew.RData")
   rangeID = ifelse(spatialRange == 50, "Range50", "")
-  spatialVarID = ifelse(spatialRange == 0.3^2, "margVar0.09")
-  scenarioID = ifelse(spatialRange == 150 && spatialBar == 0.15^2, "", paste0(rangeID, "_", spatialVarID))
+  spatialVarID = ifelse(spatialVar == 0.3^2, "margVar0.09", "")
+  scenarioID = ifelse(spatialRange == 150 && spatialVar == 0.15^2, "", paste0(rangeID, "_", spatialVarID))
   
   indices = 1:length(compareModelCommandArgs)
   
@@ -3120,7 +3120,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
         if(range != spatialRange && margVar != 0)
           next
         if(range == 50 && margVar == 0)
-          range = 150
+          argList$effRange = 150
         if(margVar != 0 && margVar != spatialVar)
           next
         
