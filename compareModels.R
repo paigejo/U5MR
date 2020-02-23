@@ -2846,7 +2846,7 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
     if(range != spatialRange && margVar != 0)
       next
     if(range == 50 && margVar == 0)
-      range = 150
+      argList$effRange = 150
     if(margVar != 0 && margVar != spatialVar)
       next
     
