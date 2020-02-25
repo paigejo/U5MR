@@ -3541,12 +3541,12 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
   }
   
   # generate plots for each scoring rule (1-6: bias, variance, mse, crps, coverage, width)
-  plotHelper(3, goalVal=0, rangeIncludes=c(0.0488351441837245, 1.72515372122586), scoreName="MSE", plotDHSLegend=FALSE, shareRange=TRUE, logScale=TRUE)
-  plotHelper(1, goalVal=0, rangeIncludes=c(0, -57.9990982525454, 36.4960399713828), scoreName="Bias", plotDHSLegend=TRUE, shareRange=TRUE)
-  plotHelper(2, goalVal=0, rangeIncludes=c(0, 14.4373173407848), scoreName="Var", plotDHSLegend=FALSE, shareRange=TRUE)
-  plotHelper(4, goalVal=0, rangeIncludes=c(0, 7.04598102139716), scoreName="CRPS", shareRange=TRUE, plotDHSLegend=FALSE)
-  plotHelper(5, goalVal=80, rangeIncludes=c(55.4893617021277, 100), scoreName="Cvg", shareRange=TRUE, plotDHSLegend=TRUE)
-  plotHelper(6, goalVal=0, rangeIncludes=c(0, 2.63296018899143), scoreName="Width", shareRange=TRUE, plotDHSLegend=FALSE)
+  plotHelper(3, goalVal=0, rangeIncludes=c(0.0488351441837245, 1.96136848911688), scoreName="MSE", plotDHSLegend=FALSE, shareRange=TRUE, logScale=TRUE)
+  plotHelper(1, goalVal=0, rangeIncludes=c(0, -61.4285011791729, 36.4960399713828), scoreName="Bias", plotDHSLegend=TRUE, shareRange=TRUE)
+  plotHelper(2, goalVal=0, rangeIncludes=c(0, 17.2193571578031), scoreName="Var", plotDHSLegend=FALSE, shareRange=TRUE)
+  plotHelper(4, goalVal=0, rangeIncludes=c(0, 7.64137139664491), scoreName="CRPS", shareRange=TRUE, plotDHSLegend=FALSE)
+  plotHelper(5, goalVal=80, rangeIncludes=c(55.1914893617021, 100), scoreName="Cvg", shareRange=TRUE, plotDHSLegend=TRUE)
+  plotHelper(6, goalVal=0, rangeIncludes=c(0, 2.73626752901516), scoreName="Width", shareRange=TRUE, plotDHSLegend=FALSE)
 }
 
 
