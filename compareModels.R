@@ -2726,11 +2726,17 @@ getTruth = function(resultType = c("county", "region", "EA", "pixel"), eaDat) {
 
 # takes all precomputed scoring rules from compareModels2 listed in compareModelCommandArgs.RData, and outputs results
 runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTables=TRUE, printScoreTable=TRUE, 
-                                    printParTable=TRUE, printBigResults=TRUE, newSimulations=TRUE) {
-  if(!newSimulations)
+                                    printParTable=TRUE, printBigResults=TRUE, spatialRange=150, spatialVar=0.15^2) {
+  spatialRange = match.arg(as.character(spatialRange), choices=c(150, 50))
+  spatialVar = match.arg(as.character(spatialVar), choices=c(0.15^2, 0.3^2))
+  
+  if(spatialRange == 150 && spatialVar == 0.15^2)
     load("compareModelCommandArgs.RData")
+  else if(spatialRange == 50 && spatialVar == 0.3^2)
+    stop("spatialRange == 50 && spatialVar == 0.3^2 not supported")
   else
     load("compareModelCommandArgsNew.RData")
+  
   if(is.null(indices))
     indices = 1:length(compareModelCommandArgs)
   for(i in indices) {
@@ -2759,6 +2765,14 @@ runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTab
     maxDataSets = argList$maxDataSets 
     nsim = argList$nsim
     range = argList$effRange
+    
+    # skip nonexistent populations and populations not in our scenario
+    if(range != spatialRange && margVar != 0)
+      next
+    if(range == 50 && margVar == 0)
+      argList$effRange = 150
+    if(margVar != 0 && margVar != spatialVar)
+      next
     
     # print out the population and design for this table
     if(margVar == 0 && gamma == 0 && tausq == 0)
