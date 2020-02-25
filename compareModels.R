@@ -3062,9 +3062,9 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
 
 # plot the scoring rules for each analysis and population model for a fixed type of survey design (the survey design being SRS or stratified)
 plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=FALSE, saveResults=FALSE, 
-                                     spatialRange=c(150, 50), spatialVar=c(0.15^2, 0.3^2)) {
-  spatialRange = match.arg(as.character(spatialRange))
-  spatialVar = match.arg(as.character(spatialVar))
+                                     spatialRange=150, spatialVar=0.15^2) {
+  spatialRange = match.arg(as.character(spatialRange), choices=c(150, 50))
+  spatialVar = match.arg(as.character(spatialVar), choices=c(0.15^2, 0.3^2))
   
   # map the population type to a type of point plotted:
   ## constant risk: 1
