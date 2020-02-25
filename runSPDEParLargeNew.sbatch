@@ -3,7 +3,7 @@
 #SBATCH --partition largemem    # Slurm partition to use
 #SBATCH --ntasks 8          # Number of tasks to run. By default, one CPU core will be allocated per task
 #SBATCH --time 10-00:00        # Wall time limit in D-HH:MM
-#SBATCH --mem-per-cpu=85000     # Memory limit for each tasks (in MB)
+#SBATCH --mem-per-cpu=87000     # Memory limit for each tasks (in MB)
 #SBATCH -o runSPDEParLargeNew_%A_%a.out    # File to which STDOUT will be written
 #SBATCH -e runSPDEParLargeNew_%A_%a.err    # File to which STDERR will be written
 #SBATCH --mail-type=ALL       # Type of email notification- BEGIN,END,FAIL,ALL
