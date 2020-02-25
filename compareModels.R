@@ -2725,6 +2725,7 @@ getTruth = function(resultType = c("county", "region", "EA", "pixel"), eaDat) {
 }
 
 # takes all precomputed scoring rules from compareModels2 listed in compareModelCommandArgs.RData, and outputs results
+# (use this for the parameter tables)
 runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTables=TRUE, printScoreTable=TRUE, 
                                     printParTable=TRUE, printBigResults=TRUE, spatialRange=150, spatialVar=0.15^2) {
   spatialRange = match.arg(as.character(spatialRange), choices=c(150, 50))
@@ -2797,6 +2798,7 @@ runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTab
   }
 }
 
+# (use this for the scoring rules)
 runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRows=c(1:3, 4, 6, 10, 12, 13:16), 
                                   incorrectlyAggregatedModels=TRUE, spatialRange=150, spatialVar=0.15^2) {
   spatialRange = match.arg(as.character(spatialRange), choices=c(150, 50))
@@ -3211,7 +3213,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
     
     # save results if necessary
     if(usePrecomputedResults) {
-      load(paste0("compareModelPlotVar", scoreI, ".RData"))
+      load(paste0("compareModelPlotVar", scoreI, scenarioID, ".RData"))
     }
     if(saveResults) {
       save(fullTable1, fullTable2, fullTable3, fullTable4, 
@@ -3254,6 +3256,7 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
       scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, rangeIncludes))
     else
       scoreRange = range(c(fullTable1, fullTable2, fullTable3, fullTable4, fullTableSRS1, fullTableSRS2, fullTableSRS3, fullTableSRS4, rangeIncludes))
+    print(paste0(scoreName, " range: (", scoreRange[1], ", ", scoreRange[2], ")"))
     
     thisLog = ""
     if(logScale)
@@ -3371,7 +3374,9 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
       segments(y0=goalVal, x0=par("usr")[1], y1=goalVal, x1=par("usr")[2], lty=2, col="black")
     }
     
-    stripchart(fullTable1 ~ tempModelNames, col=cols[1], pch=pch[1], add=TRUE, 
+    # stripchart(fullTable1 ~ tempModelNames, col=cols[1], pch=pch[1], add=TRUE, 
+    #            at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
+    stripchart(fullTableSRS1 ~ tempModelNames, col=cols[1], pch=pch[1], add=TRUE, 
                at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
     stripchart(fullTableSRS2 ~ tempModelNames, col=cols[2], pch=pch[2], add=TRUE, 
                at=jitter(centers, amount = .15), vertical=TRUE, lwd=2)
