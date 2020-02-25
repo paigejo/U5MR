@@ -2766,6 +2766,8 @@ runCompareModelsAllLocal = function(indices=NULL, strictPriors=FALSE, doFancyTab
     maxDataSets = argList$maxDataSets 
     nsim = argList$nsim
     range = argList$effRange
+    if(is.null(range))
+      range = 150
     
     # skip nonexistent populations and populations not in our scenario
     if(range != spatialRange && margVar != 0)
@@ -2857,6 +2859,8 @@ runCompareModelsLocal2 = function(indices = NULL, strictPriors = FALSE, filterRo
     argList$xtable.args=list(digits=c(0, 2, 2, 3, 2, 1, 2), display=rep("f", 7), auto=TRUE)
     argList$colDigits = c(2, 2, 3, 2, 1, 2)
     range = argList$effRange
+    if(is.null(range))
+      range = 150
     
     # skip nonexistent populations and populations not in our scenario
     if(range != spatialRange && margVar != 0)
@@ -3131,6 +3135,8 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
         maxDataSets = argList$maxDataSets 
         nsim = argList$nsim
         range = argList$effRange
+        if(is.null(range))
+          range = 150
         
         # skip nonexistent populations and populations not in our scenario
         if(range != spatialRange && margVar != 0)
@@ -3535,12 +3541,12 @@ plotCompareModelsAllLocal = function(strictPriors=FALSE, usePrecomputedResults=F
   }
   
   # generate plots for each scoring rule (1-6: bias, variance, mse, crps, coverage, width)
-  plotHelper(3, goalVal=0, scoreName="MSE", plotDHSLegend=FALSE, shareRange=TRUE, logScale=TRUE)
-  plotHelper(1, goalVal=0, rangeIncludes=0, scoreName="Bias", plotDHSLegend=TRUE, shareRange=TRUE)
-  plotHelper(2, goalVal=0, rangeIncludes=0, scoreName="Var", plotDHSLegend=FALSE, shareRange=TRUE)
-  plotHelper(4, goalVal=0, rangeIncludes=0, scoreName="CRPS", shareRange=TRUE, plotDHSLegend=FALSE)
-  plotHelper(5, goalVal=80, rangeIncludes=100, scoreName="Cvg", shareRange=TRUE, plotDHSLegend=TRUE)
-  plotHelper(6, goalVal=0, rangeIncludes=0, scoreName="Width", shareRange=TRUE, plotDHSLegend=FALSE)
+  plotHelper(3, goalVal=0, rangeIncludes=c(0.0488351441837245, 1.72515372122586), scoreName="MSE", plotDHSLegend=FALSE, shareRange=TRUE, logScale=TRUE)
+  plotHelper(1, goalVal=0, rangeIncludes=c(0, -57.9990982525454, 36.4960399713828), scoreName="Bias", plotDHSLegend=TRUE, shareRange=TRUE)
+  plotHelper(2, goalVal=0, rangeIncludes=c(0, 14.4373173407848), scoreName="Var", plotDHSLegend=FALSE, shareRange=TRUE)
+  plotHelper(4, goalVal=0, rangeIncludes=c(0, 7.04598102139716), scoreName="CRPS", shareRange=TRUE, plotDHSLegend=FALSE)
+  plotHelper(5, goalVal=80, rangeIncludes=c(55.4893617021277, 100), scoreName="Cvg", shareRange=TRUE, plotDHSLegend=TRUE)
+  plotHelper(6, goalVal=0, rangeIncludes=c(0, 2.63296018899143), scoreName="Width", shareRange=TRUE, plotDHSLegend=FALSE)
 }
 
 
