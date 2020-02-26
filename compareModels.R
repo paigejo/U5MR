@@ -1707,6 +1707,16 @@ runCompareModels2 = function(test=FALSE, tausq=.1^2, margVar=.15^2, gamma=-1,
       modelVariations[BYM2I] = word(rownames(parTab)[BYM2I], 2)
       modelVariations[SPDEI] = word(rownames(parTab)[SPDEI], 2)
       
+      # fix BYM2 switch up between total variance and phi when no cluster effect is included:
+      # switch data, but keep the perimeter names at the same rows
+      noCluster = grepl("uc", rownames(parTab)) | grepl("Uc", rownames(parTab))
+      badRows = which(noCluster & grepl("Phi", rownames(parTab)))
+      currentNames = rownames(parTab)
+      switchRows = parTab[badRows+1,]
+      parTab[badRows+1,] = parTab[badRows,]
+      parTab[badRows,] = switchRows
+      rownames(parTab) = currentNames
+      
       # determine the parameter names
       require("tm")
       parNames = trimws(removeWords(rownames(parTab), c(uniqueModelTypes, unique(modelVariations))))
